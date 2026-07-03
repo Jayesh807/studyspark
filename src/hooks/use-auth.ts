@@ -51,6 +51,8 @@ export function useAuth() {
 
     (async () => {
       try {
+        // /api/auth/me now returns 200 with { user: null } when not authed,
+        // so this no longer throws for unauthenticated sessions.
         const data = await apiFetch<MeResponse>("/api/auth/me");
         if (!mountedRef.current) return;
         // Only apply the result if it provides a user, OR there is genuinely
@@ -71,6 +73,16 @@ export function useAuth() {
       }
     })();
   }, [setUser]);
+
+  /**
+   * Handle a 401 from a protected API call: log the user out and redirect to
+   * the login screen. Called by dashboard pages when apiFetch throws a 401.
+   */
+  const handleSessionExpired = useCallback(() => {
+    if (!useAppStore.getState().user) return;
+    storeLogout();
+    setView("login");
+  }, [storeLogout, setView]);
 
   const login = useCallback(
     async (username: string, password: string) => {
@@ -131,6 +143,7 @@ export function useAuth() {
     login,
     signup,
     logout,
+    handleSessionExpired,
   };
 }
 

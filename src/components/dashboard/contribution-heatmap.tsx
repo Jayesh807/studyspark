@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { Activity, Flame } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Activity, Flame, X, Clock, TrendingUp } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import type { FocusSession } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { addDays, format, formatDistanceToNow, isSameDay, parseISO, startOfWeek, subDays } from "date-fns";
 
 interface DayCell {
@@ -48,6 +54,7 @@ export function ContributionHeatmap() {
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [hovered, setHovered] = useState<DayCell | null>(null);
+  const [selectedDay, setSelectedDay] = useState<DayCell | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -61,6 +68,20 @@ export function ContributionHeatmap() {
       }
     })();
   }, []);
+
+  // Sessions for the selected day (for the detail dialog)
+  const selectedDaySessions = useMemo(() => {
+    if (!selectedDay) return [];
+    return sessions
+      .filter((s) => {
+        try {
+          return isSameDay(parseISO(s.date), selectedDay.date);
+        } catch {
+          return false;
+        }
+      })
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [selectedDay, sessions]);
 
   // Build grid: weeks (columns) x 7 days (rows), ending today
   const grid = useMemo<{ weeks: DayCell[][]; totalMinutes: number; activeDays: number; maxDay: DayCell | null }>(() => {
@@ -254,10 +275,13 @@ export function ContributionHeatmap() {
                     {week.map((cell, di) => {
                       const isFuture = cell.date.getTime() > Date.now();
                       const isToday = isSameDay(cell.date, new Date());
+                      const hasActivity = cell.minutes > 0;
                       return (
                         <Tooltip key={`${wi}-${di}`}>
                           <TooltipTrigger asChild>
-                            <motion.div
+                            <motion.button
+                              type="button"
+                              disabled={isFuture || !hasActivity}
                               initial={{ opacity: 0, scale: 0.6 }}
                               animate={{ opacity: 1, scale: 1 }}
                               transition={{
@@ -267,12 +291,16 @@ export function ContributionHeatmap() {
                               }}
                               onMouseEnter={() => setHovered(cell)}
                               onMouseLeave={() => setHovered(null)}
+                              onClick={() => hasActivity && setSelectedDay(cell)}
+                              aria-label={`${format(cell.date, "EEE, MMM d")}: ${cell.minutes} minutes, ${cell.count} session${cell.count === 1 ? "" : "s"}`}
                               className={cn(
-                                "heat-cell h-3 w-3 rounded-sm transition-all cursor-default",
+                                "heat-cell h-3 w-3 rounded-sm transition-all",
                                 LEVEL_BG[cell.level],
+                                hasActivity && !isFuture && "hover:scale-125 hover:ring-2 hover:ring-violet-500/50 cursor-pointer",
                                 cell.level === 0 && !isFuture && "hover:bg-violet-500/20",
                                 isToday && "heatmap-today ring-1 ring-violet-500 ring-offset-1 ring-offset-background",
-                                isFuture && "opacity-30"
+                                isFuture && "opacity-30 cursor-not-allowed",
+                                !hasActivity && !isFuture && "cursor-default"
                               )}
                             />
                           </TooltipTrigger>
@@ -285,6 +313,11 @@ export function ContributionHeatmap() {
                             <p className="text-muted-foreground">
                               {format(cell.date, "EEE, MMM d, yyyy")}
                             </p>
+                            {hasActivity && (
+                              <p className="text-violet-400 text-[10px] mt-0.5">
+                                Click to view details
+                              </p>
+                            )}
                           </TooltipContent>
                         </Tooltip>
                       );
@@ -319,6 +352,82 @@ export function ContributionHeatmap() {
           </div>
         </TooltipProvider>
       )}
+
+      {/* Day detail dialog */}
+      <Dialog open={!!selectedDay} onOpenChange={(open) => !open && setSelectedDay(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+                <Clock className="h-4 w-4" />
+              </span>
+              {selectedDay && format(selectedDay.date, "EEEE, MMM d, yyyy")}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedDay && (
+            <div className="space-y-4">
+              {/* Summary card */}
+              <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted/50 p-3">
+                <div className="text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Minutes</p>
+                  <p className="text-lg font-bold tabular-nums text-violet-600 dark:text-violet-400">
+                    {selectedDay.minutes}
+                  </p>
+                </div>
+                <div className="text-center border-x border-border/60">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Sessions</p>
+                  <p className="text-lg font-bold tabular-nums">
+                    {selectedDay.count}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg</p>
+                  <p className="text-lg font-bold tabular-nums">
+                    {selectedDay.count > 0 ? Math.round(selectedDay.minutes / selectedDay.count) : 0}m
+                  </p>
+                </div>
+              </div>
+
+              {/* Session list */}
+              <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin pr-1">
+                <AnimatePresence mode="popLayout">
+                  {selectedDaySessions.map((s, i) => (
+                    <motion.div
+                      key={s.id}
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 12 }}
+                      transition={{ delay: i * 0.04 }}
+                      className="flex items-center gap-3 rounded-lg border border-border/60 bg-background/50 p-2.5 hover:border-violet-500/40 hover:bg-violet-500/5 transition-colors"
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                        <TrendingUp className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate">
+                          {s.subject || "Focus session"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {s.duration} min · {(() => {
+                            try {
+                              return formatDistanceToNow(parseISO(s.createdAt), { addSuffix: true });
+                            } catch {
+                              return "";
+                            }
+                          })()}
+                        </p>
+                      </div>
+                      <span className="shrink-0 rounded-md bg-violet-500/10 px-2 py-0.5 text-xs font-semibold text-violet-600 dark:text-violet-400">
+                        {s.duration}m
+                      </span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </GlassCard>
   );
 }
