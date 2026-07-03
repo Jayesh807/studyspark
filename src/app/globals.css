@@ -1210,6 +1210,216 @@
   }
 }
 
+/* ======================================================================= */
+/* Round 11 — Cohesive micro-interaction & detail refinements              */
+/* ======================================================================= */
+
+/* Accent-colored text selection across the whole app */
+::selection {
+  background: hsl(var(--accent-color) / 0.28);
+  color: hsl(var(--foreground));
+}
+::-moz-selection {
+  background: hsl(var(--accent-color) / 0.28);
+  color: hsl(var(--foreground));
+}
+
+/* Stable numeric rendering for counters, stats, clocks */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Global tactile press feedback for buttons / clickable chips */
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled),
+a:active {
+  transform: scale(0.975);
+  transition: transform 0.08s ease;
+}
+
+/* Refined focus-visible ring using the dynamic accent color */
+:focus-visible {
+  outline: 2px solid hsl(var(--accent-color));
+  outline-offset: 2px;
+}
+
+/* ---------- Animated auth mesh background ---------- */
+.auth-mesh {
+  position: relative;
+  overflow: hidden;
+  background-color: hsl(var(--background));
+}
+.auth-mesh::before,
+.auth-mesh::after {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+.auth-mesh::before {
+  width: 60vw;
+  height: 60vw;
+  max-width: 520px;
+  max-height: 520px;
+  top: -10%;
+  left: -10%;
+  background: radial-gradient(
+    circle,
+    hsl(var(--accent-color) / 0.45),
+    transparent 65%
+  );
+  animation: meshDrift 14s ease-in-out infinite alternate;
+}
+.auth-mesh::after {
+  width: 55vw;
+  height: 55vw;
+  max-width: 480px;
+  max-height: 480px;
+  bottom: -15%;
+  right: -10%;
+  background: radial-gradient(
+    circle,
+    hsl(330 80% 60% / 0.32),
+    transparent 65%
+  );
+  animation: meshDrift 18s ease-in-out infinite alternate-reverse;
+}
+@keyframes meshDrift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(8%, 6%) scale(1.12);
+  }
+  100% {
+    transform: translate(-6%, 4%) scale(0.95);
+  }
+}
+
+/* ---------- Refined stat-card hover ---------- */
+.stat-hover {
+  position: relative;
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease, border-color 0.28s ease;
+  will-change: transform;
+}
+.stat-hover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--accent-color) / 0.0),
+    hsl(var(--accent-color) / 0.0)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.28s ease;
+  pointer-events: none;
+}
+.stat-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -18px hsl(var(--accent-color) / 0.4);
+  border-color: hsl(var(--accent-color) / 0.4) !important;
+}
+.stat-hover:hover::before {
+  opacity: 1;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--accent-color) / 0.55),
+    transparent 60%
+  );
+}
+
+/* ---------- Active nav glow ---------- */
+.nav-active-glow {
+  position: relative;
+}
+.nav-active-glow::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 9999px;
+  background: hsl(var(--accent-color));
+  box-shadow: 0 0 12px hsl(var(--accent-color) / 0.7);
+  animation: navGlowIn 0.3s ease;
+}
+@keyframes navGlowIn {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: 60%;
+    opacity: 1;
+  }
+}
+
+/* ---------- Refined input focus glow ---------- */
+.input-glow:focus-visible,
+.input-glow:focus {
+  border-color: hsl(var(--accent-color) / 0.6) !important;
+  box-shadow: 0 0 0 3px hsl(var(--accent-color) / 0.15);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* ---------- Subtle card edge sheen on hover (generic) ---------- */
+.edge-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.edge-sheen::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    115deg,
+    transparent,
+    hsl(var(--accent-color) / 0.08),
+    transparent
+  );
+  transform: skewX(-18deg);
+  transition: left 0.55s ease;
+  pointer-events: none;
+}
+.edge-sheen:hover::after {
+  left: 125%;
+}
+
+/* ---------- Number pop on change (for animated counters) ---------- */
+.num-pop {
+  display: inline-block;
+  animation: numPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes numPop {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.18);
+    color: hsl(var(--accent-color));
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 /* Reduce motion: kill all new infinite animations */
 @media (prefers-reduced-motion: reduce) {
   .heat-cell:hover,
@@ -1220,8 +1430,18 @@
   .pulse-glow,
   .float-y,
   .gradient-border-animated::before,
-  .ring-pulse::after {
+  .ring-pulse::after,
+  .auth-mesh::before,
+  .auth-mesh::after,
+  .num-pop,
+  .nav-active-glow::after {
     animation: none !important;
+  }
+  .stat-hover:hover {
+    transform: none;
+  }
+  .edge-sheen::after {
+    display: none;
   }
   .scroll-reveal,
   .reveal-up {

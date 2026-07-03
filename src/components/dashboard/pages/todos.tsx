@@ -102,6 +102,7 @@ import {
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { apiFetch, handleError } from "@/lib/api";
+import { useAppStore } from "@/lib/store";
 import {
   Todo,
   Priority,
@@ -203,6 +204,7 @@ const PRIORITY_ORDER: Record<Priority, number> = {
 
 // ---------- Main page ----------
 export function TodosPage() {
+  const userId = useAppStore((s) => s.user?.id);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,7 +241,7 @@ export function TodosPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchData();

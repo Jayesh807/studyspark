@@ -23,7 +23,7 @@ export function AuthScreen() {
         <AuthLeftPanel />
 
         {/* Right form panel */}
-        <div className="relative flex items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
+        <div className="auth-mesh relative flex items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
           {/* Soft radial backdrop for depth */}
           <div
             aria-hidden
