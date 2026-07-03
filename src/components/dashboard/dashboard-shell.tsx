@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "@/lib/store";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
+import { CommandPalette } from "./command-palette";
 import { AnimatedBlobs } from "@/components/shared/animated-blobs";
 import { PageLoader } from "@/components/shared/feedback";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,9 @@ const ProfilePage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./pages/settings").then((m) => ({ default: m.SettingsPage }))
 );
+const AchievementsPage = lazy(() =>
+  import("./pages/achievements").then((m) => ({ default: m.AchievementsPage }))
+);
 
 function PageRouter() {
   const currentView = useAppStore((s) => s.currentView);
@@ -120,6 +124,8 @@ function PageRouter() {
         return <FocusTimerPage />;
       case "analytics":
         return <AnalyticsPage />;
+      case "achievements":
+        return <AchievementsPage />;
       case "profile":
         return <ProfilePage />;
       case "settings":
@@ -149,14 +155,58 @@ function PageRouter() {
 }
 
 export function DashboardShell() {
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteSession, setPaletteSession] = useState(0);
+
+  const openPalette = useCallback(() => {
+    setPaletteSession((s) => s + 1);
+    setPaletteOpen(true);
+  }, []);
+
+  // Global Cmd+K / Ctrl+K shortcut to open the command palette
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => {
+          if (!o) setPaletteSession((s) => s + 1);
+          return !o;
+        });
+      }
+      // Quick shortcuts: N → new task, F → focus (when not typing)
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable);
+      if (isTyping || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (paletteOpen) return;
+      if (e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        useAppStore.getState().setView("todos");
+      } else if (e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        useAppStore.getState().setView("focus");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [paletteOpen]);
+
   return (
     <div className="relative flex h-screen overflow-hidden">
       <AnimatedBlobs variant="dashboard" />
       <Sidebar />
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <Topbar />
+        <Topbar onOpenPalette={openPalette} />
         <PageRouter />
       </div>
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        sessionId={paletteSession}
+      />
     </div>
   );
 }

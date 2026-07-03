@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Trophy,
 } from "lucide-react";
 import { useAppStore, type AppView } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,16 +37,18 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   description: string;
+  shortcut?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { view: "dashboard", label: "Dashboard", icon: LayoutDashboard, description: "Overview & stats" },
-  { view: "todos", label: "Daily Tasks", icon: CheckSquare, description: "Manage your tasks" },
+  { view: "todos", label: "Daily Tasks", icon: CheckSquare, description: "Manage your tasks", shortcut: "N" },
   { view: "calendar", label: "Calendar", icon: Calendar, description: "Events & schedule" },
   { view: "subjects", label: "Subjects", icon: BookOpen, description: "Your courses" },
   { view: "exams", label: "Upcoming Exams", icon: GraduationCap, description: "Exam tracker" },
-  { view: "focus", label: "Focus Timer", icon: Timer, description: "Pomodoro timer" },
+  { view: "focus", label: "Focus Timer", icon: Timer, description: "Pomodoro timer", shortcut: "F" },
   { view: "analytics", label: "Analytics", icon: BarChart3, description: "Study insights" },
+  { view: "achievements", label: "Achievements", icon: Trophy, description: "Badges & milestones" },
   { view: "profile", label: "Profile", icon: User, description: "Your profile" },
   { view: "settings", label: "Settings", icon: Settings, description: "Preferences" },
 ];
@@ -133,6 +136,9 @@ function NavButton({
       />
       {!collapsed && (
         <span className="relative z-10 truncate">{item.label}</span>
+      )}
+      {!collapsed && item.shortcut && !active && (
+        <kbd className="kbd-hint relative z-10 ml-auto">{item.shortcut}</kbd>
       )}
       {!collapsed && active && (
         <motion.span
