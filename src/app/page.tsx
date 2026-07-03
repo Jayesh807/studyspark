@@ -13,7 +13,7 @@ import { PageLoader } from "@/components/shared/feedback";
 
 export default function Home() {
   const { currentView, isAuthenticated, authLoading, setView } = useAppStore();
-  const { user } = useAuth();
+  const { user, handleSessionExpired } = useAuth();
 
   // Guard: if not authenticated and trying to view a dashboard page, bounce to landing
   useEffect(() => {
@@ -32,6 +32,17 @@ export default function Home() {
       }
     }
   }, [authLoading, user, currentView, setView]);
+
+  // Global listener: when apiFetch detects a 401 on a protected endpoint,
+  // it dispatches this event. We log out and redirect to login.
+  useEffect(() => {
+    const onSessionExpired = () => {
+      handleSessionExpired();
+    };
+    window.addEventListener("studyspark:session-expired", onSessionExpired);
+    return () =>
+      window.removeEventListener("studyspark:session-expired", onSessionExpired);
+  }, [handleSessionExpired]);
 
   // Initial session check loading screen
   if (authLoading) {

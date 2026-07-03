@@ -50,7 +50,7 @@ export function GlassCard({
       }
       transition={{ duration: 0.2, ease: "easeOut" }}
       onClick={onClick}
-      className={cn("glass card-shimmer-border rounded-3xl", hover && "hover-lift cursor-pointer", className)}
+      className={cn("glass card-shimmer-border glass-shimmer rounded-3xl", hover && "hover-lift cursor-pointer", className)}
     >
       {children}
     </motion.div>

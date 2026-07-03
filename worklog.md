@@ -1243,3 +1243,80 @@ Stage Summary:
   3. Achievement earnedAt persistence to DB (currently localStorage-only)
   4. Accessibility audit: ARIA labels on all icon-only buttons, focus trap in drawer/tour
   5. Heatmap click → navigate to that day's focus sessions detail
+
+---
+Task ID: 10
+Agent: orchestrator (main)
+Task: Critical auth bug fix (stale token "Unauthorized" flood), notifEnabled persistence, heatmap click-to-detail, premium styling polish
+
+Work Log:
+- Performed QA via agent-browser. Reproduced user-reported bug: "sign in but still showing unauthorized and not loading dashboard".
+- Root cause identified in dev.log: after `POST /api/auth/login 200`, dashboard API calls (`/api/analytics`, `/api/todos`, `/api/focus-session`) returned 401 due to cookie timing race. The old `/api/auth/me` also returned 401 for unauthenticated sessions, causing `apiFetch` to throw unnecessarily.
+
+### Critical Bug Fix: Stale token "Unauthorized" flood + dashboard won't load
+- **FIX 1**: Changed `/api/auth/me` to return `200` with `{ user: null, profile: null }` instead of `401`. A session-check endpoint should not return an error status for "no session" — this caused `apiFetch` to throw on every page load for logged-out users, making the auth flow fragile.
+- **FIX 2**: Added global 401 handler in `apiFetch` (`src/lib/api.ts`): when a protected endpoint (not `/api/auth/*`) returns 401, it shows a single "Your session has expired" toast (deduplicated via `sessionExpiredHandled` guard) and dispatches a `studyspark:session-expired` window event. No more "Unauthorized" toast flood.
+- **FIX 3**: Added event listener in `page.tsx` that listens for `studyspark:session-expired` and calls `handleSessionExpired()` from `useAuth` to log out + redirect to login screen.
+- **FIX 4**: Updated `handleError` to suppress 401 toasts (the session-expired handler already showed one).
+- **FIX 5**: Added `handleSessionExpired` callback to `useAuth` hook for clean logout + redirect.
+- Result: Login flow now works cleanly — all dashboard API calls return 200 after login (verified in dev.log). If a stale token ever causes 401s, user sees ONE friendly message and is redirected to login (not stuck).
+
+### Feature 1: notifEnabled persistence (Zustand store)
+- Added `notifEnabled` boolean + `setNotifEnabled` action to Zustand store (`src/lib/store.ts`).
+- Added to `partialize` so it persists to localStorage across sessions.
+- Updated Focus Timer (`focus-timer.tsx`) to read `notifEnabled`/`setNotifEnabled` from store instead of local `useState`. Notification preference now survives page navigation and reloads.
+
+### Feature 2: Heatmap click-to-detail dialog
+- Updated `contribution-heatmap.tsx`: heatmap cells are now `<motion.button>` elements (was `<motion.div>`).
+- Cells with activity are clickable (cursor-pointer, hover scale-125 + ring). Empty/future cells are disabled.
+- Clicking a cell opens a Dialog showing:
+  - Date header with clock icon
+  - 3-column summary: Minutes / Sessions / Avg minutes
+  - Scrollable list of that day's focus sessions with subject, duration, relative timestamp, and duration badge
+  - Sessions animate in with staggered slide-in
+- Tooltip now shows "Click to view details" hint for active cells.
+- ARIA labels on cells for screen readers.
+
+### Styling Polish (Round 10)
+- Added 6 new keyframes: `shimmerSweep`, `pulseGlow`, `badgePop`, `gradientPan`, `floatY`, `ringPulse`.
+- Added 9 new utility classes in `@layer utilities`:
+  - `text-shimmer`: animated gradient text for headings
+  - `gradient-border-animated`: animated gradient border for premium cards
+  - `pulse-glow`: pulsing box-shadow for active elements
+  - `badge-pop`: pop-in animation for badges
+  - `float-y`: gentle floating animation for decorative icons
+  - `ring-pulse`: expanding ring for notification indicators
+  - `scrollbar-premium`: thin themed scrollbar with accent-color hover
+  - `focus-ring-accent`: accent-colored focus-visible ring for accessibility
+  - `glass-shimmer`: diagonal shimmer sweep on hover for interactive cards
+  - `reveal-up`: scroll-triggered reveal animation
+- Applied `glass-shimmer` to GlassCard component for premium hover effect.
+- All new animations respect `prefers-reduced-motion`.
+
+### Verification Results (agent-browser)
+- ✅ Landing page loads cleanly (0 errors, 0 console issues)
+- ✅ Login flow: POST /api/auth/login 200 → all dashboard API calls return 200 (analytics, todos, focus-session) — NO 401 flood
+- ✅ Wrong password shows "Invalid username or password" (not "Unauthorized")
+- ✅ Logout → landing page shows correctly
+- ✅ Analytics page heatmap renders with 119 cells (17 weeks × 7 days)
+- ✅ Heatmap click-to-detail dialog opens, shows correct summary (70 min, 2 sessions, 35m avg) + session list (Physics 45m, Mathematics 25m)
+- ✅ notifEnabled persists in Zustand store (localStorage)
+- ✅ Lint clean (0 errors, 0 warnings)
+- ✅ Dev server compiles cleanly
+
+Stage Summary:
+- Critical auth bug FIXED: stale token no longer floods "Unauthorized" toasts or blocks dashboard. Global 401 handler gracefully redirects to login.
+- 2 new features: notifEnabled persistence, heatmap click-to-detail dialog
+- 9 new premium CSS utilities + 6 new keyframes for styling polish
+- All QA verified end-to-end with agent-browser, 0 errors
+- App remains at 13 views, all working
+
+## Unresolved Issues / Risks
+- **Cookie timing race (mitigated, not fully eliminated)**: In rare cases, dashboard API calls fired immediately after login may still hit before the browser applies the Set-Cookie. The global 401 handler now gracefully handles this (single toast + redirect) rather than flooding errors. A future enhancement could add a brief `await new Promise(r => setTimeout(r, 0))` after login before rendering the dashboard, or have dashboard pages refetch when `user.id` changes.
+- **Onboarding tour re-triggers**: The tour appeared on reload even after being skipped in a previous session (localStorage was cleared during testing). In production, the tour-completed flag in localStorage prevents this. Not a bug — expected behavior when localStorage is cleared.
+- **Next focus areas** (recommendations for next round):
+  1. Achievement earnedAt persistence to DB (BadgeEarned model) — currently localStorage-only
+  2. Calendar touch DnD (pointer-events-based) for mobile
+  3. Accessibility audit: ARIA labels on all icon-only buttons, focus trap in dialogs
+  4. Dashboard pages should depend on `user.id` in useEffect deps to auto-refetch on user change
+  5. Add a "data export" feature (download all user data as JSON/CSV)

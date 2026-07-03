@@ -42,6 +42,7 @@ interface AppState {
   notifications: boolean;
   reduceMotion: boolean;
   soundEnabled: boolean;
+  notifEnabled: boolean;
 
   // Actions
   setUser: (user: User | null) => void;
@@ -53,6 +54,7 @@ interface AppState {
   setNotifications: (on: boolean) => void;
   setReduceMotion: (on: boolean) => void;
   setSoundEnabled: (on: boolean) => void;
+  setNotifEnabled: (on: boolean) => void;
   logout: () => void;
 }
 
@@ -71,6 +73,7 @@ export const useAppStore = create<AppState>()(
       notifications: true,
       reduceMotion: false,
       soundEnabled: true,
+      notifEnabled: false,
 
       setUser: (user) =>
         set({
@@ -86,6 +89,7 @@ export const useAppStore = create<AppState>()(
       setNotifications: (on) => set({ notifications: on }),
       setReduceMotion: (on) => set({ reduceMotion: on }),
       setSoundEnabled: (on) => set({ soundEnabled: on }),
+      setNotifEnabled: (on) => set({ notifEnabled: on }),
       logout: () =>
         set({
           user: null,
@@ -101,6 +105,7 @@ export const useAppStore = create<AppState>()(
         notifications: state.notifications,
         reduceMotion: state.reduceMotion,
         soundEnabled: state.soundEnabled,
+        notifEnabled: state.notifEnabled,
         sidebarOpen: state.sidebarOpen,
       }),
     }

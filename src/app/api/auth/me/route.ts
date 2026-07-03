@@ -5,8 +5,11 @@ import { getCurrentUser } from "@/lib/auth";
 export async function GET() {
   try {
     const user = await getCurrentUser();
+    // Session-check endpoint: return 200 with null user when not authenticated.
+    // Returning 401 here causes apiFetch to throw on the client, which is
+    // unnecessary noise for a "check" endpoint and makes the auth flow fragile.
     if (!user) {
-      return NextResponse.json({ user: null }, { status: 401 });
+      return NextResponse.json({ user: null, profile: null }, { status: 200 });
     }
 
     const profile = await db.profile.findUnique({
@@ -23,6 +26,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Me error:", error);
-    return NextResponse.json({ user: null }, { status: 401 });
+    return NextResponse.json({ user: null, profile: null }, { status: 200 });
   }
 }

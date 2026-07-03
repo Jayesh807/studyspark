@@ -215,6 +215,8 @@ export function FocusTimerPage() {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
   const soundEnabled = useAppStore((s) => s.soundEnabled);
   const setSoundEnabled = useAppStore((s) => s.setSoundEnabled);
+  const notifEnabled = useAppStore((s) => s.notifEnabled);
+  const setNotifEnabled = useAppStore((s) => s.setNotifEnabled);
 
   // === Timer state ===
   const [mode, setMode] = useState<TimerMode>("focus");
@@ -232,7 +234,6 @@ export function FocusTimerPage() {
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
   );
-  const [notifEnabled, setNotifEnabled] = useState(false);
 
   // === Data state ===
   const [sessions, setSessions] = useState<FocusSession[]>([]);
