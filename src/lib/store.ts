@@ -40,6 +40,7 @@ interface AppState {
   accentColor: AccentColor;
   notifications: boolean;
   reduceMotion: boolean;
+  soundEnabled: boolean;
 
   // Actions
   setUser: (user: User | null) => void;
@@ -50,6 +51,7 @@ interface AppState {
   setAccentColor: (color: AccentColor) => void;
   setNotifications: (on: boolean) => void;
   setReduceMotion: (on: boolean) => void;
+  setSoundEnabled: (on: boolean) => void;
   logout: () => void;
 }
 
@@ -67,6 +69,7 @@ export const useAppStore = create<AppState>()(
       accentColor: "277",
       notifications: true,
       reduceMotion: false,
+      soundEnabled: true,
 
       setUser: (user) =>
         set({
@@ -81,6 +84,7 @@ export const useAppStore = create<AppState>()(
       setAccentColor: (color) => set({ accentColor: color }),
       setNotifications: (on) => set({ notifications: on }),
       setReduceMotion: (on) => set({ reduceMotion: on }),
+      setSoundEnabled: (on) => set({ soundEnabled: on }),
       logout: () =>
         set({
           user: null,
@@ -95,6 +99,7 @@ export const useAppStore = create<AppState>()(
         accentColor: state.accentColor,
         notifications: state.notifications,
         reduceMotion: state.reduceMotion,
+        soundEnabled: state.soundEnabled,
         sidebarOpen: state.sidebarOpen,
       }),
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   startOfMonth,
   endOfMonth,
@@ -242,6 +242,50 @@ export function CalendarPage() {
     }
   };
 
+  // ---------- Drag-and-drop move ----------
+  const handleEventMove = useCallback(
+    async (eventId: string, newDate: string) => {
+      const target = events.find((e) => e.id === eventId);
+      if (!target) return;
+
+      // Skip no-op move (same day)
+      let originalDate = "";
+      try {
+        originalDate = format(parseISO(target.date), "yyyy-MM-dd");
+      } catch {
+        originalDate = "";
+      }
+      if (originalDate === newDate) return;
+
+      // Snapshot for revert on failure
+      const snapshot = events;
+      // Optimistically update local state — preserve time if present
+      setEvents((prev) =>
+        prev.map((e) => (e.id === eventId ? { ...e, date: newDate } : e))
+      );
+
+      const toastId = toast.loading("Moving event…");
+      try {
+        await apiFetch<{ event: Event }>(`/api/events/${eventId}`, {
+          method: "PUT",
+          body: JSON.stringify({ date: newDate }),
+        });
+        let formatted = newDate;
+        try {
+          formatted = format(parseISO(newDate), "MMM d");
+        } catch {
+          /* keep raw */
+        }
+        toast.success(`Event moved to ${formatted}`, { id: toastId });
+      } catch (err) {
+        setEvents(snapshot);
+        toast.error("Failed to move event", { id: toastId });
+        handleError(err, "Failed to move event");
+      }
+    },
+    [events]
+  );
+
   // ---------- Header label ----------
   const headerLabel = useMemo(() => {
     if (view === "month") return format(cursor, "MMMM yyyy");
@@ -396,6 +440,7 @@ export function CalendarPage() {
                 events={sortedEvents}
                 onDayClick={(d) => setDayDetail(d)}
                 onEventClick={handleEdit}
+                onEventMove={handleEventMove}
               />
             ) : view === "week" ? (
               <WeekView
@@ -403,6 +448,7 @@ export function CalendarPage() {
                 events={sortedEvents}
                 onDayClick={(d) => setDayDetail(d)}
                 onEventClick={handleEdit}
+                onEventMove={handleEventMove}
               />
             ) : (
               <DayView
@@ -581,12 +627,28 @@ function MonthView({
   events,
   onDayClick,
   onEventClick,
+  onEventMove,
 }: {
   cursor: Date;
   events: Event[];
   onDayClick: (day: Date) => void;
   onEventClick: (event: Event) => void;
+  onEventMove: (eventId: string, newDate: string) => void;
 }) {
+  // Drag state lifted here so all DayCells share a single source of truth.
+  // `draggingEventId` (state) drives visual re-renders; `draggingEventIdRef`
+  // (ref) provides a stable, always-current read for handlers without
+  // triggering re-renders — and acts as a fallback if the dataTransfer
+  // payload is unavailable.
+  const [draggingEventId, setDraggingEventId] = useState<string | null>(null);
+  const draggingEventIdRef = useRef<string | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<Date | null>(null);
+
+  const handleDraggingEventIdChange = useCallback((id: string | null) => {
+    draggingEventIdRef.current = id;
+    setDraggingEventId(id);
+  }, []);
+
   const days = useMemo(() => {
     const monthStart = startOfMonth(cursor);
     const monthEnd = endOfMonth(cursor);
@@ -620,7 +682,13 @@ function MonthView({
             events={events.filter((e) => eventOnDay(e, day))}
             onDayClick={onDayClick}
             onEventClick={onEventClick}
+            onEventMove={onEventMove}
             index={idx}
+            draggingEventId={draggingEventId}
+            draggingEventIdRef={draggingEventIdRef}
+            dragOverDay={dragOverDay}
+            onDraggingEventIdChange={handleDraggingEventIdChange}
+            onDragOverDayChange={setDragOverDay}
           />
         ))}
       </div>
@@ -634,18 +702,73 @@ function DayCell({
   events,
   onDayClick,
   onEventClick,
+  onEventMove,
   index,
+  draggingEventId,
+  draggingEventIdRef,
+  dragOverDay,
+  onDraggingEventIdChange,
+  onDragOverDayChange,
 }: {
   day: Date;
   isCurrentMonth: boolean;
   events: Event[];
   onDayClick: (day: Date) => void;
   onEventClick: (event: Event) => void;
+  onEventMove: (eventId: string, newDate: string) => void;
   index: number;
+  draggingEventId: string | null;
+  draggingEventIdRef: React.RefObject<string | null>;
+  dragOverDay: Date | null;
+  onDraggingEventIdChange: (id: string | null) => void;
+  onDragOverDayChange: (day: Date | null) => void;
 }) {
   const today = isToday(day);
   const visible = events.slice(0, 3);
   const overflow = events.length - visible.length;
+
+  // Drag state — this DayCell shows drop affordance only when an active drag
+  // is in progress AND the pointer is hovering over THIS day.
+  const isDragOver =
+    !!draggingEventId && !!dragOverDay && isSameDay(dragOverDay, day);
+  const newDateStr = format(day, "yyyy-MM-dd");
+
+  // Drop-target handlers (live on the cell root).
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggingEventIdRef.current && !draggingEventId) return;
+    e.preventDefault(); // required to allow drop
+    e.dataTransfer.dropEffect = "move";
+    e.stopPropagation();
+    if (!dragOverDay || !isSameDay(dragOverDay, day)) {
+      onDragOverDayChange(day);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!draggingEventIdRef.current && !draggingEventId) return;
+    e.stopPropagation();
+    // Only clear when the pointer truly leaves this cell (not when entering
+    // a child element). `relatedTarget` is the element entering; if it's
+    // null or outside the cell, we treat this as a real leave.
+    const related = e.relatedTarget as Node | null;
+    if (!related || !e.currentTarget.contains(related)) {
+      if (dragOverDay && isSameDay(dragOverDay, day)) {
+        onDragOverDayChange(null);
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    const current = draggingEventIdRef.current || draggingEventId;
+    if (!current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // Prefer the dataTransfer payload; fall back to the lifted ref.
+    const eventId = e.dataTransfer.getData("text/plain") || current;
+    onEventMove(eventId, newDateStr);
+    onDraggingEventIdChange(null);
+    onDragOverDayChange(null);
+  };
 
   return (
     <motion.div
@@ -653,13 +776,18 @@ function DayCell({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, delay: Math.min(index * 0.01, 0.2) }}
       onClick={() => onDayClick(day)}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       className={cn(
         "group relative min-h-[80px] sm:min-h-[110px] rounded-xl p-1.5 sm:p-2 cursor-pointer transition-all border",
         "hover:border-violet-500/30 hover:shadow-sm",
         !isCurrentMonth && "opacity-40",
         today
           ? "border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/30"
-          : "border-border/40 bg-background/40"
+          : "border-border/40 bg-background/40",
+        today && "today-cell-pulse",
+        isDragOver && "drag-over"
       )}
     >
       {/* Date number */}
@@ -687,22 +815,46 @@ function DayCell({
       </div>
 
       {/* Events */}
-      <div className="space-y-1">
+      <div className="space-y-1 relative">
+        {isDragOver && (
+          <div
+            className="drop-line"
+            style={{ top: 0 }}
+            aria-hidden="true"
+          />
+        )}
         {visible.map((event) => {
           const c = colorOf(event.color);
+          const isThisDragging = draggingEventId === event.id;
           return (
             <button
               key={event.id}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("text/plain", event.id);
+                e.dataTransfer.effectAllowed = "move";
+                // Update both lifted state (visual feedback) and the ref
+                // (stable read for any drop handler in the grid).
+                onDraggingEventIdChange(event.id);
+                // Prevent the cell's click handler from firing during drag.
+                e.stopPropagation();
+              }}
+              onDragEnd={() => {
+                onDraggingEventIdChange(null);
+                onDragOverDayChange(null);
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 onEventClick(event);
               }}
               className={cn(
-                "flex items-center gap-1 w-full text-left rounded-md px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium leading-tight truncate transition-colors hover:brightness-110",
+                "flex items-center gap-1 w-full text-left rounded-md px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium leading-tight truncate transition-colors hover:brightness-110 cursor-grab active:cursor-grabbing",
                 c.soft,
-                c.text
+                c.text,
+                isThisDragging && "event-dragging"
               )}
-              title={event.title + (event.time ? ` · ${event.time}` : "")}
+              title={`${event.title}${event.time ? ` · ${event.time}` : ""} · Drag to move to another day`}
+              aria-label={`Event: ${event.title}. Drag to move to another day.`}
             >
               <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", c.dot)} />
               <span className="truncate">{event.title}</span>
@@ -725,12 +877,17 @@ function WeekView({
   events,
   onDayClick,
   onEventClick,
+  onEventMove,
 }: {
   cursor: Date;
   events: Event[];
   onDayClick: (day: Date) => void;
   onEventClick: (event: Event) => void;
+  onEventMove: (eventId: string, newDate: string) => void;
 }) {
+  const [draggingEventId, setDraggingEventId] = useState<string | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<Date | null>(null);
+
   const days = useMemo(() => {
     const ws = startOfWeek(cursor, { weekStartsOn: 0 });
     return Array.from({ length: 7 }).map((_, i) => addDays(ws, i));
@@ -741,6 +898,39 @@ function WeekView({
       {days.map((day, idx) => {
         const dayEvents = events.filter((e) => eventOnDay(e, day));
         const today = isToday(day);
+        const isDragOver =
+          !!draggingEventId && !!dragOverDay && isSameDay(dragOverDay, day);
+        const newDateStr = format(day, "yyyy-MM-dd");
+
+        const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+          if (!draggingEventId) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          e.stopPropagation();
+          if (!dragOverDay || !isSameDay(dragOverDay, day)) {
+            setDragOverDay(day);
+          }
+        };
+        const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+          if (!draggingEventId) return;
+          e.stopPropagation();
+          const related = e.relatedTarget as Node | null;
+          if (!related || !e.currentTarget.contains(related)) {
+            if (dragOverDay && isSameDay(dragOverDay, day)) {
+              setDragOverDay(null);
+            }
+          }
+        };
+        const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+          if (!draggingEventId) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const eventId = e.dataTransfer.getData("text/plain") || draggingEventId;
+          onEventMove(eventId, newDateStr);
+          setDraggingEventId(null);
+          setDragOverDay(null);
+        };
+
         return (
           <motion.div
             key={day.toISOString()}
@@ -748,11 +938,16 @@ function WeekView({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2, delay: idx * 0.03 }}
             onClick={() => onDayClick(day)}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             className={cn(
-              "rounded-2xl border p-3 min-h-[160px] cursor-pointer transition-all hover:border-violet-500/30 hover:shadow-sm flex flex-col",
+              "relative rounded-2xl border p-3 min-h-[160px] cursor-pointer transition-all hover:border-violet-500/30 hover:shadow-sm flex flex-col",
               today
                 ? "border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/30"
-                : "border-border/40 bg-background/40"
+                : "border-border/40 bg-background/40",
+              today && "today-cell-pulse",
+              isDragOver && "drag-over"
             )}
           >
             <div className="flex items-center justify-between mb-2">
@@ -781,7 +976,14 @@ function WeekView({
               </button>
             </div>
 
-            <div className="flex-1 space-y-1.5 overflow-y-auto scrollbar-thin">
+            <div className="flex-1 space-y-1.5 overflow-y-auto scrollbar-thin relative">
+              {isDragOver && (
+                <div
+                  className="drop-line"
+                  style={{ top: 0 }}
+                  aria-hidden="true"
+                />
+              )}
               {dayEvents.length === 0 ? (
                 <div className="text-[10px] text-muted-foreground/50 italic mt-1">
                   No events
@@ -789,17 +991,32 @@ function WeekView({
               ) : (
                 dayEvents.map((event) => {
                   const c = colorOf(event.color);
+                  const isThisDragging = draggingEventId === event.id;
                   return (
                     <button
                       key={event.id}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData("text/plain", event.id);
+                        e.dataTransfer.effectAllowed = "move";
+                        setDraggingEventId(event.id);
+                        e.stopPropagation();
+                      }}
+                      onDragEnd={() => {
+                        setDraggingEventId(null);
+                        setDragOverDay(null);
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         onEventClick(event);
                       }}
                       className={cn(
-                        "flex flex-col gap-0.5 w-full text-left rounded-lg px-2 py-1.5 text-xs transition-colors hover:brightness-110",
-                        c.soft
+                        "flex flex-col gap-0.5 w-full text-left rounded-lg px-2 py-1.5 text-xs transition-colors hover:brightness-110 cursor-grab active:cursor-grabbing",
+                        c.soft,
+                        isThisDragging && "event-dragging"
                       )}
+                      title={`${event.title}${event.time ? ` · ${event.time}` : ""} · Drag to move to another day`}
+                      aria-label={`Event: ${event.title}. Drag to move to another day.`}
                     >
                       <div className="flex items-center gap-1.5">
                         <span className={cn("h-2 w-2 rounded-full shrink-0", c.dot)} />

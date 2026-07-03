@@ -1,0 +1,921 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import { useTheme } from "next-themes";
+     6→import {
+     7→  Palette,
+     8→  Sun,
+     9→  Moon,
+    10→  Monitor,
+    11→  Bell,
+    12→  Sparkles,
+    13→  PanelLeft,
+    14→  LogOut,
+    15→  Trash2,
+    16→  Info,
+    17→  User,
+    18→  Calendar,
+    19→  Check,
+    20→  Loader2,
+    21→  Heart,
+    22→  Github,
+    23→  Globe,
+    24→  Mail,
+    25→  AlertTriangle,
+    26→} from "lucide-react";
+    27→import { toast } from "sonner";
+    28→
+    29→import { useAppStore, type AccentColor } from "@/lib/store";
+    30→import { useAuth } from "@/hooks/use-auth";
+    31→import { apiFetch, handleError } from "@/lib/api";
+    32→
+    33→import {
+    34→  PageTransition,
+    35→  GlassCard,
+    36→  StaggerContainer,
+    37→  StaggerItem,
+    38→} from "@/components/shared/motion";
+    39→import { Skeleton } from "@/components/shared/feedback";
+    40→import { Button } from "@/components/ui/button";
+    41→import { Input } from "@/components/ui/input";
+    42→import { Switch } from "@/components/ui/switch";
+    43→import { Badge } from "@/components/ui/badge";
+    44→import { Separator } from "@/components/ui/separator";
+    45→import {
+    46→  AlertDialog,
+    47→  AlertDialogAction,
+    48→  AlertDialogCancel,
+    49→  AlertDialogContent,
+    50→  AlertDialogDescription,
+    51→  AlertDialogFooter,
+    52→  AlertDialogHeader,
+    53→  AlertDialogTitle,
+    54→  AlertDialogTrigger,
+    55→} from "@/components/ui/alert-dialog";
+    56→import { cn } from "@/lib/utils";
+    57→
+    58→/* -------------------------------------------------------------------------- */
+    59→/*                              Constants                                     */
+    60→/* -------------------------------------------------------------------------- */
+    61→
+    62→interface AccentOption {
+    63→  hue: AccentColor;
+    64→  label: string;
+    65→}
+    66→
+    67→const ACCENT_OPTIONS: AccentOption[] = [
+    68→  { hue: "277", label: "Violet" },
+    69→  { hue: "300", label: "Purple" },
+    70→  { hue: "162", label: "Emerald" },
+    71→  { hue: "16", label: "Rose" },
+    72→  { hue: "200", label: "Cyan" },
+    73→  { hue: "70", label: "Amber" },
+    74→];
+    75→
+    76→function accentSwatchStyle(hue: AccentColor): React.CSSProperties {
+    77→  return { backgroundColor: `oklch(0.6 0.2 ${hue})` };
+    78→}
+    79→
+    80→function accentGradientStyle(hue: string): React.CSSProperties {
+    81→  return {
+    82→    background: `linear-gradient(135deg, oklch(0.58 0.22 ${hue}), oklch(0.66 0.2 calc(${hue} + 40)))`,
+    83→  };
+    84→}
+    85→
+    86→interface ThemeOption {
+    87→  value: "light" | "dark" | "system";
+    88→  label: string;
+    89→  icon: React.ElementType;
+    90→}
+    91→
+    92→const THEME_OPTIONS: ThemeOption[] = [
+    93→  { value: "light", label: "Light", icon: Sun },
+    94→  { value: "dark", label: "Dark", icon: Moon },
+    95→  { value: "system", label: "System", icon: Monitor },
+    96→];
+    97→
+    98→/* -------------------------------------------------------------------------- */
+    99→/*                              Section Heading                               */
+   100→/* -------------------------------------------------------------------------- */
+   101→
+   102→interface SectionProps {
+   103→  icon: React.ElementType;
+   104→  title: string;
+   105→  description: string;
+   106→  children: React.ReactNode;
+   107→  delay?: number;
+   108→}
+   109→
+   110→function SettingsSection({
+   111→  icon: Icon,
+   112→  title,
+   113→  description,
+   114→  children,
+   115→  delay = 0,
+   116→}: SectionProps) {
+   117→  return (
+   118→    <StaggerItem delay={delay}>
+   119→      <GlassCard className="p-5 sm:p-6">
+   120→        <div className="flex items-start gap-3 mb-5">
+   121→          <div
+   122→            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-md"
+   123→            style={accentGradientStyle("var(--accent-color)")}
+   124→          >
+   125→            <Icon className="h-5 w-5" />
+   126→          </div>
+   127→          <div className="min-w-0">
+   128→            <h3 className="text-base font-semibold leading-tight">{title}</h3>
+   129→            <p className="text-xs text-muted-foreground mt-0.5">
+   130→              {description}
+   131→            </p>
+   132→          </div>
+   133→        </div>
+   134→        <div className="space-y-1">{children}</div>
+   135→      </GlassCard>
+   136→    </StaggerItem>
+   137→  );
+   138→}
+   139→
+   140→/* -------------------------------------------------------------------------- */
+   141→/*                              Row Component                                 */
+   142→/* -------------------------------------------------------------------------- */
+   143→
+   144→interface RowProps {
+   145→  title: string;
+   146→  description?: string;
+   147→  children: React.ReactNode;
+   148→  icon?: React.ElementType;
+   149→}
+   150→
+   151→function SettingsRow({ title, description, children, icon: Icon }: RowProps) {
+   152→  return (
+   153→    <div className="flex items-center justify-between gap-4 py-3">
+   154→      <div className="flex items-start gap-3 min-w-0">
+   155→        {Icon && (
+   156→          <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+   157→        )}
+   158→        <div className="min-w-0">
+   159→          <div className="text-sm font-medium">{title}</div>
+   160→          {description && (
+   161→            <div className="text-xs text-muted-foreground mt-0.5">
+   162→              {description}
+   163→            </div>
+   164→          )}
+   165→        </div>
+   166→      </div>
+   167→      <div className="shrink-0">{children}</div>
+   168→    </div>
+   169→  );
+   170→}
+   171→
+   172→/* -------------------------------------------------------------------------- */
+   173→/*                              Theme Toggle                                  */
+   174→/* -------------------------------------------------------------------------- */
+   175→
+   176→function ThemeToggle() {
+   177→  const { theme, setTheme } = useTheme();
+   178→  const [mounted, setMounted] = useState(false);
+   179→
+   180→  // next-themes resolves the theme on the client only; track mount so we
+   181→  // render the active state without causing SSR/CSR hydration mismatch.
+   182→  useEffect(() => {
+   183→    // eslint-disable-next-line react-hooks/set-state-in-effect
+   184→    setMounted(true);
+   185→  }, []);
+   186→
+   187→  if (!mounted) {
+   188→    return (
+   189→      <div className="inline-flex h-9 items-center rounded-lg bg-muted p-[3px] gap-1">
+   190→        {THEME_OPTIONS.map((t) => (
+   191→          <div
+   192→            key={t.value}
+   193→            className="h-[calc(100%-1px)] w-20 rounded-md bg-muted-foreground/10"
+   194→          />
+   195→        ))}
+   196→      </div>
+   197→    );
+   198→  }
+   199→
+   200→  return (
+   201→    <div className="inline-flex h-9 items-center rounded-lg bg-muted p-[3px] gap-1">
+   202→      {THEME_OPTIONS.map((opt) => {
+   203→        const active = theme === opt.value;
+   204→        const Icon = opt.icon;
+   205→        return (
+   206→          <button
+   207→            key={opt.value}
+   208→            type="button"
+   209→            onClick={() => setTheme(opt.value)}
+   210→            className={cn(
+   211→              "relative inline-flex h-[calc(100%-1px)] items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
+   212→              active
+   213→                ? "text-foreground"
+   214→                : "text-muted-foreground hover:text-foreground"
+   215→            )}
+   216→          >
+   217→            {active && (
+   218→              <motion.div
+   219→                layoutId="theme-active"
+   220→                className="absolute inset-0 rounded-md bg-background shadow-sm border border-border"
+   221→                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+   222→              />
+   223→            )}
+   224→            <span className="relative z-10 flex items-center gap-1.5">
+   225→              <Icon className="h-3.5 w-3.5" />
+   226→              {opt.label}
+   227→            </span>
+   228→          </button>
+   229→        );
+   230→      })}
+   231→    </div>
+   232→  );
+   233→}
+   234→
+   235→/* -------------------------------------------------------------------------- */
+   236→/*                              Accent Picker                                 */
+   237→/* -------------------------------------------------------------------------- */
+   238→
+   239→function AccentPicker() {
+   240→  const accentColor = useAppStore((s) => s.accentColor);
+   241→  const setAccentColor = useAppStore((s) => s.setAccentColor);
+   242→
+   243→  return (
+   244→    <div className="flex flex-wrap gap-3">
+   245→      {ACCENT_OPTIONS.map((opt) => {
+   246→        const active = accentColor === opt.hue;
+   247→        return (
+   248→          <motion.button
+   249→            key={opt.hue}
+   250→            type="button"
+   251→            onClick={() => setAccentColor(opt.hue)}
+   252→            whileHover={{ y: -2 }}
+   253→            whileTap={{ scale: 0.95 }}
+   254→            className={cn(
+   255→              "group relative flex flex-col items-center gap-1.5 rounded-2xl p-2 transition-all",
+   256→              active ? "bg-muted/60" : "hover:bg-muted/40"
+   257→            )}
+   258→            aria-label={`Set accent to ${opt.label}`}
+   259→            aria-pressed={active}
+   260→          >
+   261→            <div
+   262→              className={cn(
+   263→                "relative flex h-10 w-10 items-center justify-center rounded-full ring-2 ring-offset-2 ring-offset-background transition-all",
+   264→                active ? "ring-foreground" : "ring-transparent"
+   265→              )}
+   266→              style={accentSwatchStyle(opt.hue)}
+   267→            >
+   268→              <AnimatePresence>
+   269→                {active && (
+   270→                  <motion.div
+   271→                    initial={{ scale: 0, opacity: 0 }}
+   272→                    animate={{ scale: 1, opacity: 1 }}
+   273→                    exit={{ scale: 0, opacity: 0 }}
+   274→                    transition={{
+   275→                      type: "spring",
+   276→                      stiffness: 500,
+   277→                      damping: 22,
+   278→                    }}
+   279→                    className="absolute inset-0 flex items-center justify-center"
+   280→                  >
+   281→                    <Check className="h-5 w-5 text-white drop-shadow" />
+   282→                  </motion.div>
+   283→                )}
+   284→              </AnimatePresence>
+   285→            </div>
+   286→            <span
+   287→              className={cn(
+   288→                "text-[11px] font-medium transition-colors",
+   289→                active ? "text-foreground" : "text-muted-foreground"
+   290→              )}
+   291→            >
+   292→              {opt.label}
+   293→            </span>
+   294→          </motion.button>
+   295→        );
+   296→      })}
+   297→    </div>
+   298→  );
+   299→}
+   300→
+   301→/* -------------------------------------------------------------------------- */
+   302→/*                              Animated Switch Row                           */
+   303→/* -------------------------------------------------------------------------- */
+   304→
+   305→interface SwitchRowProps {
+   306→  title: string;
+   307→  description?: string;
+   308→  icon?: React.ElementType;
+   309→  checked: boolean;
+   310→  onCheckedChange: (v: boolean) => void;
+   311→}
+   312→
+   313→function SwitchRow({
+   314→  title,
+   315→  description,
+   316→  icon: Icon,
+   317→  checked,
+   318→  onCheckedChange,
+   319→}: SwitchRowProps) {
+   320→  return (
+   321→    <SettingsRow title={title} description={description} icon={Icon}>
+   322→      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+   323→    </SettingsRow>
+   324→  );
+   325→}
+   326→
+   327→/* -------------------------------------------------------------------------- */
+   328→/*                              Reset Data Dialog                             */
+   329→/* -------------------------------------------------------------------------- */
+   330→
+   331→interface ResetState {
+   332→  status: "idle" | "fetching" | "deleting" | "done";
+   333→  current: number;
+   334→  total: number;
+   335→  label: string;
+   336→}
+   337→
+   338→function ResetDataDialog() {
+   339→  const [open, setOpen] = useState(false);
+   340→  const [state, setState] = useState<ResetState>({
+   341→    status: "idle",
+   342→    current: 0,
+   343→    total: 0,
+   344→    label: "",
+   345→  });
+   346→
+   347→  const reset = useCallback(async () => {
+   348→    setState({
+   349→      status: "fetching",
+   350→      current: 0,
+   351→      total: 0,
+   352→      label: "Fetching your data...",
+   353→    });
+   354→    try {
+   355→      const [todosRes, subjectsRes, eventsRes, examsRes] = await Promise.all([
+   356→        apiFetch<{ todos: Todo[] }>("/api/todos"),
+   357→        apiFetch<{ subjects: Subject[] }>("/api/subjects"),
+   358→        apiFetch<{ events: Event[] }>("/api/events"),
+   359→        apiFetch<{ exams: Exam[] }>("/api/exams"),
+   360→      ]);
+   361→
+   362→      const items: { id: string; type: string; label: string }[] = [
+   363→        ...todosRes.todos.map((t) => ({
+   364→          id: t.id,
+   365→          type: "todos",
+   366→          label: "tasks",
+   367→        })),
+   368→        ...subjectsRes.subjects.map((s) => ({
+   369→          id: s.id,
+   370→          type: "subjects",
+   371→          label: "subjects",
+   372→        })),
+   373→        ...eventsRes.events.map((e) => ({
+   374→          id: e.id,
+   375→          type: "events",
+   376→          label: "events",
+   377→        })),
+   378→        ...examsRes.exams.map((e) => ({
+   379→          id: e.id,
+   380→          type: "exams",
+   381→          label: "exams",
+   382→        })),
+   383→      ];
+   384→
+   385→      setState({
+   386→        status: "deleting",
+   387→        current: 0,
+   388→        total: items.length,
+   389→        label: "Deleting your data...",
+   390→      });
+   391→
+   392→      let deleted = 0;
+   393→      for (const item of items) {
+   394→        await apiFetch(`/api/${item.type}/${item.id}`, { method: "DELETE" });
+   395→        deleted++;
+   396→        setState({
+   397→          status: "deleting",
+   398→          current: deleted,
+   399→          total: items.length,
+   400→          label: `Deleting ${item.label}...`,
+   401→        });
+   402→      }
+   403→
+   404→      // Reset profile to defaults
+   405→      setState((s) => ({
+   406→        ...s,
+   407→        label: "Resetting profile...",
+   408→      }));
+   409→      await apiFetch("/api/profile", {
+   410→        method: "PUT",
+   411→        body: JSON.stringify({
+   412→          bio: "",
+   413→          goal: "",
+   414→          targetHours: 6,
+   415→          college: "",
+   416→          course: "",
+   417→          semester: 1,
+   418→          avatar: "",
+   419→        }),
+   420→      });
+   421→
+   422→      setState((s) => ({ ...s, status: "done", current: s.total }));
+   423→      toast.success("All your data has been reset.");
+   424→      setTimeout(() => {
+   425→        setOpen(false);
+   426→        setState({
+   427→          status: "idle",
+   428→          current: 0,
+   429→          total: 0,
+   430→          label: "",
+   431→        });
+   432→      }, 1400);
+   433→    } catch (error) {
+   434→      handleError(error, "Failed to reset all data");
+   435→      setState({
+   436→        status: "idle",
+   437→        current: 0,
+   438→        total: 0,
+   439→        label: "",
+   440→      });
+   441→    }
+   442→  }, []);
+   443→
+   444→  const isWorking =
+   445→    state.status === "fetching" || state.status === "deleting";
+   446→  const pct =
+   447→    state.total > 0 ? Math.round((state.current / state.total) * 100) : 0;
+   448→
+   449→  return (
+   450→    <AlertDialog
+   451→      open={open}
+   452→      onOpenChange={(v) => {
+   453→        if (!isWorking) setOpen(v);
+   454→      }}
+   455→    >
+   456→      <AlertDialogTrigger asChild>
+   457→        <Button variant="destructive" className="gap-2">
+   458→          <Trash2 className="h-4 w-4" />
+   459→          Reset All My Data
+   460→        </Button>
+   461→      </AlertDialogTrigger>
+   462→      <AlertDialogContent>
+   463→        <AlertDialogHeader>
+   464→          <AlertDialogTitle className="flex items-center gap-2">
+   465→            <AlertTriangle className="h-5 w-5 text-destructive" />
+   466→            Reset all your data?
+   467→          </AlertDialogTitle>
+   468→          <AlertDialogDescription>
+   469→            This will permanently delete all of your tasks, subjects, events,
+   470→            exams, and reset your profile to defaults. This action cannot be
+   471→            undone.
+   472→          </AlertDialogDescription>
+   473→        </AlertDialogHeader>
+   474→
+   475→        {isWorking && (
+   476→          <div className="space-y-2 py-2">
+   477→            <div className="flex items-center justify-between text-xs">
+   478→              <span className="flex items-center gap-2 text-muted-foreground">
+   479→                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+   480→                {state.label}
+   481→              </span>
+   482→              <span className="font-medium">
+   483→                {state.total > 0
+   484→                  ? `${state.current}/${state.total} (${pct}%)`
+   485→                  : "…"}
+   486→              </span>
+   487→            </div>
+   488→            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+   489→              <motion.div
+   490→                className="h-full rounded-full bg-destructive"
+   491→                initial={{ width: 0 }}
+   492→                animate={{
+   493→                  width: `${state.status === "fetching" ? 8 : pct}%`,
+   494→                }}
+   495→                transition={{ duration: 0.3 }}
+   496→              />
+   497→            </div>
+   498→          </div>
+   499→        )}
+   500→
+   501→        {state.status === "done" && (
+   502→          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+   503→            <Check className="h-4 w-4" />
+   504→            All data reset successfully.
+   505→          </div>
+   506→        )}
+   507→
+   508→        <AlertDialogFooter>
+   509→          <AlertDialogCancel disabled={isWorking}>
+   510→            {state.status === "done" ? "Close" : "Cancel"}
+   511→          </AlertDialogCancel>
+   512→          {state.status !== "done" && (
+   513→            <AlertDialogAction
+   514→              onClick={(e) => {
+   515→                e.preventDefault();
+   516→                void reset();
+   517→              }}
+   518→              disabled={isWorking}
+   519→              className="bg-destructive text-white hover:bg-destructive/90"
+   520→            >
+   521→              {isWorking ? (
+   522→                <>
+   523→                  <Loader2 className="h-4 w-4 animate-spin" />
+   524→                  Resetting...
+   525→                </>
+   526→              ) : (
+   527→                <>
+   528→                  <Trash2 className="h-4 w-4" />
+   529→                  Yes, reset everything
+   530→                </>
+   531→              )}
+   532→            </AlertDialogAction>
+   533→          )}
+   534→        </AlertDialogFooter>
+   535→      </AlertDialogContent>
+   536→    </AlertDialog>
+   537→  );
+   538→}
+   539→
+   540→/* -------------------------------------------------------------------------- */
+   541→/*                              Load Demo Data Dialog                         */
+   542→/* -------------------------------------------------------------------------- */
+   543→
+   544→function LoadDemoDataDialog() {
+   545→  const [seeding, setSeeding] = useState(false);
+   546→  const setView = useAppStore((s) => s.setView);
+   547→
+   548→  const handleSeed = useCallback(async () => {
+   549→    setSeeding(true);
+   550→    try {
+   551→      await apiFetch<{ success: boolean; message: string }>("/api/seed", {
+   552→        method: "POST",
+   553→      });
+   554→      toast.success("Demo data loaded! Explore the dashboard.");
+   555→      setView("dashboard");
+   556→    } catch (error) {
+   557→      handleError(error, "Failed to load demo data");
+   558→    } finally {
+   559→      setSeeding(false);
+   560→    }
+   561→  }, [setView]);
+   562→
+   563→  return (
+   564→    <AlertDialog>
+   565→      <AlertDialogTrigger asChild>
+   566→        <Button
+   567→          className="gap-2 text-white shadow-md transition-all hover:shadow-lg"
+   568→          style={{
+   569→            background:
+   570→              "linear-gradient(135deg, oklch(0.6 0.2 277), oklch(0.65 0.22 300), oklch(0.58 0.2 330))",
+   571→          }}
+   572→          disabled={seeding}
+   573→        >
+   574→          {seeding ? (
+   575→            <Loader2 className="h-4 w-4 animate-spin" />
+   576→          ) : (
+   577→            <Sparkles className="h-4 w-4" />
+   578→          )}
+   579→          {seeding ? "Loading..." : "Load Demo Data"}
+   580→        </Button>
+   581→      </AlertDialogTrigger>
+   582→      <AlertDialogContent>
+   583→        <AlertDialogHeader>
+   584→          <AlertDialogTitle className="flex items-center gap-2">
+   585→            <Sparkles className="h-5 w-5 text-violet-500" />
+   586→            Load demo data?
+   587→          </AlertDialogTitle>
+   588→          <AlertDialogDescription>
+   589→            This will replace all your current data with demo data. Continue?
+   590→          </AlertDialogDescription>
+   591→        </AlertDialogHeader>
+   592→        <AlertDialogFooter>
+   593→          <AlertDialogCancel disabled={seeding}>Cancel</AlertDialogCancel>
+   594→          <AlertDialogAction
+   595→            onClick={(e) => {
+   596→              e.preventDefault();
+   597→              void handleSeed();
+   598→            }}
+   599→            disabled={seeding}
+   600→            className="bg-violet-600 text-white hover:bg-violet-700"
+   601→          >
+   602→            {seeding ? (
+   603→              <>
+   604→                <Loader2 className="h-4 w-4 animate-spin" />
+   605→                Loading...
+   606→              </>
+   607→            ) : (
+   608→              <>
+   609→                <Sparkles className="h-4 w-4" />
+   610→                Yes, load demo data
+   611→              </>
+   612→            )}
+   613→          </AlertDialogAction>
+   614→        </AlertDialogFooter>
+   615→      </AlertDialogContent>
+   616→    </AlertDialog>
+   617→  );
+   618→}
+   619→
+   620→/* -------------------------------------------------------------------------- */
+   621→/*                              Main Settings Page                            */
+   622→/* -------------------------------------------------------------------------- */
+   623→
+   624→export function SettingsPage() {
+   625→  const {
+   626→    user,
+   627→    accentColor,
+   628→    notifications,
+   629→    setNotifications,
+   630→    reduceMotion,
+   631→    setReduceMotion,
+   632→    sidebarOpen,
+   633→    setSidebarOpen,
+   634→  } = useAppStore();
+   635→  const { logout } = useAuth();
+   636→
+   637→  const [memberSince, setMemberSince] = useState<string>("Recently");
+   638→  const [loading, setLoading] = useState(true);
+   639→  const [loggingOut, setLoggingOut] = useState(false);
+   640→
+   641→  useEffect(() => {
+   642→    let active = true;
+   643→    (async () => {
+   644→      try {
+   645→        const me = await apiFetch<{
+   646→          user: { id: string; username: string; createdAt?: string } | null;
+   647→        }>("/api/auth/me");
+   648→        if (!active) return;
+   649→        if (me.user?.createdAt) {
+   650→          try {
+   651→            const d = new Date(me.user.createdAt);
+   652→            if (!isNaN(d.getTime())) {
+   653→              setMemberSince(
+   654→                d.toLocaleDateString("en-US", {
+   655→                  month: "long",
+   656→                  year: "numeric",
+   657→                })
+   658→              );
+   659→            }
+   660→          } catch {
+   661→            /* ignore */
+   662→          }
+   663→        }
+   664→      } catch {
+   665→        /* ignore */
+   666→      } finally {
+   667→        if (active) setLoading(false);
+   668→      }
+   669→    })();
+   670→    return () => {
+   671→      active = false;
+   672→    };
+   673→  }, []);
+   674→
+   675→  const handleLogout = async () => {
+   676→    setLoggingOut(true);
+   677→    try {
+   678→      await logout();
+   679→      toast.success("Logged out successfully");
+   680→    } catch {
+   681→      toast.error("Logout failed");
+   682→    } finally {
+   683→      setLoggingOut(false);
+   684→    }
+   685→  };
+   686→
+   687→  return (
+   688→    <PageTransition>
+   689→      <div className="space-y-6 sm:space-y-8">
+   690→        {/* Header */}
+   691→        <div>
+   692→          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   693→            Sett<span className="text-gradient">ings</span>
+   694→          </h1>
+   695→          <p className="text-sm text-muted-foreground mt-1">
+   696→            Customize StudySpark to match your style and preferences.
+   697→          </p>
+   698→        </div>
+   699→
+   700→        <StaggerContainer className="space-y-5 sm:space-y-6">
+   701→          {/* Appearance */}
+   702→          <SettingsSection
+   703→            icon={Palette}
+   704→            title="Appearance"
+   705→            description="Pick a theme and accent color that feels like you."
+   706→            delay={0}
+   707→          >
+   708→            <SettingsRow
+   709→              title="Theme"
+   710→              description="Switch between light, dark, or system appearance."
+   711→              icon={Sun}
+   712→            >
+   713→              <ThemeToggle />
+   714→            </SettingsRow>
+   715→            <Separator />
+   716→            <div className="py-3">
+   717→              <div className="flex items-start gap-3 mb-3">
+   718→                <Sparkles className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+   719→                <div>
+   720→                  <div className="text-sm font-medium">Accent Color</div>
+   721→                  <div className="text-xs text-muted-foreground mt-0.5">
+   722→                    Highlights, buttons, and charts use this hue.
+   723→                  </div>
+   724→                </div>
+   725→              </div>
+   726→              <div className="pl-7">
+   727→                <AccentPicker />
+   728→              </div>
+   729→              <div className="pl-7 mt-2 text-[11px] text-muted-foreground">
+   730→                Current accent:{" "}
+   731→                <span className="font-medium text-foreground">
+   732→                  {ACCENT_OPTIONS.find((o) => o.hue === accentColor)?.label ??
+   733→                    "Violet"}
+   734→                </span>
+   735→              </div>
+   736→            </div>
+   737→          </SettingsSection>
+   738→
+   739→          {/* Preferences */}
+   740→          <SettingsSection
+   741→            icon={Bell}
+   742→            title="Preferences"
+   743→            description="Fine-tune notifications, motion, and layout behavior."
+   744→            delay={0.05}
+   745→          >
+   746→            <SwitchRow
+   747→              title="Notifications"
+   748→              description="Get reminded about tasks, exams, and focus sessions."
+   749→              icon={Bell}
+   750→              checked={notifications}
+   751→              onCheckedChange={(v) => {
+   752→                setNotifications(v);
+   753→                toast.success(`Notifications ${v ? "enabled" : "disabled"}`);
+   754→              }}
+   755→            />
+   756→            <Separator />
+   757→            <SwitchRow
+   758→              title="Reduce Motion"
+   759→              description="Disable animations and transitions app-wide."
+   760→              icon={Sparkles}
+   761→              checked={reduceMotion}
+   762→              onCheckedChange={(v) => {
+   763→                setReduceMotion(v);
+   764→                toast.success(`Motion ${v ? "reduced" : "enabled"}`);
+   765→              }}
+   766→            />
+   767→            <Separator />
+   768→            <SwitchRow
+   769→              title="Default Sidebar Collapsed"
+   770→              description="Start with the sidebar collapsed on desktop."
+   771→              icon={PanelLeft}
+   772→              checked={!sidebarOpen}
+   773→              onCheckedChange={(v) => setSidebarOpen(!v)}
+   774→            />
+   775→          </SettingsSection>
+   776→
+   777→          {/* Account */}
+   778→          <SettingsSection
+   779→            icon={User}
+   780→            title="Account"
+   781→            description="Manage your session and account data."
+   782→            delay={0.1}
+   783→          >
+   784→            <div className="py-3 space-y-3">
+   785→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   786→                <div className="space-y-1.5">
+   787→                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+   788→                    Username
+   789→                  </label>
+   790→                  {loading ? (
+   791→                    <Skeleton className="h-9 w-full rounded-md" />
+   792→                  ) : (
+   793→                    <Input
+   794→                      value={user?.username ?? "—"}
+   795→                      readOnly
+   796→                      disabled
+   797→                      className="bg-muted/40"
+   798→                    />
+   799→                  )}
+   800→                </div>
+   801→                <div className="space-y-1.5">
+   802→                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+   803→                    Member Since
+   804→                  </label>
+   805→                  {loading ? (
+   806→                    <Skeleton className="h-9 w-full rounded-md" />
+   807→                  ) : (
+   808→                    <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
+   809→                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+   810→                      <span>{memberSince}</span>
+   811→                    </div>
+   812→                  )}
+   813→                </div>
+   814→              </div>
+   815→
+   816→              <Separator />
+   817→
+   818→              <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
+   819→                <Button
+   820→                  variant="destructive"
+   821→                  onClick={handleLogout}
+   822→                  disabled={loggingOut}
+   823→                  className="gap-2"
+   824→                >
+   825→                  {loggingOut ? (
+   826→                    <Loader2 className="h-4 w-4 animate-spin" />
+   827→                  ) : (
+   828→                    <LogOut className="h-4 w-4" />
+   829→                  )}
+   830→                  {loggingOut ? "Logging out..." : "Log Out"}
+   831→                </Button>
+   832→                <ResetDataDialog />
+   833→              </div>
+   834→            </div>
+   835→          </SettingsSection>
+   836→
+   837→          {/* Demo Data */}
+   838→          <SettingsSection
+   839→            icon={Sparkles}
+   840→            title="Demo Data"
+   841→            description="Load sample data to explore all features. This will replace your current data."
+   842→            delay={0.12}
+   843→          >
+   844→            <div className="py-2">
+   845→              <p className="text-sm text-muted-foreground mb-4">
+   846→                Populate your dashboard with realistic sample data including
+   847→                subjects, tasks, events, exams, and focus sessions — perfect for
+   848→                exploring everything StudySpark has to offer.
+   849→              </p>
+   850→              <LoadDemoDataDialog />
+   851→            </div>
+   852→          </SettingsSection>
+   853→
+   854→          {/* About */}
+   855→          <SettingsSection
+   856→            icon={Info}
+   857→            title="About"
+   858→            description="A little about the app you're using."
+   859→            delay={0.15}
+   860→          >
+   861→            <div className="py-2 space-y-4">
+   862→              <div className="flex items-center gap-3">
+   863→                <div
+   864→                  className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg"
+   865→                  style={accentGradientStyle("var(--accent-color)")}
+   866→                >
+   867→                  <Sparkles className="h-6 w-6" />
+   868→                </div>
+   869→                <div>
+   870→                  <div className="flex items-center gap-2">
+   871→                    <h4 className="text-lg font-bold">StudySpark</h4>
+   872→                    <Badge variant="secondary" className="text-[10px]">
+   873→                      v1.0.0
+   874→                    </Badge>
+   875→                  </div>
+   876→                  <p className="text-xs text-muted-foreground">
+   877→                    A premium student analytics companion.
+   878→                  </p>
+   879→                </div>
+   880→              </div>
+   881→
+   882→              <p className="text-sm text-muted-foreground leading-relaxed">
+   883→                StudySpark helps you track tasks, manage your study schedule,
+   884→                monitor focus sessions, and visualize your academic progress —
+   885→                all in one beautiful dashboard.
+   886→              </p>
+   887→
+   888→              <Separator />
+   889→
+   890→              <div className="flex flex-wrap gap-2">
+   891→                {[
+   892→                  { icon: Globe, label: "Website" },
+   893→                  { icon: Github, label: "GitHub" },
+   894→                  { icon: Mail, label: "Contact" },
+   895→                ].map(({ icon: Icon, label }) => (
+   896→                  <button
+   897→                    key={label}
+   898→                    type="button"
+   899→                    onClick={() => toast.info(`${label} link is decorative`)}
+   900→                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+   901→                  >
+   902→                    <Icon className="h-3.5 w-3.5" />
+   903→                    {label}
+   904→                  </button>
+   905→                ))}
+   906→              </div>
+   907→
+   908→              <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
+   909→                Made with <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />{" "}
+   910→                for students everywhere.
+   911→              </div>
+   912→            </div>
+   913→          </SettingsSection>
+   914→        </StaggerContainer>
+   915→      </div>
+   916→    </PageTransition>
+   917→  );
+   918→}
+   919→
+   920→export default SettingsPage;
+   921→

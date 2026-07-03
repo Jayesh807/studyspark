@@ -1,0 +1,1432 @@
+     1→"use client";
+     2→
+     3→import * as React from "react";
+     4→import { useState, useEffect, useMemo, useCallback } from "react";
+     5→import {
+     6→  startOfMonth,
+     7→  endOfMonth,
+     8→  startOfWeek,
+     9→  endOfWeek,
+    10→  eachDayOfInterval,
+    11→  isSameMonth,
+    12→  isToday,
+    13→  isSameDay,
+    14→  format,
+    15→  addDays,
+    16→  addMonths,
+    17→  addWeeks,
+    18→  parseISO,
+    19→  isValid,
+    20→  isAfter,
+    21→} from "date-fns";
+    22→import { motion } from "framer-motion";
+    23→import {
+    24→  Plus,
+    25→  ChevronLeft,
+    26→  ChevronRight,
+    27→  CalendarDays,
+    28→  Clock,
+    29→  Trash2,
+    30→  Pencil,
+    31→  AlertTriangle,
+    32→  Sparkles,
+    33→  CalendarIcon,
+    34→  ListChecks,
+    35→  X,
+    36→} from "lucide-react";
+    37→import { toast } from "sonner";
+    38→
+    39→import { Button } from "@/components/ui/button";
+    40→import { Input } from "@/components/ui/input";
+    41→import { Label } from "@/components/ui/label";
+    42→import { Textarea } from "@/components/ui/textarea";
+    43→import {
+    44→  Dialog,
+    45→  DialogContent,
+    46→  DialogDescription,
+    47→  DialogFooter,
+    48→  DialogHeader,
+    49→  DialogTitle,
+    50→} from "@/components/ui/dialog";
+    51→import {
+    52→  AlertDialog,
+    53→  AlertDialogAction,
+    54→  AlertDialogCancel,
+    55→  AlertDialogContent,
+    56→  AlertDialogDescription,
+    57→  AlertDialogFooter,
+    58→  AlertDialogHeader,
+    59→  AlertDialogTitle,
+    60→} from "@/components/ui/alert-dialog";
+    61→import { Badge } from "@/components/ui/badge";
+    62→import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    63→import { ScrollArea } from "@/components/ui/scroll-area";
+    64→
+    65→import {
+    66→  PageTransition,
+    67→  GlassCard,
+    68→  StaggerContainer,
+    69→  StaggerItem,
+    70→} from "@/components/shared/motion";
+    71→import { Skeleton, EmptyState } from "@/components/shared/feedback";
+    72→import { AnimatedCounter } from "@/components/shared/animated-counter";
+    73→import { apiFetch, handleError } from "@/lib/api";
+    74→import {
+    75→  Event,
+    76→  EventColor,
+    77→  COLOR_MAP,
+    78→  colorOf,
+    79→} from "@/lib/types";
+    80→import { cn } from "@/lib/utils";
+    81→
+    82→type CalendarView = "month" | "week" | "day";
+    83→
+    84→const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    85→const COLOR_KEYS: EventColor[] = ["violet", "blue", "green", "amber", "rose", "cyan"];
+    86→
+    87→// ---------- Helpers ----------
+    88→function eventOnDay(event: Event, day: Date): boolean {
+    89→  try {
+    90→    const ed = parseISO(event.date);
+    91→    return isValid(ed) && isSameDay(ed, day);
+    92→  } catch {
+    93→    return false;
+    94→  }
+    95→}
+    96→
+    97→function sortEvents(list: Event[]): Event[] {
+    98→  return [...list].sort((a, b) => {
+    99→    const da = parseISO(a.date).getTime();
+   100→    const db = parseISO(b.date).getTime();
+   101→    if (da !== db) return da - db;
+   102→    // Empty time sorts last
+   103→    if (!a.time && b.time) return 1;
+   104→    if (a.time && !b.time) return -1;
+   105→    return a.time.localeCompare(b.time);
+   106→  });
+   107→}
+   108→
+   109→// ---------- Main page ----------
+   110→export function CalendarPage() {
+   111→  const [events, setEvents] = useState<Event[]>([]);
+   112→  const [loading, setLoading] = useState(true);
+   113→
+   114→  const [view, setView] = useState<CalendarView>("month");
+   115→  const [cursor, setCursor] = useState<Date>(new Date());
+   116→
+   117→  // Dialogs
+   118→  const [formOpen, setFormOpen] = useState(false);
+   119→  const [editing, setEditing] = useState<Event | null>(null);
+   120→  const [formDate, setFormDate] = useState<Date | null>(null);
+   121→  const [deleting, setDeleting] = useState<Event | null>(null);
+   122→  // Day detail
+   123→  const [dayDetail, setDayDetail] = useState<Date | null>(null);
+   124→
+   125→  const fetchEvents = useCallback(async () => {
+   126→    setLoading(true);
+   127→    try {
+   128→      const res = await apiFetch<{ events: Event[] }>("/api/events");
+   129→      setEvents(res.events);
+   130→    } catch (err) {
+   131→      handleError(err, "Failed to load events");
+   132→    } finally {
+   133→      setLoading(false);
+   134→    }
+   135→  }, []);
+   136→
+   137→  useEffect(() => {
+   138→    fetchEvents();
+   139→  }, [fetchEvents]);
+   140→
+   141→  const sortedEvents = useMemo(() => sortEvents(events), [events]);
+   142→
+   143→  const upcoming = useMemo(() => {
+   144→    const now = new Date();
+   145→    return sortedEvents
+   146→      .filter((e) => {
+   147→        try {
+   148→          const ed = parseISO(e.date);
+   149→          return isValid(ed) && (isAfter(ed, now) || isSameDay(ed, now));
+   150→        } catch {
+   151→          return false;
+   152→        }
+   153→      })
+   154→      .slice(0, 5);
+   155→  }, [sortedEvents]);
+   156→
+   157→  // ---------- Navigation ----------
+   158→  const goPrev = () => {
+   159→    if (view === "month") setCursor((d) => addMonths(d, -1));
+   160→    else if (view === "week") setCursor((d) => addWeeks(d, -1));
+   161→    else setCursor((d) => addDays(d, -1));
+   162→  };
+   163→  const goNext = () => {
+   164→    if (view === "month") setCursor((d) => addMonths(d, 1));
+   165→    else if (view === "week") setCursor((d) => addWeeks(d, 1));
+   166→    else setCursor((d) => addDays(d, 1));
+   167→  };
+   168→  const goToday = () => setCursor(new Date());
+   169→
+   170→  // ---------- Mutations ----------
+   171→  const handleCreate = (date?: Date) => {
+   172→    setEditing(null);
+   173→    setFormDate(date ?? cursor);
+   174→    setFormOpen(true);
+   175→  };
+   176→
+   177→  const handleEdit = (event: Event) => {
+   178→    setEditing(event);
+   179→    try {
+   180→      setFormDate(parseISO(event.date));
+   181→    } catch {
+   182→      setFormDate(null);
+   183→    }
+   184→    setFormOpen(true);
+   185→  };
+   186→
+   187→  const handleSave = async (data: EventFormData) => {
+   188→    try {
+   189→      if (editing) {
+   190→        const updated = await apiFetch<{ event: Event }>(
+   191→          `/api/events/${editing.id}`,
+   192→          {
+   193→            method: "PUT",
+   194→            body: JSON.stringify({
+   195→              title: data.title,
+   196→              date: data.date,
+   197→              time: data.time,
+   198→              description: data.description,
+   199→              color: data.color,
+   200→            }),
+   201→          }
+   202→        );
+   203→        setEvents((prev) =>
+   204→          prev.map((e) => (e.id === updated.event.id ? updated.event : e))
+   205→        );
+   206→        toast.success("Event updated");
+   207→      } else {
+   208→        const created = await apiFetch<{ event: Event }>("/api/events", {
+   209→          method: "POST",
+   210→          body: JSON.stringify({
+   211→            title: data.title,
+   212→            date: data.date,
+   213→            time: data.time,
+   214→            description: data.description,
+   215→            color: data.color,
+   216→          }),
+   217→        });
+   218→        setEvents((prev) => [...prev, created.event]);
+   219→        toast.success("Event created");
+   220→      }
+   221→      setFormOpen(false);
+   222→      setEditing(null);
+   223→    } catch (err) {
+   224→      handleError(err, "Failed to save event");
+   225→    }
+   226→  };
+   227→
+   228→  const handleDelete = async () => {
+   229→    if (!deleting) return;
+   230→    const id = deleting.id;
+   231→    const snapshot = deleting;
+   232→    setDeleting(null);
+   233→    setEvents((prev) => prev.filter((e) => e.id !== id));
+   234→    try {
+   235→      await apiFetch<{ success: boolean }>(`/api/events/${id}`, {
+   236→        method: "DELETE",
+   237→      });
+   238→      toast.success("Event deleted");
+   239→    } catch (err) {
+   240→      setEvents((prev) => [...prev, snapshot]);
+   241→      handleError(err, "Failed to delete event");
+   242→    }
+   243→  };
+   244→
+   245→  // ---------- Header label ----------
+   246→  const headerLabel = useMemo(() => {
+   247→    if (view === "month") return format(cursor, "MMMM yyyy");
+   248→    if (view === "week") {
+   249→      const ws = startOfWeek(cursor, { weekStartsOn: 0 });
+   250→      const we = endOfWeek(cursor, { weekStartsOn: 0 });
+   251→      if (isSameMonth(ws, we)) return `${format(ws, "MMM d")} – ${format(we, "d, yyyy")}`;
+   252→      return `${format(ws, "MMM d")} – ${format(we, "MMM d, yyyy")}`;
+   253→    }
+   254→    return format(cursor, "EEEE, MMM d, yyyy");
+   255→  }, [view, cursor]);
+   256→
+   257→  const stats = useMemo(() => {
+   258→    const monthEvents = events.filter((e) => {
+   259→      try {
+   260→        const ed = parseISO(e.date);
+   261→        return isValid(ed) && isSameMonth(ed, cursor);
+   262→      } catch {
+   263→        return false;
+   264→      }
+   265→    });
+   266→    return {
+   267→      monthCount: monthEvents.length,
+   268→      upcomingCount: upcoming.length,
+   269→      total: events.length,
+   270→    };
+   271→  }, [events, cursor, upcoming]);
+   272→
+   273→  // ---------- Render ----------
+   274→  return (
+   275→    <PageTransition>
+   276→      <div className="space-y-6">
+   277→        {/* Header */}
+   278→        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+   279→          <div>
+   280→            <div className="inline-flex items-center gap-2 mb-2 text-xs font-medium text-violet-600 dark:text-violet-400">
+   281→              <Sparkles className="h-3.5 w-3.5" />
+   282→              <span>Schedule</span>
+   283→            </div>
+   284→            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+   285→              Calendar
+   286→            </h1>
+   287→            <p className="text-muted-foreground mt-1.5 text-sm sm:text-base">
+   288→              Keep track of your events, deadlines, and important dates.
+   289→            </p>
+   290→          </div>
+   291→          <Button
+   292→            onClick={() => handleCreate()}
+   293→            className="accent-gradient text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all rounded-xl h-11 px-5"
+   294→          >
+   295→            <Plus className="h-4 w-4" />
+   296→            New Event
+   297→          </Button>
+   298→        </div>
+   299→
+   300→        {/* Stats */}
+   301→        <StaggerContainer className="grid grid-cols-3 gap-3 sm:gap-4">
+   302→          <StaggerItem>
+   303→            <MiniStat
+   304→              icon={CalendarDays}
+   305→              label="This Month"
+   306→              value={stats.monthCount}
+   307→              accent="bg-violet-500/15 text-violet-600 dark:text-violet-400"
+   308→            />
+   309→          </StaggerItem>
+   310→          <StaggerItem>
+   311→            <MiniStat
+   312→              icon={ListChecks}
+   313→              label="Upcoming"
+   314→              value={stats.upcomingCount}
+   315→              accent="bg-amber-500/15 text-amber-600 dark:text-amber-400"
+   316→            />
+   317→          </StaggerItem>
+   318→          <StaggerItem>
+   319→            <MiniStat
+   320→              icon={CalendarIcon}
+   321→              label="All Events"
+   322→              value={stats.total}
+   323→              accent="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+   324→            />
+   325→          </StaggerItem>
+   326→        </StaggerContainer>
+   327→
+   328→        {/* Main grid: calendar + sidebar */}
+   329→        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+   330→          {/* Calendar card */}
+   331→          <GlassCard className="p-4 sm:p-5">
+   332→            {/* Calendar toolbar */}
+   333→            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+   334→              <div className="flex items-center gap-2">
+   335→                <h2 className="text-lg sm:text-xl font-semibold">
+   336→                  {headerLabel}
+   337→                </h2>
+   338→              </div>
+   339→
+   340→              <div className="flex items-center gap-2 flex-wrap">
+   341→                <Button
+   342→                  variant="outline"
+   343→                  size="sm"
+   344→                  onClick={goToday}
+   345→                  className="rounded-xl"
+   346→                >
+   347→                  Today
+   348→                </Button>
+   349→
+   350→                <div className="flex items-center gap-0.5 rounded-xl border bg-background/60 p-0.5">
+   351→                  <Button
+   352→                    variant="ghost"
+   353→                    size="icon"
+   354→                    onClick={goPrev}
+   355→                    className="h-8 w-8 rounded-lg"
+   356→                    aria-label="Previous"
+   357→                  >
+   358→                    <ChevronLeft className="h-4 w-4" />
+   359→                  </Button>
+   360→                  <Button
+   361→                    variant="ghost"
+   362→                    size="icon"
+   363→                    onClick={goNext}
+   364→                    className="h-8 w-8 rounded-lg"
+   365→                    aria-label="Next"
+   366→                  >
+   367→                    <ChevronRight className="h-4 w-4" />
+   368→                  </Button>
+   369→                </div>
+   370→
+   371→                <Tabs
+   372→                  value={view}
+   373→                  onValueChange={(v) => setView(v as CalendarView)}
+   374→                >
+   375→                  <TabsList className="rounded-xl">
+   376→                    <TabsTrigger value="month" className="rounded-lg">
+   377→                      Month
+   378→                    </TabsTrigger>
+   379→                    <TabsTrigger value="week" className="rounded-lg">
+   380→                      Week
+   381→                    </TabsTrigger>
+   382→                    <TabsTrigger value="day" className="rounded-lg">
+   383→                      Day
+   384→                    </TabsTrigger>
+   385→                  </TabsList>
+   386→                </Tabs>
+   387→              </div>
+   388→            </div>
+   389→
+   390→            {/* Calendar body */}
+   391→            {loading ? (
+   392→              <CalendarSkeleton view={view} />
+   393→            ) : view === "month" ? (
+   394→              <MonthView
+   395→                cursor={cursor}
+   396→                events={sortedEvents}
+   397→                onDayClick={(d) => setDayDetail(d)}
+   398→                onEventClick={handleEdit}
+   399→              />
+   400→            ) : view === "week" ? (
+   401→              <WeekView
+   402→                cursor={cursor}
+   403→                events={sortedEvents}
+   404→                onDayClick={(d) => setDayDetail(d)}
+   405→                onEventClick={handleEdit}
+   406→              />
+   407→            ) : (
+   408→              <DayView
+   409→                cursor={cursor}
+   410→                events={sortedEvents}
+   411→                onAdd={(d) => handleCreate(d)}
+   412→                onEventClick={handleEdit}
+   413→              />
+   414→            )}
+   415→          </GlassCard>
+   416→
+   417→          {/* Upcoming events sidebar */}
+   418→          <GlassCard className="p-4 sm:p-5 lg:max-h-[calc(100vh-200px)]">
+   419→            <div className="flex items-center justify-between mb-4">
+   420→              <h3 className="font-semibold flex items-center gap-2">
+   421→                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
+   422→                  <Clock className="h-4 w-4" />
+   423→                </span>
+   424→                Upcoming
+   425→              </h3>
+   426→              <Badge
+   427→                variant="secondary"
+   428→                className="rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400"
+   429→              >
+   430→                {upcoming.length}
+   431→              </Badge>
+   432→            </div>
+   433→
+   434→            {loading ? (
+   435→              <div className="space-y-3">
+   436→                {Array.from({ length: 4 }).map((_, i) => (
+   437→                  <Skeleton key={i} className="h-16 w-full rounded-2xl" />
+   438→                ))}
+   439→              </div>
+   440→            ) : upcoming.length === 0 ? (
+   441→              <div className="flex flex-col items-center justify-center py-8 text-center">
+   442→                <CalendarDays className="h-10 w-10 text-muted-foreground/40 mb-2" />
+   443→                <p className="text-sm text-muted-foreground">
+   444→                  No upcoming events
+   445→                </p>
+   446→                <Button
+   447→                  variant="outline"
+   448→                  size="sm"
+   449→                  onClick={() => handleCreate()}
+   450→                  className="mt-3 rounded-xl"
+   451→                >
+   452→                  <Plus className="h-3.5 w-3.5" />
+   453→                  Add Event
+   454→                </Button>
+   455→              </div>
+   456→            ) : (
+   457→              <ScrollArea className="h-[calc(100vh-260px)] min-h-[200px] pr-2">
+   458→                <div className="space-y-2.5">
+   459→                  {upcoming.map((event, i) => (
+   460→                    <UpcomingItem
+   461→                      key={event.id}
+   462→                      event={event}
+   463→                      index={i}
+   464→                      onClick={() => handleEdit(event)}
+   465→                    />
+   466→                  ))}
+   467→                </div>
+   468→              </ScrollArea>
+   469→            )}
+   470→          </GlassCard>
+   471→        </div>
+   472→
+   473→        {/* Event form dialog */}
+   474→        <EventFormDialog
+   475→          key={
+   476→            formOpen
+   477→              ? `open-${editing?.id ?? formDate?.toISOString() ?? "new"}`
+   478→              : "closed"
+   479→          }
+   480→          open={formOpen}
+   481→          onOpenChange={(o) => {
+   482→            setFormOpen(o);
+   483→            if (!o) {
+   484→              setEditing(null);
+   485→              setFormDate(null);
+   486→            }
+   487→          }}
+   488→          editing={editing}
+   489→          initialDate={formDate}
+   490→          onSave={handleSave}
+   491→        />
+   492→
+   493→        {/* Day detail dialog */}
+   494→        <DayDetailDialog
+   495→          date={dayDetail}
+   496→          events={dayDetail ? sortedEvents.filter((e) => eventOnDay(e, dayDetail)) : []}
+   497→          onOpenChange={(o) => !o && setDayDetail(null)}
+   498→          onAdd={(d) => {
+   499→            setDayDetail(null);
+   500→            handleCreate(d);
+   501→          }}
+   502→          onEdit={(e) => {
+   503→            setDayDetail(null);
+   504→            handleEdit(e);
+   505→          }}
+   506→          onDelete={(e) => setDeleting(e)}
+   507→        />
+   508→
+   509→        {/* Delete confirmation */}
+   510→        <AlertDialog
+   511→          open={!!deleting}
+   512→          onOpenChange={(o) => !o && setDeleting(null)}
+   513→        >
+   514→          <AlertDialogContent className="rounded-2xl">
+   515→            <AlertDialogHeader>
+   516→              <AlertDialogTitle className="flex items-center gap-2">
+   517→                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+   518→                  <AlertTriangle className="h-5 w-5" />
+   519→                </span>
+   520→                Delete event?
+   521→              </AlertDialogTitle>
+   522→              <AlertDialogDescription>
+   523→                {deleting
+   524→                  ? `"${deleting.title}" will be permanently removed. This action can't be undone.`
+   525→                  : "This event will be permanently removed."}
+   526→              </AlertDialogDescription>
+   527→            </AlertDialogHeader>
+   528→            <AlertDialogFooter>
+   529→              <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+   530→              <AlertDialogAction
+   531→                onClick={handleDelete}
+   532→                className="rounded-xl bg-rose-500 text-white hover:bg-rose-600"
+   533→              >
+   534→                Delete
+   535→              </AlertDialogAction>
+   536→            </AlertDialogFooter>
+   537→          </AlertDialogContent>
+   538→        </AlertDialog>
+   539→      </div>
+   540→    </PageTransition>
+   541→  );
+   542→}
+   543→
+   544→// ---------- Mini stat ----------
+   545→function MiniStat({
+   546→  icon: Icon,
+   547→  label,
+   548→  value,
+   549→  accent,
+   550→}: {
+   551→  icon: React.ElementType;
+   552→  label: string;
+   553→  value: number;
+   554→  accent: string;
+   555→}) {
+   556→  return (
+   557→    <GlassCard className="p-3 sm:p-4 flex items-center gap-3">
+   558→      <span
+   559→        className={cn(
+   560→          "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+   561→          accent
+   562→        )}
+   563→      >
+   564→        <Icon className="h-5 w-5" />
+   565→      </span>
+   566→      <div className="min-w-0">
+   567→        <div className="text-xl sm:text-2xl font-bold leading-tight">
+   568→          <AnimatedCounter value={value} />
+   569→        </div>
+   570→        <div className="text-[11px] sm:text-xs text-muted-foreground truncate">
+   571→          {label}
+   572→        </div>
+   573→      </div>
+   574→    </GlassCard>
+   575→  );
+   576→}
+   577→
+   578→// ---------- Month view ----------
+   579→function MonthView({
+   580→  cursor,
+   581→  events,
+   582→  onDayClick,
+   583→  onEventClick,
+   584→}: {
+   585→  cursor: Date;
+   586→  events: Event[];
+   587→  onDayClick: (day: Date) => void;
+   588→  onEventClick: (event: Event) => void;
+   589→}) {
+   590→  const days = useMemo(() => {
+   591→    const monthStart = startOfMonth(cursor);
+   592→    const monthEnd = endOfMonth(cursor);
+   593→    const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+   594→    const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+   595→    return eachDayOfInterval({ start: gridStart, end: gridEnd });
+   596→  }, [cursor]);
+   597→
+   598→  return (
+   599→    <div className="space-y-2">
+   600→      {/* Weekday header */}
+   601→      <div className="grid grid-cols-7 gap-1.5">
+   602→        {WEEKDAYS.map((d) => (
+   603→          <div
+   604→            key={d}
+   605→            className="text-center text-[11px] sm:text-xs font-semibold text-muted-foreground py-1"
+   606→          >
+   607→            <span className="hidden sm:inline">{d}</span>
+   608→            <span className="sm:hidden">{d[0]}</span>
+   609→          </div>
+   610→        ))}
+   611→      </div>
+   612→
+   613→      {/* Day grid */}
+   614→      <div className="grid grid-cols-7 gap-1.5">
+   615→        {days.map((day, idx) => (
+   616→          <DayCell
+   617→            key={day.toISOString()}
+   618→            day={day}
+   619→            isCurrentMonth={isSameMonth(day, cursor)}
+   620→            events={events.filter((e) => eventOnDay(e, day))}
+   621→            onDayClick={onDayClick}
+   622→            onEventClick={onEventClick}
+   623→            index={idx}
+   624→          />
+   625→        ))}
+   626→      </div>
+   627→    </div>
+   628→  );
+   629→}
+   630→
+   631→function DayCell({
+   632→  day,
+   633→  isCurrentMonth,
+   634→  events,
+   635→  onDayClick,
+   636→  onEventClick,
+   637→  index,
+   638→}: {
+   639→  day: Date;
+   640→  isCurrentMonth: boolean;
+   641→  events: Event[];
+   642→  onDayClick: (day: Date) => void;
+   643→  onEventClick: (event: Event) => void;
+   644→  index: number;
+   645→}) {
+   646→  const today = isToday(day);
+   647→  const visible = events.slice(0, 3);
+   648→  const overflow = events.length - visible.length;
+   649→
+   650→  return (
+   651→    <motion.div
+   652→      initial={{ opacity: 0, y: 4 }}
+   653→      animate={{ opacity: 1, y: 0 }}
+   654→      transition={{ duration: 0.2, delay: Math.min(index * 0.01, 0.2) }}
+   655→      onClick={() => onDayClick(day)}
+   656→      className={cn(
+   657→        "group relative min-h-[80px] sm:min-h-[110px] rounded-xl p-1.5 sm:p-2 cursor-pointer transition-all border",
+   658→        "hover:border-violet-500/30 hover:shadow-sm",
+   659→        !isCurrentMonth && "opacity-40",
+   660→        today
+   661→          ? "border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/30"
+   662→          : "border-border/40 bg-background/40"
+   663→      )}
+   664→    >
+   665→      {/* Date number */}
+   666→      <div className="flex items-center justify-between mb-1">
+   667→        <span
+   668→          className={cn(
+   669→            "inline-flex items-center justify-center text-xs font-semibold",
+   670→            today
+   671→              ? "h-6 w-6 rounded-full bg-violet-500 text-white"
+   672→              : "h-6 w-6 rounded-full text-foreground"
+   673→          )}
+   674→        >
+   675→          {format(day, "d")}
+   676→        </span>
+   677→        <button
+   678→          onClick={(e) => {
+   679→            e.stopPropagation();
+   680→            onDayClick(day);
+   681→          }}
+   682→          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-violet-500"
+   683→          aria-label="Add event"
+   684→        >
+   685→          <Plus className="h-3 w-3" />
+   686→        </button>
+   687→      </div>
+   688→
+   689→      {/* Events */}
+   690→      <div className="space-y-1">
+   691→        {visible.map((event) => {
+   692→          const c = colorOf(event.color);
+   693→          return (
+   694→            <button
+   695→              key={event.id}
+   696→              onClick={(e) => {
+   697→                e.stopPropagation();
+   698→                onEventClick(event);
+   699→              }}
+   700→              className={cn(
+   701→                "flex items-center gap-1 w-full text-left rounded-md px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium leading-tight truncate transition-colors hover:brightness-110",
+   702→                c.soft,
+   703→                c.text
+   704→              )}
+   705→              title={event.title + (event.time ? ` · ${event.time}` : "")}
+   706→            >
+   707→              <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", c.dot)} />
+   708→              <span className="truncate">{event.title}</span>
+   709→            </button>
+   710→          );
+   711→        })}
+   712→        {overflow > 0 && (
+   713→          <div className="text-[10px] text-muted-foreground px-1.5 font-medium">
+   714→            +{overflow} more
+   715→          </div>
+   716→        )}
+   717→      </div>
+   718→    </motion.div>
+   719→  );
+   720→}
+   721→
+   722→// ---------- Week view ----------
+   723→function WeekView({
+   724→  cursor,
+   725→  events,
+   726→  onDayClick,
+   727→  onEventClick,
+   728→}: {
+   729→  cursor: Date;
+   730→  events: Event[];
+   731→  onDayClick: (day: Date) => void;
+   732→  onEventClick: (event: Event) => void;
+   733→}) {
+   734→  const days = useMemo(() => {
+   735→    const ws = startOfWeek(cursor, { weekStartsOn: 0 });
+   736→    return Array.from({ length: 7 }).map((_, i) => addDays(ws, i));
+   737→  }, [cursor]);
+   738→
+   739→  return (
+   740→    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+   741→      {days.map((day, idx) => {
+   742→        const dayEvents = events.filter((e) => eventOnDay(e, day));
+   743→        const today = isToday(day);
+   744→        return (
+   745→          <motion.div
+   746→            key={day.toISOString()}
+   747→            initial={{ opacity: 0, y: 6 }}
+   748→            animate={{ opacity: 1, y: 0 }}
+   749→            transition={{ duration: 0.2, delay: idx * 0.03 }}
+   750→            onClick={() => onDayClick(day)}
+   751→            className={cn(
+   752→              "rounded-2xl border p-3 min-h-[160px] cursor-pointer transition-all hover:border-violet-500/30 hover:shadow-sm flex flex-col",
+   753→              today
+   754→                ? "border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/30"
+   755→                : "border-border/40 bg-background/40"
+   756→            )}
+   757→          >
+   758→            <div className="flex items-center justify-between mb-2">
+   759→              <div>
+   760→                <div className="text-[10px] uppercase font-semibold text-muted-foreground">
+   761→                  {format(day, "EEE")}
+   762→                </div>
+   763→                <div
+   764→                  className={cn(
+   765→                    "text-lg font-bold leading-none",
+   766→                    today && "text-violet-600 dark:text-violet-400"
+   767→                  )}
+   768→                >
+   769→                  {format(day, "d")}
+   770→                </div>
+   771→              </div>
+   772→              <button
+   773→                onClick={(e) => {
+   774→                  e.stopPropagation();
+   775→                  onDayClick(day);
+   776→                }}
+   777→                className="text-muted-foreground hover:text-violet-500 transition-colors"
+   778→                aria-label="Add event"
+   779→              >
+   780→                <Plus className="h-3.5 w-3.5" />
+   781→              </button>
+   782→            </div>
+   783→
+   784→            <div className="flex-1 space-y-1.5 overflow-y-auto scrollbar-thin">
+   785→              {dayEvents.length === 0 ? (
+   786→                <div className="text-[10px] text-muted-foreground/50 italic mt-1">
+   787→                  No events
+   788→                </div>
+   789→              ) : (
+   790→                dayEvents.map((event) => {
+   791→                  const c = colorOf(event.color);
+   792→                  return (
+   793→                    <button
+   794→                      key={event.id}
+   795→                      onClick={(e) => {
+   796→                        e.stopPropagation();
+   797→                        onEventClick(event);
+   798→                      }}
+   799→                      className={cn(
+   800→                        "flex flex-col gap-0.5 w-full text-left rounded-lg px-2 py-1.5 text-xs transition-colors hover:brightness-110",
+   801→                        c.soft
+   802→                      )}
+   803→                    >
+   804→                      <div className="flex items-center gap-1.5">
+   805→                        <span className={cn("h-2 w-2 rounded-full shrink-0", c.dot)} />
+   806→                        <span className={cn("font-medium truncate", c.text)}>
+   807→                          {event.title}
+   808→                        </span>
+   809→                      </div>
+   810→                      {event.time && (
+   811→                        <span className="text-[10px] text-muted-foreground pl-3.5">
+   812→                          {event.time}
+   813→                        </span>
+   814→                      )}
+   815→                    </button>
+   816→                  );
+   817→                })
+   818→              )}
+   819→            </div>
+   820→          </motion.div>
+   821→        );
+   822→      })}
+   823→    </div>
+   824→  );
+   825→}
+   826→
+   827→// ---------- Day view ----------
+   828→function DayView({
+   829→  cursor,
+   830→  events,
+   831→  onAdd,
+   832→  onEventClick,
+   833→}: {
+   834→  cursor: Date;
+   835→  events: Event[];
+   836→  onAdd: (day: Date) => void;
+   837→  onEventClick: (event: Event) => void;
+   838→}) {
+   839→  const dayEvents = useMemo(
+   840→    () => events.filter((e) => eventOnDay(e, cursor)),
+   841→    [events, cursor]
+   842→  );
+   843→  const today = isToday(cursor);
+   844→
+   845→  return (
+   846→    <div className="space-y-3">
+   847→      <div className="flex items-center justify-between">
+   848→        <div className="flex items-center gap-3">
+   849→          <div
+   850→            className={cn(
+   851→              "flex h-14 w-14 flex-col items-center justify-center rounded-2xl",
+   852→              today
+   853→                ? "accent-gradient text-white"
+   854→                : "bg-muted text-foreground"
+   855→            )}
+   856→          >
+   857→            <span className="text-[10px] uppercase font-semibold opacity-80">
+   858→              {format(cursor, "EEE")}
+   859→            </span>
+   860→            <span className="text-xl font-bold leading-none">
+   861→              {format(cursor, "d")}
+   862→            </span>
+   863→          </div>
+   864→          <div>
+   865→            <h3 className="font-semibold">
+   866→              {format(cursor, "EEEE, MMMM d")}
+   867→            </h3>
+   868→            <p className="text-xs text-muted-foreground">
+   869→              {dayEvents.length} event{dayEvents.length !== 1 ? "s" : ""} scheduled
+   870→            </p>
+   871→          </div>
+   872→        </div>
+   873→        <Button
+   874→          variant="outline"
+   875→          size="sm"
+   876→          onClick={() => onAdd(cursor)}
+   877→          className="rounded-xl"
+   878→        >
+   879→          <Plus className="h-3.5 w-3.5" />
+   880→          Add
+   881→        </Button>
+   882→      </div>
+   883→
+   884→      {dayEvents.length === 0 ? (
+   885→        <EmptyState
+   886→          icon={CalendarDays}
+   887→          title="Nothing scheduled"
+   888→          description="You have a free day. Add an event to make the most of it."
+   889→          action={
+   890→            <Button
+   891→              size="sm"
+   892→              onClick={() => onAdd(cursor)}
+   893→              className="accent-gradient text-white rounded-xl"
+   894→            >
+   895→              <Plus className="h-3.5 w-3.5" />
+   896→              Add Event
+   897→            </Button>
+   898→          }
+   899→          className="py-12"
+   900→        />
+   901→      ) : (
+   902→        <div className="space-y-2">
+   903→          {dayEvents.map((event, i) => (
+   904→            <DayEventRow
+   905→              key={event.id}
+   906→              event={event}
+   907→              index={i}
+   908→              onClick={() => onEventClick(event)}
+   909→            />
+   910→          ))}
+   911→        </div>
+   912→      )}
+   913→    </div>
+   914→  );
+   915→}
+   916→
+   917→function DayEventRow({
+   918→  event,
+   919→  index,
+   920→  onClick,
+   921→}: {
+   922→  event: Event;
+   923→  index: number;
+   924→  onClick: () => void;
+   925→}) {
+   926→  const c = colorOf(event.color);
+   927→  return (
+   928→    <motion.button
+   929→      initial={{ opacity: 0, x: -8 }}
+   930→      animate={{ opacity: 1, x: 0 }}
+   931→      transition={{ duration: 0.25, delay: index * 0.05 }}
+   932→      onClick={onClick}
+   933→      className={cn(
+   934→        "flex w-full items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3.5 text-left transition-all hover:border-violet-500/30 hover:shadow-md group"
+   935→      )}
+   936→    >
+   937→      <span
+   938→        className={cn(
+   939→          "flex h-10 w-1.5 shrink-0 rounded-full self-stretch",
+   940→          c.dot
+   941→        )}
+   942→      />
+   943→      <div className="flex-1 min-w-0">
+   944→        <div className="flex items-center gap-2 flex-wrap">
+   945→          <h4 className="font-semibold text-sm">{event.title}</h4>
+   946→          {event.time && (
+   947→            <Badge
+   948→              variant="secondary"
+   949→              className={cn("rounded-md h-5 px-1.5 text-[10px]", c.soft, c.text)}
+   950→            >
+   951→              <Clock className="h-2.5 w-2.5" />
+   952→              {event.time}
+   953→            </Badge>
+   954→          )}
+   955→        </div>
+   956→        {event.description && (
+   957→          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+   958→            {event.description}
+   959→          </p>
+   960→        )}
+   961→      </div>
+   962→      <Pencil className="h-4 w-4 text-muted-foreground/40 group-hover:text-violet-500 transition-colors mt-1" />
+   963→    </motion.button>
+   964→  );
+   965→}
+   966→
+   967→// ---------- Upcoming item ----------
+   968→function UpcomingItem({
+   969→  event,
+   970→  index,
+   971→  onClick,
+   972→}: {
+   973→  event: Event;
+   974→  index: number;
+   975→  onClick: () => void;
+   976→}) {
+   977→  const c = colorOf(event.color);
+   978→  let dateStr = "";
+   979→  let timeStr = "";
+   980→  try {
+   981→    const d = parseISO(event.date);
+   982→    dateStr = format(d, "EEE, MMM d");
+   983→    timeStr = event.time || "All day";
+   984→  } catch {
+   985→    dateStr = "—";
+   986→  }
+   987→
+   988→  return (
+   989→    <motion.button
+   990→      initial={{ opacity: 0, x: 6 }}
+   991→      animate={{ opacity: 1, x: 0 }}
+   992→      transition={{ duration: 0.25, delay: index * 0.05 }}
+   993→      onClick={onClick}
+   994→      className="flex w-full items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3 text-left transition-all hover:border-violet-500/30 hover:shadow-md group"
+   995→    >
+   996→      <span
+   997→        className={cn(
+   998→          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+   999→          c.soft
+  1000→        )}
+  1001→      >
+  1002→        <span className={cn("h-2.5 w-2.5 rounded-full", c.dot)} />
+  1003→      </span>
+  1004→      <div className="flex-1 min-w-0">
+  1005→        <h4 className="font-semibold text-sm truncate">{event.title}</h4>
+  1006→        <div className="flex items-center gap-2 mt-0.5">
+  1007→          <span className="text-[11px] text-muted-foreground">{dateStr}</span>
+  1008→          {timeStr && (
+  1009→            <>
+  1010→              <span className="text-[11px] text-muted-foreground/50">·</span>
+  1011→              <span className={cn("text-[11px] font-medium", c.text)}>
+  1012→                {timeStr}
+  1013→              </span>
+  1014→            </>
+  1015→          )}
+  1016→        </div>
+  1017→      </div>
+  1018→      <Pencil className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-violet-500 transition-colors mt-1" />
+  1019→    </motion.button>
+  1020→  );
+  1021→}
+  1022→
+  1023→// ---------- Day detail dialog ----------
+  1024→function DayDetailDialog({
+  1025→  date,
+  1026→  events,
+  1027→  onOpenChange,
+  1028→  onAdd,
+  1029→  onEdit,
+  1030→  onDelete,
+  1031→}: {
+  1032→  date: Date | null;
+  1033→  events: Event[];
+  1034→  onOpenChange: (open: boolean) => void;
+  1035→  onAdd: (day: Date) => void;
+  1036→  onEdit: (event: Event) => void;
+  1037→  onDelete: (event: Event) => void;
+  1038→}) {
+  1039→  return (
+  1040→    <Dialog open={!!date} onOpenChange={onOpenChange}>
+  1041→      <DialogContent className="sm:max-w-[480px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin">
+  1042→        <DialogHeader>
+  1043→          <DialogTitle className="flex items-center gap-2 text-xl">
+  1044→            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
+  1045→              <CalendarDays className="h-4 w-4" />
+  1046→            </span>
+  1047→            {date ? format(date, "EEEE, MMMM d") : ""}
+  1048→          </DialogTitle>
+  1049→          <DialogDescription>
+  1050→            {events.length === 0
+  1051→              ? "No events scheduled. Click below to add one."
+  1052→              : `${events.length} event${events.length !== 1 ? "s" : ""} on this day.`}
+  1053→          </DialogDescription>
+  1054→        </DialogHeader>
+  1055→
+  1056→        <div className="space-y-2 max-h-[50vh] overflow-y-auto scrollbar-thin pr-1">
+  1057→          {events.length === 0 ? (
+  1058→            <div className="flex flex-col items-center justify-center py-6 text-center">
+  1059→              <CalendarDays className="h-10 w-10 text-muted-foreground/40 mb-2" />
+  1060→              <p className="text-sm text-muted-foreground">Free day!</p>
+  1061→            </div>
+  1062→          ) : (
+  1063→            events.map((event) => {
+  1064→              const c = colorOf(event.color);
+  1065→              return (
+  1066→                <div
+  1067→                  key={event.id}
+  1068→                  className="group flex items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3"
+  1069→                >
+  1070→                  <span
+  1071→                    className={cn(
+  1072→                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+  1073→                      c.soft
+  1074→                    )}
+  1075→                  >
+  1076→                    <span className={cn("h-2.5 w-2.5 rounded-full", c.dot)} />
+  1077→                  </span>
+  1078→                  <button
+  1079→                    onClick={() => onEdit(event)}
+  1080→                    className="flex-1 min-w-0 text-left"
+  1081→                  >
+  1082→                    <h4 className="font-semibold text-sm truncate">
+  1083→                      {event.title}
+  1084→                    </h4>
+  1085→                    <div className="flex items-center gap-2 mt-0.5">
+  1086→                      {event.time && (
+  1087→                        <span
+  1088→                          className={cn(
+  1089→                            "text-[11px] font-medium",
+  1090→                            c.text
+  1091→                          )}
+  1092→                        >
+  1093→                          {event.time}
+  1094→                        </span>
+  1095→                      )}
+  1096→                      {!event.time && (
+  1097→                        <span className="text-[11px] text-muted-foreground">
+  1098→                          All day
+  1099→                        </span>
+  1100→                      )}
+  1101→                    </div>
+  1102→                    {event.description && (
+  1103→                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+  1104→                        {event.description}
+  1105→                      </p>
+  1106→                    )}
+  1107→                  </button>
+  1108→                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+  1109→                    <button
+  1110→                      onClick={() => onEdit(event)}
+  1111→                      className="h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+  1112→                      aria-label="Edit"
+  1113→                    >
+  1114→                      <Pencil className="h-3.5 w-3.5" />
+  1115→                    </button>
+  1116→                    <button
+  1117→                      onClick={() => onDelete(event)}
+  1118→                      className="h-7 w-7 inline-flex items-center justify-center rounded-md text-rose-500 hover:bg-rose-500/10"
+  1119→                      aria-label="Delete"
+  1120→                    >
+  1121→                      <Trash2 className="h-3.5 w-3.5" />
+  1122→                    </button>
+  1123→                  </div>
+  1124→                </div>
+  1125→              );
+  1126→            })
+  1127→          )}
+  1128→        </div>
+  1129→
+  1130→        <DialogFooter>
+  1131→          <Button
+  1132→            onClick={() => date && onAdd(date)}
+  1133→            className="rounded-xl accent-gradient text-white w-full sm:w-auto"
+  1134→          >
+  1135→            <Plus className="h-4 w-4" />
+  1136→            Add Event
+  1137→          </Button>
+  1138→        </DialogFooter>
+  1139→      </DialogContent>
+  1140→    </Dialog>
+  1141→  );
+  1142→}
+  1143→
+  1144→// ---------- Event form dialog ----------
+  1145→interface EventFormData {
+  1146→  title: string;
+  1147→  date: string; // yyyy-MM-dd
+  1148→  time: string; // HH:mm or ""
+  1149→  description: string;
+  1150→  color: EventColor;
+  1151→}
+  1152→
+  1153→function EventFormDialog({
+  1154→  open,
+  1155→  onOpenChange,
+  1156→  editing,
+  1157→  initialDate,
+  1158→  onSave,
+  1159→}: {
+  1160→  open: boolean;
+  1161→  onOpenChange: (open: boolean) => void;
+  1162→  editing: Event | null;
+  1163→  initialDate: Date | null;
+  1164→  onSave: (data: EventFormData) => Promise<void>;
+  1165→}) {
+  1166→  const isEdit = !!editing;
+  1167→  const [saving, setSaving] = useState(false);
+  1168→  const [error, setError] = useState<string | null>(null);
+  1169→  const [form, setForm] = useState<EventFormData>(() => ({
+  1170→    title: editing?.title ?? "",
+  1171→    date: editing
+  1172→      ? toDateInput(editing.date)
+  1173→      : initialDate
+  1174→      ? format(initialDate, "yyyy-MM-dd")
+  1175→      : format(new Date(), "yyyy-MM-dd"),
+  1176→    time: editing?.time ?? "",
+  1177→    description: editing?.description ?? "",
+  1178→    color:
+  1179→      editing && COLOR_MAP[editing.color] ? editing.color : "violet",
+  1180→  }));
+  1181→
+  1182→  const handleSubmit = async (e: React.FormEvent) => {
+  1183→    e.preventDefault();
+  1184→    if (!form.title.trim()) {
+  1185→      setError("Title is required");
+  1186→      return;
+  1187→    }
+  1188→    if (!form.date) {
+  1189→      setError("Date is required");
+  1190→      return;
+  1191→    }
+  1192→    setSaving(true);
+  1193→    await onSave(form);
+  1194→    setSaving(false);
+  1195→  };
+  1196→
+  1197→  const update = <K extends keyof EventFormData>(
+  1198→    key: K,
+  1199→    value: EventFormData[K]
+  1200→  ) => {
+  1201→    setForm((prev) => ({ ...prev, [key]: value }));
+  1202→    if (key === "title" && error) setError(null);
+  1203→  };
+  1204→
+  1205→  return (
+  1206→    <Dialog open={open} onOpenChange={onOpenChange}>
+  1207→      <DialogContent className="sm:max-w-[520px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin">
+  1208→        <DialogHeader>
+  1209→          <DialogTitle className="flex items-center gap-2 text-xl">
+  1210→            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
+  1211→              {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+  1212→            </span>
+  1213→            {isEdit ? "Edit Event" : "New Event"}
+  1214→          </DialogTitle>
+  1215→          <DialogDescription>
+  1216→            {isEdit
+  1217→              ? "Update the details of your event below."
+  1218→              : "Add a new event to your calendar."}
+  1219→          </DialogDescription>
+  1220→        </DialogHeader>
+  1221→
+  1222→        <form onSubmit={handleSubmit} className="space-y-4">
+  1223→          {/* Title */}
+  1224→          <div className="space-y-1.5">
+  1225→            <Label htmlFor="event-title" className="text-sm font-medium">
+  1226→              Title <span className="text-rose-500">*</span>
+  1227→            </Label>
+  1228→            <Input
+  1229→              id="event-title"
+  1230→              value={form.title}
+  1231→              onChange={(e) => update("title", e.target.value)}
+  1232→              placeholder="e.g. Calculus midterm review"
+  1233→              className={cn(
+  1234→                "rounded-xl",
+  1235→                error && !form.title.trim() && "border-rose-500 focus-visible:ring-rose-500/30"
+  1236→              )}
+  1237→              autoFocus
+  1238→            />
+  1239→            {error && !form.title.trim() && (
+  1240→              <p className="text-xs text-rose-500 flex items-center gap-1">
+  1241→                <AlertTriangle className="h-3 w-3" />
+  1242→                Title is required
+  1243→              </p>
+  1244→            )}
+  1245→          </div>
+  1246→
+  1247→          {/* Date + time */}
+  1248→          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  1249→            <div className="space-y-1.5">
+  1250→              <Label htmlFor="event-date" className="text-sm font-medium">
+  1251→                Date <span className="text-rose-500">*</span>
+  1252→              </Label>
+  1253→              <Input
+  1254→                id="event-date"
+  1255→                type="date"
+  1256→                value={form.date}
+  1257→                onChange={(e) => update("date", e.target.value)}
+  1258→                className={cn(
+  1259→                  "rounded-xl",
+  1260→                  error && !form.date && "border-rose-500"
+  1261→                )}
+  1262→              />
+  1263→            </div>
+  1264→            <div className="space-y-1.5">
+  1265→              <Label htmlFor="event-time" className="text-sm font-medium">
+  1266→                Time
+  1267→              </Label>
+  1268→              <Input
+  1269→                id="event-time"
+  1270→                type="time"
+  1271→                value={form.time}
+  1272→                onChange={(e) => update("time", e.target.value)}
+  1273→                className="rounded-xl"
+  1274→              />
+  1275→            </div>
+  1276→          </div>
+  1277→
+  1278→          {/* Description */}
+  1279→          <div className="space-y-1.5">
+  1280→            <Label htmlFor="event-desc" className="text-sm font-medium">
+  1281→              Description
+  1282→            </Label>
+  1283→            <Textarea
+  1284→              id="event-desc"
+  1285→              value={form.description}
+  1286→              onChange={(e) => update("description", e.target.value)}
+  1287→              placeholder="Add notes or details (optional)"
+  1288→              rows={3}
+  1289→              className="rounded-xl resize-none scrollbar-thin"
+  1290→            />
+  1291→          </div>
+  1292→
+  1293→          {/* Color picker */}
+  1294→          <div className="space-y-1.5">
+  1295→            <Label className="text-sm font-medium">Color</Label>
+  1296→            <div className="flex items-center gap-2 flex-wrap">
+  1297→              {COLOR_KEYS.map((color) => {
+  1298→                const c = colorOf(color);
+  1299→                const selected = form.color === color;
+  1300→                return (
+  1301→                  <button
+  1302→                    key={color}
+  1303→                    type="button"
+  1304→                    onClick={() => update("color", color)}
+  1305→                    className={cn(
+  1306→                      "relative h-9 w-9 rounded-xl transition-all",
+  1307→                      "hover:scale-110",
+  1308→                      selected && "ring-2 ring-offset-2 ring-offset-background scale-110",
+  1309→                      c.bg
+  1310→                    )}
+  1311→                    style={
+  1312→                      selected
+  1313→                        ? ({ "--tw-ring-color": c.chart } as React.CSSProperties)
+  1314→                        : undefined
+  1315→                    }
+  1316→                    aria-label={`Color ${color}`}
+  1317→                  >
+  1318→                    {selected && (
+  1319→                      <motion.span
+  1320→                        initial={{ scale: 0 }}
+  1321→                        animate={{ scale: 1 }}
+  1322→                        transition={{ type: "spring", stiffness: 500, damping: 25 }}
+  1323→                        className="absolute inset-0 flex items-center justify-center"
+  1324→                      >
+  1325→                        <svg
+  1326→                          className="h-4 w-4 text-white"
+  1327→                          viewBox="0 0 24 24"
+  1328→                          fill="none"
+  1329→                          stroke="currentColor"
+  1330→                          strokeWidth="3"
+  1331→                          strokeLinecap="round"
+  1332→                          strokeLinejoin="round"
+  1333→                        >
+  1334→                          <polyline points="20 6 9 17 4 12" />
+  1335→                        </svg>
+  1336→                      </motion.span>
+  1337→                    )}
+  1338→                  </button>
+  1339→                );
+  1340→              })}
+  1341→            </div>
+  1342→          </div>
+  1343→        </form>
+  1344→
+  1345→        <DialogFooter>
+  1346→          <Button
+  1347→            type="button"
+  1348→            variant="outline"
+  1349→            onClick={() => onOpenChange(false)}
+  1350→            className="rounded-xl"
+  1351→            disabled={saving}
+  1352→          >
+  1353→            Cancel
+  1354→          </Button>
+  1355→          <Button
+  1356→            type="button"
+  1357→            onClick={handleSubmit}
+  1358→            disabled={saving || !form.title.trim() || !form.date}
+  1359→            className="rounded-xl accent-gradient text-white min-w-[100px]"
+  1360→          >
+  1361→            {saving ? (
+  1362→              <>
+  1363→                <motion.span
+  1364→                  animate={{ rotate: 360 }}
+  1365→                  transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+  1366→                  className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full"
+  1367→                />
+  1368→                Saving...
+  1369→              </>
+  1370→            ) : isEdit ? (
+  1371→              "Save Changes"
+  1372→            ) : (
+  1373→              "Create Event"
+  1374→            )}
+  1375→          </Button>
+  1376→        </DialogFooter>
+  1377→      </DialogContent>
+  1378→    </Dialog>
+  1379→  );
+  1380→}
+  1381→
+  1382→// ---------- Helpers ----------
+  1383→function toDateInput(dateStr: string): string {
+  1384→  try {
+  1385→    const d = parseISO(dateStr);
+  1386→    if (!isValid(d)) return format(new Date(), "yyyy-MM-dd");
+  1387→    return format(d, "yyyy-MM-dd");
+  1388→  } catch {
+  1389→    return format(new Date(), "yyyy-MM-dd");
+  1390→  }
+  1391→}
+  1392→
+  1393→// ---------- Skeleton ----------
+  1394→function CalendarSkeleton({ view }: { view: CalendarView }) {
+  1395→  if (view === "day") {
+  1396→    return (
+  1397→      <div className="space-y-3">
+  1398→        <div className="flex items-center gap-3">
+  1399→          <Skeleton className="h-14 w-14 rounded-2xl" />
+  1400→          <div className="space-y-2">
+  1401→            <Skeleton className="h-4 w-32" />
+  1402→            <Skeleton className="h-3 w-24" />
+  1403→          </div>
+  1404→        </div>
+  1405→        {Array.from({ length: 4 }).map((_, i) => (
+  1406→          <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+  1407→        ))}
+  1408→      </div>
+  1409→    );
+  1410→  }
+  1411→  return (
+  1412→    <div>
+  1413→      <div className="grid grid-cols-7 gap-1.5 mb-2">
+  1414→        {Array.from({ length: 7 }).map((_, i) => (
+  1415→          <Skeleton key={i} className="h-5 rounded-md" />
+  1416→        ))}
+  1417→      </div>
+  1418→      <div className="grid grid-cols-7 gap-1.5">
+  1419→        {Array.from({ length: view === "week" ? 7 : 35 }).map((_, i) => (
+  1420→          <Skeleton
+  1421→            key={i}
+  1422→            className={cn(
+  1423→              "rounded-xl",
+  1424→              view === "week" ? "min-h-[160px]" : "min-h-[80px] sm:min-h-[110px]"
+  1425→            )}
+  1426→          />
+  1427→        ))}
+  1428→      </div>
+  1429→    </div>
+  1430→  );
+  1431→}
+  1432→

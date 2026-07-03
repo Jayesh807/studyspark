@@ -14,6 +14,28 @@ import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "studyspark:onboarding-completed-v1";
 
+/* -------------------------------------------------------------------------- */
+/*              Module-level event emitter for "replay tour"                  */
+/* -------------------------------------------------------------------------- */
+//
+// The OnboardingTour component owns its `open` state internally and is mounted
+// deep in the dashboard shell. Settings (and any other surface) need a way to
+// re-open the tour without prop-drilling or touching the shared Zustand store
+// (which other agents are editing in parallel). A tiny module-level listener
+// set is the lightest decoupling: `replayTour()` is the public entry point and
+// the component subscribes on mount.
+type TourListener = () => void;
+const tourListeners = new Set<TourListener>();
+
+/**
+ * Re-open the OnboardingTour from step 1, regardless of whether the user has
+ * already completed it. Safe to call from anywhere (client-side only).
+ */
+export function replayTour() {
+  // Iterate over a snapshot so listeners can safely unsubscribe during dispatch.
+  tourListeners.forEach((l) => l());
+}
+
 interface TourStep {
   id: string;
   title: string;
@@ -105,6 +127,22 @@ export function OnboardingTour() {
     } catch {
       /* ignore */
     }
+  }, []);
+
+  // Subscribe to external "replay tour" requests (e.g. from Settings).
+  // On replay we re-open from step 1. We intentionally do NOT touch the
+  // localStorage "completed" flag — the tour was already completed once, this
+  // is just a refresher, so the auto-open-on-first-visit logic stays intact.
+  useEffect(() => {
+    const handleReplay = () => {
+      setStepIdx(0);
+      setTargetRect(null);
+      setOpen(true);
+    };
+    tourListeners.add(handleReplay);
+    return () => {
+      tourListeners.delete(handleReplay);
+    };
   }, []);
 
   const step = STEPS[stepIdx];

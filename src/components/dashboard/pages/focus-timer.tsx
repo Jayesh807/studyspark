@@ -18,6 +18,8 @@ import {
   History,
   CheckCircle2,
   X,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import {
   Bar,
@@ -46,8 +48,88 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type TimerMode = "focus" | "short" | "long";
+
+// === Pomodoro completion bell (Web Audio API, no external files) ===
+// Lazily creates an AudioContext on first user interaction (the timer is started by a
+// click, which satisfies the browser autoplay policy). All calls are wrapped in
+// try/catch so the timer never breaks if AudioContext is unavailable.
+let audioCtx: AudioContext | null = null;
+
+function getCtx(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  try {
+    if (!audioCtx) {
+      const AC =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === "suspended") {
+      void audioCtx.resume();
+    }
+    return audioCtx;
+  } catch {
+    return null;
+  }
+}
+
+function tone(
+  freq: number,
+  start: number,
+  dur: number,
+  ctx: AudioContext,
+  type: OscillatorType = "sine",
+): void {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  const t0 = ctx.currentTime + start;
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(0.18, t0 + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.05);
+}
+
+/** Play the pomodoro completion bell. `focus-end` = ascending C5–E5–G5 arpeggio; `break-end` = soft A5 chime. */
+export function playBell(kind: "focus-end" | "break-end"): void {
+  const ctx = getCtx();
+  if (!ctx) return;
+  try {
+    if (kind === "focus-end") {
+      // Ascending C5–E5–G5 arpeggio
+      tone(523.25, 0, 0.5, ctx);
+      tone(659.25, 0.12, 0.5, ctx);
+      tone(783.99, 0.24, 0.8, ctx);
+    } else {
+      // Single soft A5 chime
+      tone(880, 0, 1.2, ctx, "triangle");
+    }
+  } catch {
+    /* ignore audio errors — never break the timer */
+  }
+}
+
+/** Play a sample bell (used by the sound toggle to confirm sound is on). */
+export function playTestBell(): void {
+  playBell("focus-end");
+}
+
+// Rotating wellness tips shown during break modes (cycles every ~8s).
+const BREAK_TIPS: string[] = [
+  "Close your eyes and take 3 deep breaths.",
+  "Stand up and walk to a window — look at something far away.",
+  "Roll your wrists and stretch your fingers.",
+  "Drink a sip of water.",
+  "Rest your back against the chair and relax your shoulders.",
+];
 
 interface ModeConfig {
   label: string;
@@ -129,6 +211,8 @@ function ChartTooltip({ active, payload, label }: FocusChartTooltipProps) {
 
 export function FocusTimerPage() {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
+  const soundEnabled = useAppStore((s) => s.soundEnabled);
+  const setSoundEnabled = useAppStore((s) => s.setSoundEnabled);
 
   // === Timer state ===
   const [mode, setMode] = useState<TimerMode>("focus");
@@ -196,6 +280,11 @@ export function FocusTimerPage() {
     const finishedMode = mode;
     const elapsedMinutes = durations[finishedMode];
 
+    // Play completion bell (Web Audio API) when sound is enabled
+    if (soundEnabled) {
+      playBell(finishedMode === "focus" ? "focus-end" : "break-end");
+    }
+
     // Toast + record
     if (finishedMode === "focus") {
       toast.success("Time's up! Take a well-earned break.", {
@@ -247,7 +336,7 @@ export function FocusTimerPage() {
         .finally(() => setSaving(false));
       setTimeout(() => switchMode("focus", true), 600);
     }
-  }, [remaining]);
+  }, [remaining, soundEnabled]);
 
   // === Mode switching ===
   const switchMode = useCallback(
@@ -285,6 +374,16 @@ export function FocusTimerPage() {
   const handleSkip = () => {
     setRemaining(0);
   };
+
+  // === Rotating break tip ===
+  const [tipIndex, setTipIndex] = useState(0);
+  useEffect(() => {
+    if (mode === "focus") return;
+    const id = setInterval(() => {
+      setTipIndex((i) => (i + 1) % BREAK_TIPS.length);
+    }, 8000);
+    return () => clearInterval(id);
+  }, [mode]);
 
   // === Derived stats ===
   const stats = useMemo(() => {
@@ -347,15 +446,35 @@ export function FocusTimerPage() {
             Stay in the zone. Track deep work, take mindful breaks, and build your streak.
           </p>
         </div>
-        <Badge
-          variant="secondary"
-          className="w-fit gap-1.5 rounded-full px-3 py-1.5"
-        >
-          <Sparkles className="h-3.5 w-3.5 text-violet-500" />
-          <span className="text-xs">
-            {completedFocusCount} completed this sitting
-          </span>
-        </Badge>
+        <div className="flex items-center gap-2 self-start sm:self-end">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              const next = !soundEnabled;
+              setSoundEnabled(next);
+              if (next) playTestBell();
+            }}
+            aria-label="Toggle sound effects"
+            title={soundEnabled ? "Sound on — click to mute" : "Sound off — click to enable"}
+            className="rounded-full shrink-0 h-9 w-9"
+          >
+            {soundEnabled ? (
+              <Volume2 className="h-4 w-4" />
+            ) : (
+              <VolumeX className="h-4 w-4" />
+            )}
+          </Button>
+          <Badge
+            variant="secondary"
+            className="w-fit gap-1.5 rounded-full px-3 py-1.5"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+            <span className="text-xs">
+              {completedFocusCount} completed this sitting
+            </span>
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -363,6 +482,16 @@ export function FocusTimerPage() {
         <StaggerContainer className="lg:col-span-2 space-y-6">
           <StaggerItem>
             <GlassCard className="p-6 sm:p-8 relative overflow-hidden">
+              {/* Ambient glow for break modes (cyan for short, rose for long) */}
+              {mode !== "focus" && (
+                <div
+                  className={cn(
+                    "pointer-events-none absolute inset-0",
+                    mode === "short" ? "break-ambient" : "long-break-ambient",
+                  )}
+                  aria-hidden="true"
+                />
+              )}
               {/* Decorative gradient orb */}
               <div
                 className="pointer-events-none absolute -top-20 -right-20 h-60 w-60 rounded-full opacity-30 blur-3xl"
@@ -372,7 +501,7 @@ export function FocusTimerPage() {
               />
 
               {/* Mode tabs */}
-              <div className="flex justify-center mb-6">
+              <div className="flex justify-center mb-3">
                 <div className="inline-flex items-center gap-1 rounded-2xl bg-muted/70 p-1 backdrop-blur">
                   {(Object.keys(MODE_CONFIG) as TimerMode[]).map((m) => (
                     <button
@@ -398,6 +527,30 @@ export function FocusTimerPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Pomodoro cycle dots (4 focus sessions → long break) */}
+              <div className="flex flex-col items-center gap-1.5 mb-5">
+                <div
+                  className="flex items-center gap-1.5"
+                  style={{ color: modeCfg.accent }}
+                  aria-label={`Pomodoro cycle: ${completedFocusCount % 4 === 0 && completedFocusCount > 0 ? 4 : completedFocusCount % 4} of 4 focus sessions completed`}
+                >
+                  {[0, 1, 2, 3].map((i) => {
+                    const inCycle = completedFocusCount % 4;
+                    const allComplete = inCycle === 0 && completedFocusCount > 0;
+                    let cls = "cycle-dot";
+                    if (allComplete || i < inCycle) {
+                      cls = "cycle-dot completed";
+                    } else if (i === inCycle && mode === "focus") {
+                      cls = "cycle-dot active";
+                    }
+                    return <span key={i} className={cls} />;
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Pomodoro cycle · Long break after 4 focus sessions
+                </p>
               </div>
 
               {/* Timer ring */}
@@ -448,6 +601,7 @@ export function FocusTimerPage() {
                       strokeWidth={STROKE}
                       strokeLinecap="round"
                       strokeDasharray={CIRCUMFERENCE}
+                      initial={{ strokeDashoffset: CIRCUMFERENCE }}
                       animate={{ strokeDashoffset: ringOffset }}
                       transition={{
                         duration: reduceMotion ? 0 : 0.5,
@@ -655,6 +809,51 @@ export function FocusTimerPage() {
                   onDismiss={() => toast("Hydration reminder dismissed")}
                 />
               </div>
+
+              {/* Rotating break tip — only shown during break modes */}
+              <AnimatePresence>
+                {mode !== "focus" && (
+                  <motion.div
+                    initial={reduceMotion ? false : { opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+                    transition={{ duration: 0.25 }}
+                    className="mt-3"
+                  >
+                    <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-400/10 to-fuchsia-400/5 p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-violet-500" />
+                          <p className="text-xs font-semibold">Break tip · rotating</p>
+                        </div>
+                        <div
+                          className="flex items-end gap-0.5 h-4"
+                          style={{ color: modeCfg.accent }}
+                          aria-hidden="true"
+                        >
+                          <span className="sound-wave-bar" style={{ animationDelay: "0ms" }} />
+                          <span className="sound-wave-bar" style={{ animationDelay: "150ms" }} />
+                          <span className="sound-wave-bar" style={{ animationDelay: "300ms" }} />
+                          <span className="sound-wave-bar" style={{ animationDelay: "450ms" }} />
+                        </div>
+                      </div>
+                      <AnimatePresence mode="wait">
+                        <motion.p
+                          key={tipIndex}
+                          initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+                          transition={{ duration: 0.25 }}
+                          className="text-sm text-foreground/90 leading-relaxed"
+                          aria-live="polite"
+                        >
+                          {BREAK_TIPS[tipIndex]}
+                        </motion.p>
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </GlassCard>
           </StaggerItem>
         </StaggerContainer>

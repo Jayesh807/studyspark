@@ -28,7 +28,12 @@ import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { useAchievementCelebration } from "@/hooks/use-achievement-celebration";
+import { formatDistanceToNow } from "date-fns";
+import {
+  useAchievementCelebration,
+  getEarnedAtMap,
+  getRecentlyEarned,
+} from "@/hooks/use-achievement-celebration";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -173,8 +178,18 @@ const SUMMARY_CARDS: {
 /*  Components                                                                 */
 /* -------------------------------------------------------------------------- */
 
-function BadgeCard({ badge, index }: { badge: Badge; index: number }) {
+function BadgeCard({
+  badge,
+  index,
+  isNew = false,
+}: {
+  badge: Badge;
+  index: number;
+  isNew?: boolean;
+}) {
   const tier = TIER_CONFIG[badge.tier];
+  // The NEW pulse only applies to earned badges (never locked ones).
+  const showNew = isNew && badge.earned;
   return (
     <motion.div
       variants={{
@@ -190,7 +205,7 @@ function BadgeCard({ badge, index }: { badge: Badge; index: number }) {
       className={cn(
         "group relative flex flex-col items-center overflow-hidden rounded-3xl border p-5 text-center transition-colors",
         badge.earned
-          ? cn("backdrop-blur-xl", tier.border, tier.tintBg)
+          ? cn("backdrop-blur-xl", tier.border, tier.tintBg, showNew && "new-badge-pulse")
           : "border-border/40 bg-muted/30"
       )}
     >
@@ -203,6 +218,14 @@ function BadgeCard({ badge, index }: { badge: Badge; index: number }) {
           )}
           aria-hidden="true"
         />
+      )}
+
+      {/* "NEW" pill — only for badges earned in the last 24h. Placed
+          top-left to avoid overlapping the tier ribbon (top-right). */}
+      {showNew && (
+        <span className="new-tag-shine absolute left-2 top-2 z-20 overflow-hidden rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-md shadow-amber-500/40">
+          NEW
+        </span>
       )}
 
       {/* Glow background when earned */}
@@ -360,6 +383,100 @@ function ProgressMilestone({
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Recent Activity timeline                                                   */
+/* -------------------------------------------------------------------------- */
+
+function RecentActivity({
+  recentEarned,
+  onGoToFocus,
+}: {
+  recentEarned: { badge: Badge; earnedAt: number }[];
+  onGoToFocus: () => void;
+}) {
+  const items = recentEarned.slice(0, 5);
+  return (
+    <section aria-label="Recent activity">
+      <div className="mb-3 flex items-center gap-2">
+        <Clock className="h-4 w-4 text-amber-500" />
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Recent Activity
+        </h2>
+      </div>
+      {items.length === 0 ? (
+        <GlassCard className="flex flex-col items-center gap-3 p-6 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400/20 to-orange-500/20">
+            <Sparkles className="h-6 w-6 text-amber-500" />
+          </div>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            No recent achievements yet. Start studying to earn your first badge!
+          </p>
+          <Button
+            onClick={onGoToFocus}
+            className="gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white"
+          >
+            <Target className="h-4 w-4" /> Start a focus session
+          </Button>
+        </GlassCard>
+      ) : (
+        <GlassCard className="p-4 sm:p-6">
+          <div className="relative">
+            {/* Vertical timeline line — passes behind the medallions */}
+            <div
+              className="timeline-line pointer-events-none absolute bottom-2 left-[27px] top-2 w-0.5 sm:left-[31px]"
+              aria-hidden="true"
+            />
+            <ol className="relative space-y-3">
+              {items.map((item, i) => {
+                const tier = TIER_CONFIG[item.badge.tier];
+                return (
+                  <li
+                    key={item.badge.id}
+                    className="recent-item-enter relative flex items-center gap-3 sm:gap-4"
+                    style={{ animationDelay: `${i * 0.08}s` }}
+                  >
+                    {/* Tier-colored medallion */}
+                    <div
+                      className={cn(
+                        "relative z-[1] flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-2xl shadow-lg sm:h-16 sm:w-16",
+                        tier.gradient,
+                        tier.shadow
+                      )}
+                    >
+                      <span className="drop-shadow-sm">{item.badge.icon}</span>
+                    </div>
+                    {/* Title + tier label + relative time */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-semibold">
+                          {item.badge.title}
+                        </p>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider",
+                            tier.chipBg,
+                            tier.chipText
+                          )}
+                        >
+                          {tier.label}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(item.earnedAt, { addSuffix: true })}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </GlassCard>
+      )}
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Main page                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -390,6 +507,28 @@ export function AchievementsPage() {
     badges: data?.badges,
     enabled: !loading,
   });
+
+  // Read earned-at timestamps from localStorage. Re-read when `data` changes
+  // so the celebration hook's backfill (declared above → its effect runs
+  // first) is reflected in the timeline and NEW-pulse computations below.
+  // (The spec suggested `useMemo(() => getEarnedAtMap(), [])`, but that would
+  // read localStorage before the hook's backfill effect runs, leaving
+  // first-time visitors with an empty timeline until a manual refetch.)
+  const [earnedAtMap, setEarnedAtMap] = useState<Record<string, number>>({});
+  useEffect(() => {
+    setEarnedAtMap(getEarnedAtMap());
+  }, [data]);
+
+  // Badges earned in the last 30 days — drives the Recent Activity timeline.
+  const recentEarned = useMemo(
+    () => getRecentlyEarned(data?.badges ?? [], 30 * 24 * 60 * 60 * 1000),
+    [data, earnedAtMap]
+  );
+  // Badges earned in the last 24h — drives the NEW pulse on badge cards.
+  const newBadgeIds = useMemo(
+    () => new Set(getRecentlyEarned(data?.badges ?? []).map((r) => r.badge.id)),
+    [data, earnedAtMap]
+  );
 
   const filteredBadges = useMemo(() => {
     if (!data) return [];
@@ -558,6 +697,12 @@ export function AchievementsPage() {
         </div>
       </GlassCard>
 
+      {/* Recent Activity timeline */}
+      <RecentActivity
+        recentEarned={recentEarned}
+        onGoToFocus={() => setView("focus" as AppView)}
+      />
+
       {/* Summary stat cards */}
       <div>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -655,7 +800,7 @@ export function AchievementsPage() {
         <StaggerContainer className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {filteredBadges.map((badge, i) => (
             <StaggerItem key={badge.id} className="h-full">
-              <BadgeCard badge={badge} index={i} />
+              <BadgeCard badge={badge} index={i} isNew={newBadgeIds.has(badge.id)} />
             </StaggerItem>
           ))}
         </StaggerContainer>
