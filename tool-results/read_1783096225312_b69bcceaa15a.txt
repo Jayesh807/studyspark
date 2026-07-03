@@ -1,0 +1,1093 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import { useTheme } from "next-themes";
+     6→import {
+     7→  Palette,
+     8→  Sun,
+     9→  Moon,
+    10→  Monitor,
+    11→  Bell,
+    12→  Sparkles,
+    13→  PanelLeft,
+    14→  LogOut,
+    15→  Trash2,
+    16→  Info,
+    17→  User,
+    18→  Calendar,
+    19→  Check,
+    20→  Loader2,
+    21→  Heart,
+    22→  Github,
+    23→  Globe,
+    24→  Mail,
+    25→  AlertTriangle,
+    26→  GraduationCap,
+    27→  RotateCcw,
+    28→  Download,
+    29→  FileJson,
+    30→  FileSpreadsheet,
+    31→  Clock,
+    32→} from "lucide-react";
+    33→import { toast } from "sonner";
+    34→
+    35→import { useAppStore, type AccentColor } from "@/lib/store";
+    36→import { useAuth } from "@/hooks/use-auth";
+    37→import { apiFetch, handleError } from "@/lib/api";
+    38→import { replayTour } from "@/components/dashboard/onboarding-tour";
+    39→
+    40→import {
+    41→  PageTransition,
+    42→  GlassCard,
+    43→  StaggerContainer,
+    44→  StaggerItem,
+    45→} from "@/components/shared/motion";
+    46→import { Skeleton } from "@/components/shared/feedback";
+    47→import { Button } from "@/components/ui/button";
+    48→import { Input } from "@/components/ui/input";
+    49→import { Switch } from "@/components/ui/switch";
+    50→import { Badge } from "@/components/ui/badge";
+    51→import { Separator } from "@/components/ui/separator";
+    52→import {
+    53→  AlertDialog,
+    54→  AlertDialogAction,
+    55→  AlertDialogCancel,
+    56→  AlertDialogContent,
+    57→  AlertDialogDescription,
+    58→  AlertDialogFooter,
+    59→  AlertDialogHeader,
+    60→  AlertDialogTitle,
+    61→  AlertDialogTrigger,
+    62→} from "@/components/ui/alert-dialog";
+    63→import { cn } from "@/lib/utils";
+    64→
+    65→/* -------------------------------------------------------------------------- */
+    66→/*                              Constants                                     */
+    67→/* -------------------------------------------------------------------------- */
+    68→
+    69→interface AccentOption {
+    70→  hue: AccentColor;
+    71→  label: string;
+    72→}
+    73→
+    74→const ACCENT_OPTIONS: AccentOption[] = [
+    75→  { hue: "277", label: "Violet" },
+    76→  { hue: "300", label: "Purple" },
+    77→  { hue: "162", label: "Emerald" },
+    78→  { hue: "16", label: "Rose" },
+    79→  { hue: "200", label: "Cyan" },
+    80→  { hue: "70", label: "Amber" },
+    81→];
+    82→
+    83→function accentSwatchStyle(hue: AccentColor): React.CSSProperties {
+    84→  return { backgroundColor: `oklch(0.6 0.2 ${hue})` };
+    85→}
+    86→
+    87→function accentGradientStyle(hue: string): React.CSSProperties {
+    88→  return {
+    89→    background: `linear-gradient(135deg, oklch(0.58 0.22 ${hue}), oklch(0.66 0.2 calc(${hue} + 40)))`,
+    90→  };
+    91→}
+    92→
+    93→interface ThemeOption {
+    94→  value: "light" | "dark" | "system";
+    95→  label: string;
+    96→  icon: React.ElementType;
+    97→}
+    98→
+    99→const THEME_OPTIONS: ThemeOption[] = [
+   100→  { value: "light", label: "Light", icon: Sun },
+   101→  { value: "dark", label: "Dark", icon: Moon },
+   102→  { value: "system", label: "System", icon: Monitor },
+   103→];
+   104→
+   105→/* -------------------------------------------------------------------------- */
+   106→/*                              Section Heading                               */
+   107→/* -------------------------------------------------------------------------- */
+   108→
+   109→interface SectionProps {
+   110→  icon: React.ElementType;
+   111→  title: string;
+   112→  description: string;
+   113→  children: React.ReactNode;
+   114→  delay?: number;
+   115→}
+   116→
+   117→function SettingsSection({
+   118→  icon: Icon,
+   119→  title,
+   120→  description,
+   121→  children,
+   122→  delay = 0,
+   123→}: SectionProps) {
+   124→  return (
+   125→    <StaggerItem delay={delay}>
+   126→      <GlassCard className="p-5 sm:p-6">
+   127→        <div className="flex items-start gap-3 mb-5">
+   128→          <div
+   129→            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-md"
+   130→            style={accentGradientStyle("var(--accent-color)")}
+   131→          >
+   132→            <Icon className="h-5 w-5" />
+   133→          </div>
+   134→          <div className="min-w-0">
+   135→            <h3 className="text-base font-semibold leading-tight">{title}</h3>
+   136→            <p className="text-xs text-muted-foreground mt-0.5">
+   137→              {description}
+   138→            </p>
+   139→          </div>
+   140→        </div>
+   141→        <div className="space-y-1">{children}</div>
+   142→      </GlassCard>
+   143→    </StaggerItem>
+   144→  );
+   145→}
+   146→
+   147→/* -------------------------------------------------------------------------- */
+   148→/*                              Row Component                                 */
+   149→/* -------------------------------------------------------------------------- */
+   150→
+   151→interface RowProps {
+   152→  title: string;
+   153→  description?: string;
+   154→  children: React.ReactNode;
+   155→  icon?: React.ElementType;
+   156→}
+   157→
+   158→function SettingsRow({ title, description, children, icon: Icon }: RowProps) {
+   159→  return (
+   160→    <div className="flex items-center justify-between gap-4 py-3">
+   161→      <div className="flex items-start gap-3 min-w-0">
+   162→        {Icon && (
+   163→          <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+   164→        )}
+   165→        <div className="min-w-0">
+   166→          <div className="text-sm font-medium">{title}</div>
+   167→          {description && (
+   168→            <div className="text-xs text-muted-foreground mt-0.5">
+   169→              {description}
+   170→            </div>
+   171→          )}
+   172→        </div>
+   173→      </div>
+   174→      <div className="shrink-0">{children}</div>
+   175→    </div>
+   176→  );
+   177→}
+   178→
+   179→/* -------------------------------------------------------------------------- */
+   180→/*                              Theme Toggle                                  */
+   181→/* -------------------------------------------------------------------------- */
+   182→
+   183→function ThemeToggle() {
+   184→  const { theme, setTheme } = useTheme();
+   185→  const [mounted, setMounted] = useState(false);
+   186→
+   187→  // next-themes resolves the theme on the client only; track mount so we
+   188→  // render the active state without causing SSR/CSR hydration mismatch.
+   189→  useEffect(() => {
+   190→    // eslint-disable-next-line react-hooks/set-state-in-effect
+   191→    setMounted(true);
+   192→  }, []);
+   193→
+   194→  if (!mounted) {
+   195→    return (
+   196→      <div className="inline-flex h-9 items-center rounded-lg bg-muted p-[3px] gap-1">
+   197→        {THEME_OPTIONS.map((t) => (
+   198→          <div
+   199→            key={t.value}
+   200→            className="h-[calc(100%-1px)] w-20 rounded-md bg-muted-foreground/10"
+   201→          />
+   202→        ))}
+   203→      </div>
+   204→    );
+   205→  }
+   206→
+   207→  return (
+   208→    <div className="inline-flex h-9 items-center rounded-lg bg-muted p-[3px] gap-1">
+   209→      {THEME_OPTIONS.map((opt) => {
+   210→        const active = theme === opt.value;
+   211→        const Icon = opt.icon;
+   212→        return (
+   213→          <button
+   214→            key={opt.value}
+   215→            type="button"
+   216→            onClick={() => setTheme(opt.value)}
+   217→            className={cn(
+   218→              "relative inline-flex h-[calc(100%-1px)] items-center gap-1.5 rounded-md px-3 text-sm font-medium transition-colors",
+   219→              active
+   220→                ? "text-foreground"
+   221→                : "text-muted-foreground hover:text-foreground"
+   222→            )}
+   223→          >
+   224→            {active && (
+   225→              <motion.div
+   226→                layoutId="theme-active"
+   227→                className="absolute inset-0 rounded-md bg-background shadow-sm border border-border"
+   228→                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+   229→              />
+   230→            )}
+   231→            <span className="relative z-10 flex items-center gap-1.5">
+   232→              <Icon className="h-3.5 w-3.5" />
+   233→              {opt.label}
+   234→            </span>
+   235→          </button>
+   236→        );
+   237→      })}
+   238→    </div>
+   239→  );
+   240→}
+   241→
+   242→/* -------------------------------------------------------------------------- */
+   243→/*                              Accent Picker                                 */
+   244→/* -------------------------------------------------------------------------- */
+   245→
+   246→function AccentPicker() {
+   247→  const accentColor = useAppStore((s) => s.accentColor);
+   248→  const setAccentColor = useAppStore((s) => s.setAccentColor);
+   249→
+   250→  return (
+   251→    <div className="flex flex-wrap gap-3">
+   252→      {ACCENT_OPTIONS.map((opt) => {
+   253→        const active = accentColor === opt.hue;
+   254→        return (
+   255→          <motion.button
+   256→            key={opt.hue}
+   257→            type="button"
+   258→            onClick={() => setAccentColor(opt.hue)}
+   259→            whileHover={{ y: -2 }}
+   260→            whileTap={{ scale: 0.95 }}
+   261→            className={cn(
+   262→              "group relative flex flex-col items-center gap-1.5 rounded-2xl p-2 transition-all",
+   263→              active ? "bg-muted/60" : "hover:bg-muted/40"
+   264→            )}
+   265→            aria-label={`Set accent to ${opt.label}`}
+   266→            aria-pressed={active}
+   267→          >
+   268→            <div
+   269→              className={cn(
+   270→                "relative flex h-10 w-10 items-center justify-center rounded-full ring-2 ring-offset-2 ring-offset-background transition-all",
+   271→                active ? "ring-foreground" : "ring-transparent"
+   272→              )}
+   273→              style={accentSwatchStyle(opt.hue)}
+   274→            >
+   275→              <AnimatePresence>
+   276→                {active && (
+   277→                  <motion.div
+   278→                    initial={{ scale: 0, opacity: 0 }}
+   279→                    animate={{ scale: 1, opacity: 1 }}
+   280→                    exit={{ scale: 0, opacity: 0 }}
+   281→                    transition={{
+   282→                      type: "spring",
+   283→                      stiffness: 500,
+   284→                      damping: 22,
+   285→                    }}
+   286→                    className="absolute inset-0 flex items-center justify-center"
+   287→                  >
+   288→                    <Check className="h-5 w-5 text-white drop-shadow" />
+   289→                  </motion.div>
+   290→                )}
+   291→              </AnimatePresence>
+   292→            </div>
+   293→            <span
+   294→              className={cn(
+   295→                "text-[11px] font-medium transition-colors",
+   296→                active ? "text-foreground" : "text-muted-foreground"
+   297→              )}
+   298→            >
+   299→              {opt.label}
+   300→            </span>
+   301→          </motion.button>
+   302→        );
+   303→      })}
+   304→    </div>
+   305→  );
+   306→}
+   307→
+   308→/* -------------------------------------------------------------------------- */
+   309→/*                              Animated Switch Row                           */
+   310→/* -------------------------------------------------------------------------- */
+   311→
+   312→interface SwitchRowProps {
+   313→  title: string;
+   314→  description?: string;
+   315→  icon?: React.ElementType;
+   316→  checked: boolean;
+   317→  onCheckedChange: (v: boolean) => void;
+   318→}
+   319→
+   320→function SwitchRow({
+   321→  title,
+   322→  description,
+   323→  icon: Icon,
+   324→  checked,
+   325→  onCheckedChange,
+   326→}: SwitchRowProps) {
+   327→  return (
+   328→    <SettingsRow title={title} description={description} icon={Icon}>
+   329→      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+   330→    </SettingsRow>
+   331→  );
+   332→}
+   333→
+   334→/* -------------------------------------------------------------------------- */
+   335→/*                              Action Row                                    */
+   336→/* -------------------------------------------------------------------------- */
+   337→//
+   338→// Like SwitchRow but the right-side control is an arbitrary React node (used
+   339→// for the "Replay onboarding tour" button). Keeps the same left-aligned
+   340→// icon + title + description layout so rows stay visually consistent.
+   341→interface ActionRowProps {
+   342→  title: string;
+   343→  description?: string;
+   344→  icon?: React.ElementType;
+   345→  children: React.ReactNode;
+   346→}
+   347→
+   348→function ActionRow({
+   349→  title,
+   350→  description,
+   351→  icon: Icon,
+   352→  children,
+   353→}: ActionRowProps) {
+   354→  return (
+   355→    <SettingsRow title={title} description={description} icon={Icon}>
+   356→      {children}
+   357→    </SettingsRow>
+   358→  );
+   359→}
+   360→
+   361→/* -------------------------------------------------------------------------- */
+   362→/*                              Reset Data Dialog                             */
+   363→/* -------------------------------------------------------------------------- */
+   364→
+   365→interface ResetState {
+   366→  status: "idle" | "fetching" | "deleting" | "done";
+   367→  current: number;
+   368→  total: number;
+   369→  label: string;
+   370→}
+   371→
+   372→function ResetDataDialog() {
+   373→  const [open, setOpen] = useState(false);
+   374→  const [state, setState] = useState<ResetState>({
+   375→    status: "idle",
+   376→    current: 0,
+   377→    total: 0,
+   378→    label: "",
+   379→  });
+   380→
+   381→  const reset = useCallback(async () => {
+   382→    setState({
+   383→      status: "fetching",
+   384→      current: 0,
+   385→      total: 0,
+   386→      label: "Fetching your data...",
+   387→    });
+   388→    try {
+   389→      const [todosRes, subjectsRes, eventsRes, examsRes] = await Promise.all([
+   390→        apiFetch<{ todos: Todo[] }>("/api/todos"),
+   391→        apiFetch<{ subjects: Subject[] }>("/api/subjects"),
+   392→        apiFetch<{ events: Event[] }>("/api/events"),
+   393→        apiFetch<{ exams: Exam[] }>("/api/exams"),
+   394→      ]);
+   395→
+   396→      const items: { id: string; type: string; label: string }[] = [
+   397→        ...todosRes.todos.map((t) => ({
+   398→          id: t.id,
+   399→          type: "todos",
+   400→          label: "tasks",
+   401→        })),
+   402→        ...subjectsRes.subjects.map((s) => ({
+   403→          id: s.id,
+   404→          type: "subjects",
+   405→          label: "subjects",
+   406→        })),
+   407→        ...eventsRes.events.map((e) => ({
+   408→          id: e.id,
+   409→          type: "events",
+   410→          label: "events",
+   411→        })),
+   412→        ...examsRes.exams.map((e) => ({
+   413→          id: e.id,
+   414→          type: "exams",
+   415→          label: "exams",
+   416→        })),
+   417→      ];
+   418→
+   419→      setState({
+   420→        status: "deleting",
+   421→        current: 0,
+   422→        total: items.length,
+   423→        label: "Deleting your data...",
+   424→      });
+   425→
+   426→      let deleted = 0;
+   427→      for (const item of items) {
+   428→        await apiFetch(`/api/${item.type}/${item.id}`, { method: "DELETE" });
+   429→        deleted++;
+   430→        setState({
+   431→          status: "deleting",
+   432→          current: deleted,
+   433→          total: items.length,
+   434→          label: `Deleting ${item.label}...`,
+   435→        });
+   436→      }
+   437→
+   438→      // Reset profile to defaults
+   439→      setState((s) => ({
+   440→        ...s,
+   441→        label: "Resetting profile...",
+   442→      }));
+   443→      await apiFetch("/api/profile", {
+   444→        method: "PUT",
+   445→        body: JSON.stringify({
+   446→          bio: "",
+   447→          goal: "",
+   448→          targetHours: 6,
+   449→          college: "",
+   450→          course: "",
+   451→          semester: 1,
+   452→          avatar: "",
+   453→        }),
+   454→      });
+   455→
+   456→      setState((s) => ({ ...s, status: "done", current: s.total }));
+   457→      toast.success("All your data has been reset.");
+   458→      setTimeout(() => {
+   459→        setOpen(false);
+   460→        setState({
+   461→          status: "idle",
+   462→          current: 0,
+   463→          total: 0,
+   464→          label: "",
+   465→        });
+   466→      }, 1400);
+   467→    } catch (error) {
+   468→      handleError(error, "Failed to reset all data");
+   469→      setState({
+   470→        status: "idle",
+   471→        current: 0,
+   472→        total: 0,
+   473→        label: "",
+   474→      });
+   475→    }
+   476→  }, []);
+   477→
+   478→  const isWorking =
+   479→    state.status === "fetching" || state.status === "deleting";
+   480→  const pct =
+   481→    state.total > 0 ? Math.round((state.current / state.total) * 100) : 0;
+   482→
+   483→  return (
+   484→    <AlertDialog
+   485→      open={open}
+   486→      onOpenChange={(v) => {
+   487→        if (!isWorking) setOpen(v);
+   488→      }}
+   489→    >
+   490→      <AlertDialogTrigger asChild>
+   491→        <Button variant="destructive" className="gap-2">
+   492→          <Trash2 className="h-4 w-4" />
+   493→          Reset All My Data
+   494→        </Button>
+   495→      </AlertDialogTrigger>
+   496→      <AlertDialogContent>
+   497→        <AlertDialogHeader>
+   498→          <AlertDialogTitle className="flex items-center gap-2">
+   499→            <AlertTriangle className="h-5 w-5 text-destructive" />
+   500→            Reset all your data?
+   501→          </AlertDialogTitle>
+   502→          <AlertDialogDescription>
+   503→            This will permanently delete all of your tasks, subjects, events,
+   504→            exams, and reset your profile to defaults. This action cannot be
+   505→            undone.
+   506→          </AlertDialogDescription>
+   507→        </AlertDialogHeader>
+   508→
+   509→        {isWorking && (
+   510→          <div className="space-y-2 py-2">
+   511→            <div className="flex items-center justify-between text-xs">
+   512→              <span className="flex items-center gap-2 text-muted-foreground">
+   513→                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+   514→                {state.label}
+   515→              </span>
+   516→              <span className="font-medium">
+   517→                {state.total > 0
+   518→                  ? `${state.current}/${state.total} (${pct}%)`
+   519→                  : "…"}
+   520→              </span>
+   521→            </div>
+   522→            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+   523→              <motion.div
+   524→                className="h-full rounded-full bg-destructive"
+   525→                initial={{ width: 0 }}
+   526→                animate={{
+   527→                  width: `${state.status === "fetching" ? 8 : pct}%`,
+   528→                }}
+   529→                transition={{ duration: 0.3 }}
+   530→              />
+   531→            </div>
+   532→          </div>
+   533→        )}
+   534→
+   535→        {state.status === "done" && (
+   536→          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+   537→            <Check className="h-4 w-4" />
+   538→            All data reset successfully.
+   539→          </div>
+   540→        )}
+   541→
+   542→        <AlertDialogFooter>
+   543→          <AlertDialogCancel disabled={isWorking}>
+   544→            {state.status === "done" ? "Close" : "Cancel"}
+   545→          </AlertDialogCancel>
+   546→          {state.status !== "done" && (
+   547→            <AlertDialogAction
+   548→              onClick={(e) => {
+   549→                e.preventDefault();
+   550→                void reset();
+   551→              }}
+   552→              disabled={isWorking}
+   553→              className="bg-destructive text-white hover:bg-destructive/90"
+   554→            >
+   555→              {isWorking ? (
+   556→                <>
+   557→                  <Loader2 className="h-4 w-4 animate-spin" />
+   558→                  Resetting...
+   559→                </>
+   560→              ) : (
+   561→                <>
+   562→                  <Trash2 className="h-4 w-4" />
+   563→                  Yes, reset everything
+   564→                </>
+   565→              )}
+   566→            </AlertDialogAction>
+   567→          )}
+   568→        </AlertDialogFooter>
+   569→      </AlertDialogContent>
+   570→    </AlertDialog>
+   571→  );
+   572→}
+   573→
+   574→/* -------------------------------------------------------------------------- */
+   575→/*                              Load Demo Data Dialog                         */
+   576→/* -------------------------------------------------------------------------- */
+   577→
+   578→function LoadDemoDataDialog() {
+   579→  const [seeding, setSeeding] = useState(false);
+   580→  const setView = useAppStore((s) => s.setView);
+   581→
+   582→  const handleSeed = useCallback(async () => {
+   583→    setSeeding(true);
+   584→    try {
+   585→      await apiFetch<{ success: boolean; message: string }>("/api/seed", {
+   586→        method: "POST",
+   587→      });
+   588→      toast.success("Demo data loaded! Explore the dashboard.");
+   589→      setView("dashboard");
+   590→    } catch (error) {
+   591→      handleError(error, "Failed to load demo data");
+   592→    } finally {
+   593→      setSeeding(false);
+   594→    }
+   595→  }, [setView]);
+   596→
+   597→  return (
+   598→    <AlertDialog>
+   599→      <AlertDialogTrigger asChild>
+   600→        <Button
+   601→          className="gap-2 text-white shadow-md transition-all hover:shadow-lg"
+   602→          style={{
+   603→            background:
+   604→              "linear-gradient(135deg, oklch(0.6 0.2 277), oklch(0.65 0.22 300), oklch(0.58 0.2 330))",
+   605→          }}
+   606→          disabled={seeding}
+   607→        >
+   608→          {seeding ? (
+   609→            <Loader2 className="h-4 w-4 animate-spin" />
+   610→          ) : (
+   611→            <Sparkles className="h-4 w-4" />
+   612→          )}
+   613→          {seeding ? "Loading..." : "Load Demo Data"}
+   614→        </Button>
+   615→      </AlertDialogTrigger>
+   616→      <AlertDialogContent>
+   617→        <AlertDialogHeader>
+   618→          <AlertDialogTitle className="flex items-center gap-2">
+   619→            <Sparkles className="h-5 w-5 text-violet-500" />
+   620→            Load demo data?
+   621→          </AlertDialogTitle>
+   622→          <AlertDialogDescription>
+   623→            This will replace all your current data with demo data. Continue?
+   624→          </AlertDialogDescription>
+   625→        </AlertDialogHeader>
+   626→        <AlertDialogFooter>
+   627→          <AlertDialogCancel disabled={seeding}>Cancel</AlertDialogCancel>
+   628→          <AlertDialogAction
+   629→            onClick={(e) => {
+   630→              e.preventDefault();
+   631→              void handleSeed();
+   632→            }}
+   633→            disabled={seeding}
+   634→            className="bg-violet-600 text-white hover:bg-violet-700"
+   635→          >
+   636→            {seeding ? (
+   637→              <>
+   638→                <Loader2 className="h-4 w-4 animate-spin" />
+   639→                Loading...
+   640→              </>
+   641→            ) : (
+   642→              <>
+   643→                <Sparkles className="h-4 w-4" />
+   644→                Yes, load demo data
+   645→              </>
+   646→            )}
+   647→          </AlertDialogAction>
+   648→        </AlertDialogFooter>
+   649→      </AlertDialogContent>
+   650→    </AlertDialog>
+   651→  );
+   652→}
+   653→
+   654→/* -------------------------------------------------------------------------- */
+   655→/*                              Main Settings Page                            */
+   656→/* -------------------------------------------------------------------------- */
+   657→
+   658→export function SettingsPage() {
+   659→  const {
+   660→    user,
+   661→    accentColor,
+   662→    notifications,
+   663→    setNotifications,
+   664→    reduceMotion,
+   665→    setReduceMotion,
+   666→    sidebarOpen,
+   667→    setSidebarOpen,
+   668→  } = useAppStore();
+   669→  const { logout } = useAuth();
+   670→
+   671→  const [memberSince, setMemberSince] = useState<string>("Recently");
+   672→  const [loading, setLoading] = useState(true);
+   673→  const [loggingOut, setLoggingOut] = useState(false);
+   674→
+   675→  useEffect(() => {
+   676→    let active = true;
+   677→    (async () => {
+   678→      try {
+   679→        const me = await apiFetch<{
+   680→          user: { id: string; username: string; createdAt?: string } | null;
+   681→        }>("/api/auth/me");
+   682→        if (!active) return;
+   683→        if (me.user?.createdAt) {
+   684→          try {
+   685→            const d = new Date(me.user.createdAt);
+   686→            if (!isNaN(d.getTime())) {
+   687→              setMemberSince(
+   688→                d.toLocaleDateString("en-US", {
+   689→                  month: "long",
+   690→                  year: "numeric",
+   691→                })
+   692→              );
+   693→            }
+   694→          } catch {
+   695→            /* ignore */
+   696→          }
+   697→        }
+   698→      } catch {
+   699→        /* ignore */
+   700→      } finally {
+   701→        if (active) setLoading(false);
+   702→      }
+   703→    })();
+   704→    return () => {
+   705→      active = false;
+   706→    };
+   707→  }, []);
+   708→
+   709→  const handleLogout = async () => {
+   710→    setLoggingOut(true);
+   711→    try {
+   712→      await logout();
+   713→      toast.success("Logged out successfully");
+   714→    } catch {
+   715→      toast.error("Logout failed");
+   716→    } finally {
+   717→      setLoggingOut(false);
+   718→    }
+   719→  };
+   720→
+   721→  const handleExport = useCallback(async (type: string) => {
+   722→    const labels: Record<string, string> = {
+   723→      "all-json": "JSON backup",
+   724→      todos: "Tasks CSV",
+   725→      subjects: "Subjects CSV",
+   726→      exams: "Exams CSV",
+   727→      focus: "Focus sessions CSV",
+   728→    };
+   729→    const label = labels[type] ?? "Export";
+   730→    const toastId = toast.loading(`Preparing ${label}…`);
+   731→    try {
+   732→      const res = await fetch(`/api/export?type=${encodeURIComponent(type)}`);
+   733→      if (!res.ok) {
+   734→        const data = await res.json().catch(() => ({}));
+   735→        throw new Error(data.error ?? "Export failed");
+   736→      }
+   737→      const blob = await res.blob();
+   738→      // Extract filename from Content-Disposition header, fallback to generated name
+   739→      const cd = res.headers.get("Content-Disposition") ?? "";
+   740→      const match = cd.match(/filename="?([^"]+)"?/);
+   741→      const filename =
+   742→        match?.[1] ??
+   743→        `studyspark-${type}-${new Date().toISOString().slice(0, 10)}.${type === "all-json" ? "json" : "csv"}`;
+   744→      // Trigger download via a temporary anchor
+   745→      const url = URL.createObjectURL(blob);
+   746→      const a = document.createElement("a");
+   747→      a.href = url;
+   748→      a.download = filename;
+   749→      document.body.appendChild(a);
+   750→      a.click();
+   751→      document.body.removeChild(a);
+   752→      URL.revokeObjectURL(url);
+   753→      toast.success(`${label} downloaded`, {
+   754→        id: toastId,
+   755→        description: filename,
+   756→      });
+   757→    } catch (err) {
+   758→      toast.error(`Failed to export ${label}`, {
+   759→        id: toastId,
+   760→        description: err instanceof Error ? err.message : undefined,
+   761→      });
+   762→    }
+   763→  }, []);
+   764→
+   765→  return (
+   766→    <PageTransition>
+   767→      <div className="space-y-6 sm:space-y-8">
+   768→        {/* Header */}
+   769→        <div>
+   770→          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+   771→            Sett<span className="text-gradient">ings</span>
+   772→          </h1>
+   773→          <p className="text-sm text-muted-foreground mt-1">
+   774→            Customize StudySpark to match your style and preferences.
+   775→          </p>
+   776→        </div>
+   777→
+   778→        <StaggerContainer className="space-y-5 sm:space-y-6">
+   779→          {/* Appearance */}
+   780→          <SettingsSection
+   781→            icon={Palette}
+   782→            title="Appearance"
+   783→            description="Pick a theme and accent color that feels like you."
+   784→            delay={0}
+   785→          >
+   786→            <SettingsRow
+   787→              title="Theme"
+   788→              description="Switch between light, dark, or system appearance."
+   789→              icon={Sun}
+   790→            >
+   791→              <ThemeToggle />
+   792→            </SettingsRow>
+   793→            <Separator />
+   794→            <div className="py-3">
+   795→              <div className="flex items-start gap-3 mb-3">
+   796→                <Sparkles className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+   797→                <div>
+   798→                  <div className="text-sm font-medium">Accent Color</div>
+   799→                  <div className="text-xs text-muted-foreground mt-0.5">
+   800→                    Highlights, buttons, and charts use this hue.
+   801→                  </div>
+   802→                </div>
+   803→              </div>
+   804→              <div className="pl-7">
+   805→                <AccentPicker />
+   806→              </div>
+   807→              <div className="pl-7 mt-2 text-[11px] text-muted-foreground">
+   808→                Current accent:{" "}
+   809→                <span className="font-medium text-foreground">
+   810→                  {ACCENT_OPTIONS.find((o) => o.hue === accentColor)?.label ??
+   811→                    "Violet"}
+   812→                </span>
+   813→              </div>
+   814→            </div>
+   815→          </SettingsSection>
+   816→
+   817→          {/* Preferences */}
+   818→          <SettingsSection
+   819→            icon={Bell}
+   820→            title="Preferences"
+   821→            description="Fine-tune notifications, motion, and layout behavior."
+   822→            delay={0.05}
+   823→          >
+   824→            <SwitchRow
+   825→              title="Notifications"
+   826→              description="Get reminded about tasks, exams, and focus sessions."
+   827→              icon={Bell}
+   828→              checked={notifications}
+   829→              onCheckedChange={(v) => {
+   830→                setNotifications(v);
+   831→                toast.success(`Notifications ${v ? "enabled" : "disabled"}`);
+   832→              }}
+   833→            />
+   834→            <Separator />
+   835→            <SwitchRow
+   836→              title="Reduce Motion"
+   837→              description="Disable animations and transitions app-wide."
+   838→              icon={Sparkles}
+   839→              checked={reduceMotion}
+   840→              onCheckedChange={(v) => {
+   841→                setReduceMotion(v);
+   842→                toast.success(`Motion ${v ? "reduced" : "enabled"}`);
+   843→              }}
+   844→            />
+   845→            <Separator />
+   846→            <SwitchRow
+   847→              title="Default Sidebar Collapsed"
+   848→              description="Start with the sidebar collapsed on desktop."
+   849→              icon={PanelLeft}
+   850→              checked={!sidebarOpen}
+   851→              onCheckedChange={(v) => setSidebarOpen(!v)}
+   852→            />
+   853→            <Separator />
+   854→            <ActionRow
+   855→              title="Replay onboarding tour"
+   856→              description="See the 5-step tour again to rediscover key features."
+   857→              icon={GraduationCap}
+   858→            >
+   859→              <Button
+   860→                variant="outline"
+   861→                size="sm"
+   862→                onClick={() => {
+   863→                  replayTour();
+   864→                  toast.success("Replaying tour...");
+   865→                }}
+   866→                className="gap-1.5 transition-all hover:border-violet-500/40 hover:bg-violet-500/5 hover:text-violet-600 dark:hover:text-violet-300"
+   867→              >
+   868→                <RotateCcw className="h-3.5 w-3.5" />
+   869→                Replay tour
+   870→              </Button>
+   871→            </ActionRow>
+   872→          </SettingsSection>
+   873→
+   874→          {/* Account */}
+   875→          <SettingsSection
+   876→            icon={User}
+   877→            title="Account"
+   878→            description="Manage your session and account data."
+   879→            delay={0.1}
+   880→          >
+   881→            <div className="py-3 space-y-3">
+   882→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   883→                <div className="space-y-1.5">
+   884→                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+   885→                    Username
+   886→                  </label>
+   887→                  {loading ? (
+   888→                    <Skeleton className="h-9 w-full rounded-md" />
+   889→                  ) : (
+   890→                    <Input
+   891→                      value={user?.username ?? "—"}
+   892→                      readOnly
+   893→                      disabled
+   894→                      className="bg-muted/40"
+   895→                    />
+   896→                  )}
+   897→                </div>
+   898→                <div className="space-y-1.5">
+   899→                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+   900→                    Member Since
+   901→                  </label>
+   902→                  {loading ? (
+   903→                    <Skeleton className="h-9 w-full rounded-md" />
+   904→                  ) : (
+   905→                    <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
+   906→                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+   907→                      <span>{memberSince}</span>
+   908→                    </div>
+   909→                  )}
+   910→                </div>
+   911→              </div>
+   912→
+   913→              <Separator />
+   914→
+   915→              <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
+   916→                <Button
+   917→                  variant="destructive"
+   918→                  onClick={handleLogout}
+   919→                  disabled={loggingOut}
+   920→                  className="gap-2"
+   921→                >
+   922→                  {loggingOut ? (
+   923→                    <Loader2 className="h-4 w-4 animate-spin" />
+   924→                  ) : (
+   925→                    <LogOut className="h-4 w-4" />
+   926→                  )}
+   927→                  {loggingOut ? "Logging out..." : "Log Out"}
+   928→                </Button>
+   929→                <ResetDataDialog />
+   930→              </div>
+   931→            </div>
+   932→          </SettingsSection>
+   933→
+   934→          {/* Data Export */}
+   935→          <SettingsSection
+   936→            icon={Download}
+   937→            title="Data Export"
+   938→            description="Download your data for backup, analysis, or transfer. Available as CSV or a complete JSON backup."
+   939→            delay={0.11}
+   940→          >
+   941→            <div className="py-2 space-y-5">
+   942→              {/* Full JSON backup — featured */}
+   943→              <div className="relative overflow-hidden rounded-2xl border-2 border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-fuchsia-500/5 to-transparent p-4">
+   944→                <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl pointer-events-none" />
+   945→                <div className="relative flex flex-col sm:flex-row sm:items-center gap-3">
+   946→                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25">
+   947→                    <FileJson className="h-5 w-5" />
+   948→                  </span>
+   949→                  <div className="min-w-0 flex-1">
+   950→                    <div className="flex items-center gap-2 flex-wrap">
+   951→                      <h4 className="text-sm font-semibold">Complete Backup (JSON)</h4>
+   952→                      <Badge className="bg-violet-500/15 text-violet-600 dark:text-violet-300 text-[10px]">
+   953→                        Recommended
+   954→                      </Badge>
+   955→                    </div>
+   956→                    <p className="text-xs text-muted-foreground mt-0.5">
+   957→                      Everything in one file — profile, tasks, subjects, exams, events & focus sessions.
+   958→                    </p>
+   959→                  </div>
+   960→                  <Button
+   961→                    size="sm"
+   962→                    className="gap-1.5 shrink-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-700 hover:to-fuchsia-700"
+   963→                    onClick={() => handleExport("all-json")}
+   964→                  >
+   965→                    <Download className="h-3.5 w-3.5" />
+   966→                    Download
+   967→                  </Button>
+   968→                </div>
+   969→              </div>
+   970→
+   971→              {/* CSV exports grid */}
+   972→              <div>
+   973→                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+   974→                  <FileSpreadsheet className="h-3.5 w-3.5" />
+   975→                  Individual CSV Exports
+   976→                </p>
+   977→                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+   978→                  {[
+   979→                    { type: "todos", label: "Tasks", emoji: "📋" },
+   980→                    { type: "subjects", label: "Subjects", emoji: "📚" },
+   981→                    { type: "exams", label: "Exams", emoji: "📝" },
+   982→                    { type: "focus", label: "Focus", emoji: "🎯" },
+   983→                  ].map((item) => (
+   984→                    <button
+   985→                      key={item.type}
+   986→                      type="button"
+   987→                      onClick={() => handleExport(item.type)}
+   988→                      className="group relative flex flex-col items-center gap-1.5 rounded-xl border border-border bg-background/40 p-3 text-center transition-all hover:border-violet-500/40 hover:bg-violet-500/5 hover:shadow-md focus-ring-accent"
+   989→                      aria-label={`Export ${item.label} as CSV`}
+   990→                    >
+   991→                      <span className="text-xl transition-transform group-hover:scale-110">{item.emoji}</span>
+   992→                      <span className="text-xs font-medium">{item.label}</span>
+   993→                      <span className="text-[10px] text-muted-foreground">CSV</span>
+   994→                      <Download className="absolute top-1.5 right-1.5 h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+   995→                    </button>
+   996→                  ))}
+   997→                </div>
+   998→              </div>
+   999→
+  1000→              <div className="flex items-start gap-2 rounded-lg bg-muted/40 p-2.5 text-xs text-muted-foreground">
+  1001→                <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+  1002→                <p>
+  1003→                  Exports are generated on-demand from your live data. The JSON backup includes metadata and stats for easy restoration or migration.
+  1004→                </p>
+  1005→              </div>
+  1006→            </div>
+  1007→          </SettingsSection>
+  1008→
+  1009→          {/* Demo Data */}
+  1010→          <SettingsSection
+  1011→            icon={Sparkles}
+  1012→            title="Demo Data"
+  1013→            description="Load sample data to explore all features. This will replace your current data."
+  1014→            delay={0.12}
+  1015→          >
+  1016→            <div className="py-2">
+  1017→              <p className="text-sm text-muted-foreground mb-4">
+  1018→                Populate your dashboard with realistic sample data including
+  1019→                subjects, tasks, events, exams, and focus sessions — perfect for
+  1020→                exploring everything StudySpark has to offer.
+  1021→              </p>
+  1022→              <LoadDemoDataDialog />
+  1023→            </div>
+  1024→          </SettingsSection>
+  1025→
+  1026→          {/* About */}
+  1027→          <SettingsSection
+  1028→            icon={Info}
+  1029→            title="About"
+  1030→            description="A little about the app you're using."
+  1031→            delay={0.15}
+  1032→          >
+  1033→            <div className="py-2 space-y-4">
+  1034→              <div className="flex items-center gap-3">
+  1035→                <div
+  1036→                  className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg"
+  1037→                  style={accentGradientStyle("var(--accent-color)")}
+  1038→                >
+  1039→                  <Sparkles className="h-6 w-6" />
+  1040→                </div>
+  1041→                <div>
+  1042→                  <div className="flex items-center gap-2">
+  1043→                    <h4 className="text-lg font-bold">StudySpark</h4>
+  1044→                    <Badge variant="secondary" className="text-[10px]">
+  1045→                      v1.0.0
+  1046→                    </Badge>
+  1047→                  </div>
+  1048→                  <p className="text-xs text-muted-foreground">
+  1049→                    A premium student analytics companion.
+  1050→                  </p>
+  1051→                </div>
+  1052→              </div>
+  1053→
+  1054→              <p className="text-sm text-muted-foreground leading-relaxed">
+  1055→                StudySpark helps you track tasks, manage your study schedule,
+  1056→                monitor focus sessions, and visualize your academic progress —
+  1057→                all in one beautiful dashboard.
+  1058→              </p>
+  1059→
+  1060→              <Separator />
+  1061→
+  1062→              <div className="flex flex-wrap gap-2">
+  1063→                {[
+  1064→                  { icon: Globe, label: "Website" },
+  1065→                  { icon: Github, label: "GitHub" },
+  1066→                  { icon: Mail, label: "Contact" },
+  1067→                ].map(({ icon: Icon, label }) => (
+  1068→                  <button
+  1069→                    key={label}
+  1070→                    type="button"
+  1071→                    onClick={() => toast.info(`${label} link is decorative`)}
+  1072→                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/40 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+  1073→                  >
+  1074→                    <Icon className="h-3.5 w-3.5" />
+  1075→                    {label}
+  1076→                  </button>
+  1077→                ))}
+  1078→              </div>
+  1079→
+  1080→              <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
+  1081→                Made with <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />{" "}
+  1082→                for students everywhere.
+  1083→              </div>
+  1084→            </div>
+  1085→          </SettingsSection>
+  1086→        </StaggerContainer>
+  1087→      </div>
+  1088→    </PageTransition>
+  1089→  );
+  1090→}
+  1091→
+  1092→export default SettingsPage;
+  1093→

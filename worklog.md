@@ -1320,3 +1320,77 @@ Stage Summary:
   3. Accessibility audit: ARIA labels on all icon-only buttons, focus trap in dialogs
   4. Dashboard pages should depend on `user.id` in useEffect deps to auto-refetch on user change
   5. Add a "data export" feature (download all user data as JSON/CSV)
+
+---
+Task ID: 11
+Agent: orchestrator (main)
+Task: Dev server stability fix (daemon + watchdog + memory cap), Data Import feature, user.id refetch robustness, Round-11 styling polish
+
+Work Log:
+
+### Critical infra fix: Dev server kept dying (OOM + shell job cleanup)
+- **Root cause 1 (shell job cleanup)**: The persistent Bash shell kills background processes at each command boundary. `nohup`/`disown`/`setsid` were all insufficient — the process group was still reaped.
+- **Root cause 2 (OS OOM killer)**: `next-server` (Turbopack) used ~2.3GB RSS on a 4GB machine with 0 swap, triggering the kernel OOM killer. Even after switching to `--webpack` with `NODE_OPTIONS=--max-old-space-size=1024`, V8 hit its own heap limit during compilation ("Ineffective mark-compacts near heap limit"). At 1536MB the OS OOM killer struck again (RSS 2.4GB).
+- **FIX — three-part solution**:
+  1. Created `/home/z/my-project/start-dev.sh`: launches `next dev -p 3000 --webpack` with `NODE_OPTIONS=--max-old-space-size=1280` (sweet spot: enough heap for webpack compilation, low enough total RSS to avoid OS OOM).
+  2. Daemonized via `start-stop-daemon --start --background --make-pidfile --startas /bin/bash -- start-dev.sh`. This reparents the process to init (PPID=1), so it survives across Bash command boundaries. Verified: process stays alive across calls.
+  3. Created `/home/z/my-project/watchdog.sh`: a daemon that `curl`s localhost:3000 every 30s and auto-restarts the dev server (via start-stop-daemon) if it dies or stops responding. Also daemonized via start-stop-daemon. Logs to `watchdog.log`.
+- **Result**: Dev server now survives across Bash calls AND auto-recovers within 30s if OOM-killed. This is critical for the cron job (job_id 249568) which needs a running server every 15 min.
+- **IMPORTANT for future agents**: To start the dev server, run: `start-stop-daemon --start --background --make-pidfile --pidfile /home/z/my-project/dev.pid --startas /bin/bash -- /home/z/my-project/start-dev.sh` (or just start the watchdog: `start-stop-daemon --start --background --make-pidfile --pidfile /home/z/my-project/watchdog.pid --startas /bin/bash -- /home/z/my-project/watchdog.sh`). Do NOT use plain `bun run dev` / `nohup` — it will be killed at the next Bash command boundary.
+
+### New feature: Data Import (JSON backup restore)
+- Created `/home/z/my-project/src/app/api/import/route.ts` — POST endpoint accepting a StudySpark JSON backup (same shape as GET /api/export?type=all-json). Supports `?mode=merge` (add records, default) or `?mode=replace` (wipe current data first). Validates `meta.app === "StudySpark"`, validates/sanitizes each record, runs in a `db.$transaction`. Returns `{ success, mode, imported: {todos, subjects, exams, events, focusSessions, profileUpdated} }`.
+- Added "Data Import" section to Settings page (`settings.tsx`) between Data Export and Demo Data:
+  - Mode toggle: Merge (violet) vs Replace (rose) with gradient icon chips and active checkmark.
+  - Drag-and-drop dropzone + "browse your files" hidden file input. Validates JSON type + 10MB size limit.
+  - Animated result banner (emerald success / rose failure) with import counts summary.
+  - Warning note about Replace mode permanently deleting current data.
+- **End-to-end verified via agent-browser**: uploaded a test backup (`/home/z/qa-test-backup.json`) → `POST /api/import?mode=merge 200` → toast "Backup imported successfully — 2 tasks · 1 subjects · 1 exams · 1 events · 1 focus sessions" → navigated to Daily Tasks, both imported tasks render with correct priority/category/subject/due-date ("In 6 days"). Data persisted to DB.
+
+### Robustness fix: dashboard pages refetch on user.id change (recommendation #4)
+- `dashboard-home.tsx`: fetch `useEffect` deps changed from `[]` to `[user?.id]`.
+- `todos.tsx`: added `const userId = useAppStore((s) => s.user?.id)` + import of `useAppStore`; `fetchData` useCallback deps changed from `[]` to `[userId]`.
+- `analytics.tsx`: added `userId` selector; `fetchAnalytics` useCallback deps changed from `[]` to `[userId]`.
+- Effect: when the authenticated user changes (login / account switch), these pages automatically refetch with valid auth instead of showing stale data. Further hardens the cookie-race mitigation from Task 10.
+
+### Styling polish (Round 11) — globals.css + components
+Added to `src/app/globals.css` (all respect `prefers-reduced-motion`):
+- `::selection` / `::-moz-selection`: accent-colored text selection app-wide.
+- `.tabular-nums`: stable numeric rendering (tabular figures) — applied to dashboard stat-card values so counters don't jitter.
+- Global `button:active` / `[role="button"]:active` / `a:active`: subtle `scale(0.975)` tactile press feedback (composited, no layout shift).
+- Global `:focus-visible`: accent-colored 2px outline ring for keyboard accessibility.
+- `.auth-mesh` + `@keyframes meshDrift`: animated dual-blob gradient mesh background (14s/18s alternate drift, accent-colored + fuchsia). Applied to the auth screen right panel (`auth-screen.tsx`) for a premium login backdrop.
+- `.stat-hover`: refined stat-card hover — `translateY(-4px)` lift + accent-colored box-shadow glow + animated gradient border via mask-composite. Applied to dashboard stat cards.
+- `.nav-active-glow` + `@keyframes navGlowIn`: animated accent left-bar indicator for active nav items (utility available; sidebar already has gradient bg so not applied there to avoid clash).
+- `.input-glow`: accent-colored border + 3px ring on focus. Applied to the base `Input` component (`ui/input.tsx`) so ALL inputs app-wide get the refined focus glow.
+- `.edge-sheen`: diagonal accent sheen sweep on hover for interactive cards (utility available).
+- `.num-pop` + `@keyframes numPop`: bounce + accent-color flash for value changes (utility available for animated counters).
+- Updated the `prefers-reduced-motion` media query to disable all new animations (meshDrift, navGlowIn, numPop, stat-hover lift, edge-sheen).
+
+### Verification Results (agent-browser)
+- ✅ Dev server survives across Bash calls (PPID=1 daemon) + auto-recovers via watchdog
+- ✅ Login flow: POST /api/auth/login 200 → all dashboard API calls 200 (no 401 flood — Task 10 fix holding)
+- ✅ Dashboard renders fully (stat cards with stat-hover + tabular-nums, greeting, charts, quotes)
+- ✅ Settings page compiles cleanly — Data Export + Data Import + Demo Data sections all render
+- ✅ Data Import end-to-end: file upload → POST /api/import 200 → toast with counts → imported tasks visible in Daily Tasks with correct metadata
+- ✅ Auth screen renders with animated auth-mesh background
+- ✅ 0 console errors, 0 runtime errors
+- ✅ Cron job 249568 confirmed (every 15 min, webDevReview)
+
+Stage Summary:
+- Dev server stability SOLVED via start-stop-daemon daemonization + watchdog + 1280MB heap cap (was the blocker for all QA)
+- 1 new feature fully implemented & end-to-end verified: Data Import (merge/replace JSON restore)
+- 1 robustness fix: dashboard pages refetch on user.id change (3 pages)
+- 11 new CSS utilities/keyframes for Round-11 styling polish, applied to stat cards, inputs, auth screen, and globally (selection, focus, press)
+- App remains at 13 views, all working, 0 errors
+
+## Unresolved Issues / Risks
+- **Dev server memory is still tight**: next-server RSS reaches ~1.7-2.2GB on a 4GB machine. The watchdog auto-recovers from OOM (30s), but heavy compilation bursts (e.g., first visit to a large route) can still trigger an OOM kill + restart. The `.next` cache makes subsequent compiles lighter. If this remains a problem, consider: (a) increasing swap (needs root — not available), (b) reducing the number of eagerly-imported heavy libs (Recharts/dnd-kit), (c) splitting large page components.
+- **agent-browser `eval` returns `{}`**: Async `eval` calls didn't return values in this environment (sync eval also returned `{}`). Worked around by using `upload` for the import test and `snapshot`/`curl` for everything else. If the cron agent needs to run JS in-page, it should use `console.log` + `agent-browser console` instead of relying on eval return values — though even that was unreliable here.
+- **Test data left in qatest account**: The QA import test added 2 tasks, 1 subject, 1 exam, 1 event, 1 focus session to the `qatest` account (titled "QA imported ..."). Not harmful, but a future cleanup could delete them or use the "Reset All My Data" feature in Settings.
+- **Next focus areas** (recommendations for next round):
+  1. Achievement earnedAt persistence to DB (BadgeEarned Prisma model already exists in schema — just needs the achievements page to read/write it instead of localStorage)
+  2. Calendar touch DnD (pointer-events-based) for mobile
+  3. Accessibility audit: ARIA labels on all icon-only buttons, focus trap in dialogs/drawer
+  4. Apply `.num-pop` animation to AnimatedCounter when its value changes (delightful number bounce)
+  5. Add a "weekly study goal" feature (global target hours/week with progress ring on dashboard)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import {
@@ -29,6 +29,11 @@ import {
   FileJson,
   FileSpreadsheet,
   Clock,
+  Upload,
+  CheckCircle2,
+  RefreshCw,
+  FileWarning,
+  GitMerge,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -672,6 +677,17 @@ export function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Data import state
+  const [importing, setImporting] = useState(false);
+  const [importMode, setImportMode] = useState<"merge" | "replace">("merge");
+  const [importResult, setImportResult] = useState<{
+    ok: boolean;
+    message: string;
+    counts?: Record<string, number | boolean>;
+  } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -717,6 +733,73 @@ export function SettingsPage() {
       setLoggingOut(false);
     }
   };
+
+  const runImport = useCallback(
+    async (file: File) => {
+      if (!file) return;
+      const isJson =
+        file.type === "application/json" || file.name.toLowerCase().endsWith(".json");
+      if (!isJson) {
+        setImportResult({
+          ok: false,
+          message: "Please select a JSON backup file (.json).",
+        });
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setImportResult({
+          ok: false,
+          message: "That file is too large (max 10 MB).",
+        });
+        return;
+      }
+      setImporting(true);
+      setImportResult(null);
+      const toastId = toast.loading("Importing backup…");
+      try {
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        const res = await fetch(
+          `/api/import?mode=${encodeURIComponent(importMode)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error ?? "Import failed");
+        }
+        const c = data.imported ?? {};
+        const parts: string[] = [];
+        if (c.todos) parts.push(`${c.todos} tasks`);
+        if (c.subjects) parts.push(`${c.subjects} subjects`);
+        if (c.exams) parts.push(`${c.exams} exams`);
+        if (c.events) parts.push(`${c.events} events`);
+        if (c.focusSessions) parts.push(`${c.focusSessions} focus sessions`);
+        const summary = parts.length ? parts.join(" · ") : "no records";
+        setImportResult({
+          ok: true,
+          message: `Import complete — ${summary}.`,
+          counts: c as Record<string, number | boolean>,
+        });
+        toast.success("Backup imported successfully", {
+          id: toastId,
+          description: summary,
+        });
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Invalid or corrupted backup file.";
+        setImportResult({ ok: false, message: msg });
+        toast.error("Import failed", { id: toastId, description: msg });
+      } finally {
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    },
+    [importMode]
+  );
 
   const handleExport = useCallback(async (type: string) => {
     const labels: Record<string, string> = {
@@ -1001,6 +1084,172 @@ export function SettingsPage() {
                 <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                 <p>
                   Exports are generated on-demand from your live data. The JSON backup includes metadata and stats for easy restoration or migration.
+                </p>
+              </div>
+            </div>
+          </SettingsSection>
+
+          {/* Data Import */}
+          <SettingsSection
+            icon={Upload}
+            title="Data Import"
+            description="Restore a StudySpark JSON backup. Merge into your current data, or replace it entirely."
+            delay={0.115}
+          >
+            <div className="py-2 space-y-4">
+              {/* Mode toggle */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => setImportMode("merge")}
+                  className={cn(
+                    "flex-1 flex items-center gap-2.5 rounded-xl border p-3 text-left transition-all focus-ring-accent",
+                    importMode === "merge"
+                      ? "border-violet-500/50 bg-violet-500/10 shadow-sm"
+                      : "border-border bg-background/40 hover:border-violet-500/30"
+                  )}
+                  aria-pressed={importMode === "merge"}
+                >
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                      importMode === "merge"
+                        ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    <GitMerge className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">Merge</div>
+                    <div className="text-[11px] text-muted-foreground">Add backup records to your existing data.</div>
+                  </div>
+                  {importMode === "merge" && (
+                    <Check className="h-4 w-4 text-violet-500 ml-auto shrink-0" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImportMode("replace")}
+                  className={cn(
+                    "flex-1 flex items-center gap-2.5 rounded-xl border p-3 text-left transition-all focus-ring-accent",
+                    importMode === "replace"
+                      ? "border-rose-500/50 bg-rose-500/10 shadow-sm"
+                      : "border-border bg-background/40 hover:border-rose-500/30"
+                  )}
+                  aria-pressed={importMode === "replace"}
+                >
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
+                      importMode === "replace"
+                        ? "bg-gradient-to-br from-rose-500 to-orange-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium">Replace</div>
+                    <div className="text-[11px] text-muted-foreground">Wipe current data, then restore backup.</div>
+                  </div>
+                  {importMode === "replace" && (
+                    <Check className="h-4 w-4 text-rose-500 ml-auto shrink-0" />
+                  )}
+                </button>
+              </div>
+
+              {/* Drop zone */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) runImport(f);
+                }}
+                className={cn(
+                  "relative overflow-hidden rounded-2xl border-2 border-dashed p-6 text-center transition-all",
+                  dragOver
+                    ? "border-violet-500 bg-violet-500/10 scale-[1.01]"
+                    : "border-border bg-background/40 hover:border-violet-500/40"
+                )}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) runImport(f);
+                  }}
+                />
+                <motion.div
+                  animate={dragOver ? { y: -4 } : { y: 0 }}
+                  className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/15 to-fuchsia-500/15 text-violet-500"
+                >
+                  {importing ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <Upload className="h-6 w-6" />
+                  )}
+                </motion.div>
+                <p className="text-sm font-medium">
+                  {importing ? "Importing…" : "Drop your JSON backup here"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  or{" "}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-violet-500 hover:text-violet-600 font-medium underline-offset-2 hover:underline"
+                    disabled={importing}
+                  >
+                    browse your files
+                  </button>
+                </p>
+              </div>
+
+              {/* Result banner */}
+              <AnimatePresence>
+                {importResult && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    className={cn(
+                      "flex items-start gap-2.5 rounded-xl border p-3 text-sm",
+                      importResult.ok
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                        : "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                    )}
+                  >
+                    {importResult.ok ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                    ) : (
+                      <FileWarning className="h-4 w-4 shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-medium leading-snug">
+                        {importResult.ok ? "Import successful" : "Import failed"}
+                      </p>
+                      <p className="text-xs opacity-90 mt-0.5 break-words">
+                        {importResult.message}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="flex items-start gap-2 rounded-lg bg-muted/40 p-2.5 text-xs text-muted-foreground">
+                <FileWarning className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <p>
+                  Only import backups exported from StudySpark. In <span className="font-medium text-foreground">Replace</span> mode, your current tasks, subjects, exams, events and focus sessions are permanently deleted before the restore.
                 </p>
               </div>
             </div>

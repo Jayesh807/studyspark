@@ -104,6 +104,7 @@ function ChartTooltip({ active, payload, label, suffix = "" }: ChartTooltipProps
 
 export function AnalyticsPage() {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
+  const userId = useAppStore((s) => s.user?.id);
   const [data, setData] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("weekly");
@@ -118,7 +119,7 @@ export function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchAnalytics();

@@ -594,7 +594,7 @@ function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics[
       <div className="gradient-border-hover h-full">
       <GlassCard
         hover
-        className={cn("group relative h-full overflow-hidden p-5", isEmpty && "icon-chip-shimmer")}
+        className={cn("stat-hover group relative h-full overflow-hidden p-5", isEmpty && "icon-chip-shimmer")}
         style={isEmpty ? {
           backgroundImage: undefined,
         } : undefined}
@@ -622,7 +622,7 @@ function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics[
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {config.label}
           </p>
-          <div className={cn("mt-1 text-3xl font-bold tracking-tight sm:text-4xl", isEmpty ? "text-muted-foreground/60" : "text-foreground")}>
+          <div className={cn("tabular-nums mt-1 text-3xl font-bold tracking-tight sm:text-4xl", isEmpty ? "text-muted-foreground/60" : "text-foreground")}>
             <AnimatedCounter
               value={value}
               suffix={config.suffix}
@@ -1641,7 +1641,7 @@ export function DashboardHome() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.id]);
 
   const username = user?.username ?? "there";
 
