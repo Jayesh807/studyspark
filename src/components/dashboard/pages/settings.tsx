@@ -29,7 +29,6 @@ import { toast } from "sonner";
 import { useAppStore, type AccentColor } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch, handleError } from "@/lib/api";
-import type { Todo, Subject, Event, Exam } from "@/lib/types";
 
 import {
   PageTransition,
@@ -539,6 +538,86 @@ function ResetDataDialog() {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                              Load Demo Data Dialog                         */
+/* -------------------------------------------------------------------------- */
+
+function LoadDemoDataDialog() {
+  const [seeding, setSeeding] = useState(false);
+  const setView = useAppStore((s) => s.setView);
+
+  const handleSeed = useCallback(async () => {
+    setSeeding(true);
+    try {
+      await apiFetch<{ success: boolean; message: string }>("/api/seed", {
+        method: "POST",
+      });
+      toast.success("Demo data loaded! Explore the dashboard.");
+      setView("dashboard");
+    } catch (error) {
+      handleError(error, "Failed to load demo data");
+    } finally {
+      setSeeding(false);
+    }
+  }, [setView]);
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          className="gap-2 text-white shadow-md transition-all hover:shadow-lg"
+          style={{
+            background:
+              "linear-gradient(135deg, oklch(0.6 0.2 277), oklch(0.65 0.22 300), oklch(0.58 0.2 330))",
+          }}
+          disabled={seeding}
+        >
+          {seeding ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          {seeding ? "Loading..." : "Load Demo Data"}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-violet-500" />
+            Load demo data?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This will replace all your current data with demo data. Continue?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={seeding}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              void handleSeed();
+            }}
+            disabled={seeding}
+            className="bg-violet-600 text-white hover:bg-violet-700"
+          >
+            {seeding ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                Yes, load demo data
+              </>
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /*                              Main Settings Page                            */
 /* -------------------------------------------------------------------------- */
 
@@ -752,6 +831,23 @@ export function SettingsPage() {
                 </Button>
                 <ResetDataDialog />
               </div>
+            </div>
+          </SettingsSection>
+
+          {/* Demo Data */}
+          <SettingsSection
+            icon={Sparkles}
+            title="Demo Data"
+            description="Load sample data to explore all features. This will replace your current data."
+            delay={0.12}
+          >
+            <div className="py-2">
+              <p className="text-sm text-muted-foreground mb-4">
+                Populate your dashboard with realistic sample data including
+                subjects, tasks, events, exams, and focus sessions — perfect for
+                exploring everything StudySpark has to offer.
+              </p>
+              <LoadDemoDataDialog />
             </div>
           </SettingsSection>
 

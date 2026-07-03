@@ -100,23 +100,23 @@
 }
 
 .dark {
-  --background: oklch(0.15 0.02 265);
+  --background: oklch(0.13 0.015 265);
   --foreground: oklch(0.96 0.01 250);
 
-  --card: oklch(0.21 0.025 265);
+  --card: oklch(0.19 0.02 265);
   --card-foreground: oklch(0.96 0.01 250);
 
-  --popover: oklch(0.21 0.025 265);
+  --popover: oklch(0.19 0.02 265);
   --popover-foreground: oklch(0.96 0.01 250);
 
   --primary: oklch(0.68 0.19 277);
-  --primary-foreground: oklch(0.15 0.02 265);
+  --primary-foreground: oklch(0.13 0.015 265);
 
   --secondary: oklch(0.27 0.03 270);
   --secondary-foreground: oklch(0.95 0.01 250);
 
   --muted: oklch(0.25 0.02 265);
-  --muted-foreground: oklch(0.68 0.02 260);
+  --muted-foreground: oklch(0.72 0.02 260);
 
   --accent: oklch(0.3 0.05 285);
   --accent-foreground: oklch(0.95 0.02 285);
@@ -137,10 +137,10 @@
   --chart-4: oklch(0.8 0.16 70);
   --chart-5: oklch(0.7 0.22 16);
 
-  --sidebar: oklch(0.18 0.022 265);
+  --sidebar: oklch(0.16 0.018 265);
   --sidebar-foreground: oklch(0.96 0.01 250);
   --sidebar-primary: oklch(0.68 0.19 277);
-  --sidebar-primary-foreground: oklch(0.15 0.02 265);
+  --sidebar-primary-foreground: oklch(0.13 0.015 265);
   --sidebar-accent: oklch(0.27 0.035 280);
   --sidebar-accent-foreground: oklch(0.95 0.02 285);
   --sidebar-border: oklch(1 0 0 / 8%);
@@ -175,8 +175,9 @@
     border: 1px solid oklch(1 0 0 / 0.4);
   }
   .dark .glass {
-    background: oklch(0.21 0.025 265 / 0.6);
-    border: 1px solid oklch(1 0 0 / 0.08);
+    background: oklch(0.19 0.02 265 / 0.6);
+    border: 1px solid oklch(1 0 0 / 0.1);
+    box-shadow: 0 0 0 1px oklch(0.68 0.19 277 / 0.05), 0 0 24px oklch(0.55 0.21 277 / 0.03);
   }
   .glass-strong {
     background: oklch(1 0 0 / 0.8);
@@ -185,8 +186,9 @@
     border: 1px solid oklch(1 0 0 / 0.5);
   }
   .dark .glass-strong {
-    background: oklch(0.21 0.025 265 / 0.8);
-    border: 1px solid oklch(1 0 0 / 0.1);
+    background: oklch(0.19 0.02 265 / 0.8);
+    border: 1px solid oklch(1 0 0 / 0.14);
+    box-shadow: 0 0 0 1px oklch(0.68 0.19 277 / 0.08), 0 0 32px oklch(0.55 0.21 277 / 0.05);
   }
 
   /* Gradient text */
@@ -336,4 +338,120 @@
   100% {
     opacity: 0;
   }
+}
+
+/* Icon chip shimmer for empty state stat cards */
+@keyframes chipShimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+.icon-chip-shimmer {
+  background-size: 200% 100%;
+  animation: chipShimmer 3s ease-in-out infinite;
+}
+
+/* Pulsing glow for empty states */
+@keyframes emptyPulseGlow {
+  0%, 100% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(1.08);
+  }
+}
+.empty-pulse-glow {
+  animation: emptyPulseGlow 3s ease-in-out infinite;
+}
+
+/* Pricing card shimmer border */
+@keyframes borderShimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+.shimmer-border {
+  position: relative;
+}
+.shimmer-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    oklch(0.55 0.21 277 / 0.0),
+    oklch(0.55 0.21 277 / 0.6),
+    oklch(0.6 0.2 300 / 0.8),
+    oklch(0.62 0.24 16 / 0.6),
+    oklch(0.55 0.21 277 / 0.0)
+  );
+  background-size: 300% 300%;
+  animation: borderShimmer 4s ease-in-out infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Pulsing glow dot */
+@keyframes glowDotPulse {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px oklch(0.68 0.19 277 / 0.4);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 12px 4px oklch(0.68 0.19 277 / 0.7);
+    opacity: 0.8;
+  }
+}
+.glow-dot {
+  animation: glowDotPulse 2s ease-in-out infinite;
+}
+
+/* Sidebar mini spark on click */
+@keyframes miniSpark {
+  0% {
+    transform: scale(0);
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+.mini-spark {
+  animation: miniSpark 0.5s ease-out forwards;
+}
+
+/* Welcome card sparkle */
+@keyframes sparkleFloat {
+  0%, 100% {
+    opacity: 0.6;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.2);
+  }
+}
+.sparkle-float {
+  animation: sparkleFloat 2.5s ease-in-out infinite;
 }
