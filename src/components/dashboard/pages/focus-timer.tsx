@@ -20,6 +20,8 @@ import {
   X,
   Volume2,
   VolumeX,
+  Bell,
+  BellRing,
 } from "lucide-react";
 import {
   Bar,
@@ -227,10 +229,92 @@ export function FocusTimerPage() {
   const [autoBreak, setAutoBreak] = useState(true);
   const [completedFocusCount, setCompletedFocusCount] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
+  );
+  const [notifEnabled, setNotifEnabled] = useState(false);
 
   // === Data state ===
   const [sessions, setSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // === Browser notifications ===
+  const fireNotification = useCallback(
+    (title: string, body: string) => {
+      if (!notifEnabled) return;
+      if (typeof window === "undefined" || !("Notification" in window)) return;
+      if (Notification.permission !== "granted") return;
+      try {
+        const n = new Notification(title, {
+          body,
+          icon: "/favicon.ico",
+          tag: "studyspark-timer",
+          silent: true, // sound handled by Web Audio bell
+        });
+        // Auto-close after 6 seconds
+        setTimeout(() => n.close(), 6000);
+        n.onclick = () => {
+          window.focus();
+          n.close();
+        };
+      } catch {
+        // ignore
+      }
+    },
+    [notifEnabled]
+  );
+
+  const toggleNotifications = useCallback(async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      toast.error("Notifications are not supported in this browser.");
+      return;
+    }
+    if (notifPermission === "granted") {
+      const next = !notifEnabled;
+      setNotifEnabled(next);
+      if (next) {
+        toast.success("Browser notifications enabled.", {
+          description: "You'll get a desktop alert when each session ends.",
+        });
+      } else {
+        toast.info("Browser notifications muted.");
+      }
+      return;
+    }
+    if (notifPermission === "denied") {
+      toast.error("Notification permission was blocked.", {
+        description: "Please enable it in your browser site settings.",
+      });
+      return;
+    }
+    // Request permission
+    try {
+      const perm = await Notification.requestPermission();
+      setNotifPermission(perm);
+      if (perm === "granted") {
+        setNotifEnabled(true);
+        toast.success("Notifications enabled!", {
+          description: "You'll get a desktop alert when each session ends.",
+        });
+        // Send a welcome notification
+        try {
+          const n = new Notification("StudySpark notifications ready", {
+            body: "We'll alert you when your focus sessions end.",
+            icon: "/favicon.ico",
+            tag: "studyspark-welcome",
+            silent: true,
+          });
+          setTimeout(() => n.close(), 5000);
+        } catch {
+          // ignore
+        }
+      } else if (perm === "denied") {
+        toast.error("Notification permission denied.");
+      }
+    } catch {
+      toast.error("Could not request notification permission.");
+    }
+  }, [notifEnabled, notifPermission]);
 
   const totalSeconds = durations[mode] * 60;
   const progress = totalSeconds === 0 ? 0 : (totalSeconds - remaining) / totalSeconds;
@@ -290,6 +374,12 @@ export function FocusTimerPage() {
       toast.success("Time's up! Take a well-earned break.", {
         icon: <Coffee className="h-4 w-4" />,
       });
+      fireNotification(
+        "Focus session complete! 🎯",
+        subject
+          ? `${elapsedMinutes} min of ${subject} done. Time for a break.`
+          : `${elapsedMinutes} min focus done. Take a well-earned break.`
+      );
       setCompletedFocusCount((c) => c + 1);
       // POST focus record
       setSaving(true);
@@ -320,6 +410,10 @@ export function FocusTimerPage() {
       toast.success("Break over — back to focus!", {
         icon: <Brain className="h-4 w-4" />,
       });
+      fireNotification(
+        "Break over ☕",
+        "Time to get back to focused study."
+      );
       // Log break session too (optional)
       setSaving(true);
       apiFetch<{ session: FocusSession }>("/api/focus-session", {
@@ -336,7 +430,7 @@ export function FocusTimerPage() {
         .finally(() => setSaving(false));
       setTimeout(() => switchMode("focus", true), 600);
     }
-  }, [remaining, soundEnabled]);
+  }, [remaining, soundEnabled, fireNotification, subject, autoBreak, completedFocusCount, durations, mode]);
 
   // === Mode switching ===
   const switchMode = useCallback(
@@ -463,6 +557,44 @@ export function FocusTimerPage() {
               <Volume2 className="h-4 w-4" />
             ) : (
               <VolumeX className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              // Wiggle the bell icon on click
+              const icon = e.currentTarget.querySelector("svg");
+              if (icon) {
+                icon.classList.remove("bell-wiggle");
+                // force reflow to restart animation
+                void icon.offsetWidth;
+                icon.classList.add("bell-wiggle");
+              }
+              toggleNotifications();
+            }}
+            aria-label="Toggle browser notifications"
+            title={
+              notifPermission === "unsupported"
+                ? "Notifications not supported in this browser"
+                : notifPermission === "denied"
+                  ? "Notifications blocked — enable in browser settings"
+                  : notifEnabled
+                    ? "Notifications on — click to mute"
+                    : "Notifications off — click to enable"
+            }
+            className={cn(
+              "rounded-full shrink-0 h-9 w-9 relative",
+              notifEnabled && "text-violet-500 notif-active-ring"
+            )}
+          >
+            {notifEnabled ? (
+              <BellRing className="h-4 w-4" />
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
+            {notifEnabled && (
+              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
             )}
           </Button>
           <Badge

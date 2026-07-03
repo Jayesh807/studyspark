@@ -2,21 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  GraduationCap,
-  User,
-  TrendingUp,
-  CheckCircle2,
-  Circle,
-  Clock,
-  Calendar,
-  Timer,
-  StickyNote,
-  AlertTriangle,
-  Target,
-  Flame,
-} from "lucide-react";
+import { X, GraduationCap, User, TrendingUp, CheckCircle2, Circle, Clock, Calendar, Timer, StickyNote, AlertTriangle, Target, Flame, Plus, Loader2 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -38,7 +24,10 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/shared/feedback";
+import { toast } from "sonner";
 
 interface SubjectDetailDrawerProps {
   subject: Subject | null;
@@ -378,7 +367,11 @@ export function SubjectDetailDrawer({
                       <ExamList exams={related?.exams ?? []} />
                     )}
                     {tab === "focus" && (
-                      <FocusList sessions={related?.sessions ?? []} />
+                      <FocusList
+                        sessions={related?.sessions ?? []}
+                        subjectName={subject.name}
+                        onLogged={loadRelated}
+                      />
                     )}
                     {tab === "notes" && (
                       <NotesPanel notes={subject.notes} />
@@ -538,48 +531,185 @@ function ExamList({ exams }: { exams: Exam[] }) {
   );
 }
 
-function FocusList({ sessions }: { sessions: FocusSession[] }) {
+function FocusList({
+  sessions,
+  subjectName,
+  onLogged,
+}: {
+  sessions: FocusSession[];
+  subjectName: string;
+  onLogged: () => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [minutes, setMinutes] = useState("25");
+  const [saving, setSaving] = useState(false);
+
   const focusSessions = sessions.filter((s) => s.type === "focus");
-  if (focusSessions.length === 0) {
-    return <EmptyTab icon={Timer} message="No focus sessions logged for this subject." />;
-  }
   const totalMin = focusSessions.reduce((sum, s) => sum + s.duration, 0);
+
+  const handleLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const dur = parseInt(minutes, 10);
+    if (!dur || dur < 1 || dur > 600) {
+      toast.error("Duration must be between 1 and 600 minutes.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await apiFetch<{ session: FocusSession }>("/api/focus-session", {
+        method: "POST",
+        body: JSON.stringify({
+          duration: dur,
+          type: "focus",
+          subject: subjectName,
+          completed: true,
+        }),
+      });
+      toast.success(`Logged ${dur} min focus session for ${subjectName}.`, {
+        icon: <Timer className="h-4 w-4" />,
+      });
+      setMinutes("25");
+      setShowForm(false);
+      onLogged();
+    } catch (err) {
+      handleError(err, "Failed to log focus session");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
+      {/* Summary + log button */}
       <div className="rounded-2xl bg-gradient-to-br from-violet-500/10 to-fuchsia-500/10 p-3 ring-1 ring-violet-500/20">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">
-            Total focus time
-          </span>
-          <span className="text-lg font-bold tabular-nums">
-            {Math.floor(totalMin / 60)}h {totalMin % 60}m
-          </span>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">
+              Total focus time
+            </p>
+            <p className="text-lg font-bold tabular-nums">
+              {Math.floor(totalMin / 60)}h {totalMin % 60}m
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setShowForm((s) => !s)}
+            className={cn(
+              "rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600",
+              focusSessions.length === 0 && !showForm && "log-button-pulse"
+            )}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Log session
+          </Button>
         </div>
       </div>
-      <ul className="space-y-2">
-        {focusSessions.slice(0, 20).map((s) => (
-          <li
-            key={s.id}
-            className="flex items-center gap-3 rounded-2xl border border-border/40 bg-background/40 p-3"
+
+      {/* Inline log form */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.form
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            onSubmit={handleLog}
+            className="overflow-hidden rounded-2xl border border-violet-500/20 bg-violet-500/5 p-3"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
-              <Timer className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold tabular-nums">
-                {s.duration} min
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {format(parseISO(s.date), "MMM d, yyyy")} ·{" "}
-                {formatDistanceToNow(parseISO(s.createdAt), { addSuffix: true })}
-              </p>
+            <p className="mb-2 text-xs font-semibold text-violet-600 dark:text-violet-400">
+              Log a focus session for {subjectName}
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
+                {[
+                  { v: "15", label: "15m" },
+                  { v: "25", label: "25m" },
+                  { v: "45", label: "45m" },
+                  { v: "60", label: "60m" },
+                ].map((preset) => (
+                  <button
+                    key={preset.v}
+                    type="button"
+                    onClick={() => setMinutes(preset.v)}
+                    className={cn(
+                      "rounded-lg px-2 py-1 text-[11px] font-medium transition-colors",
+                      minutes === preset.v
+                        ? "bg-violet-500 text-white"
+                        : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+              <Input
+                type="number"
+                min={1}
+                max={600}
+                value={minutes}
+                onChange={(e) => setMinutes(e.target.value)}
+                className="w-20 h-8 text-sm"
+              />
+              <span className="text-xs text-muted-foreground">min</span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowForm(false)}
+                  className="h-8 text-xs"
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={saving}
+                  className="h-8 rounded-lg bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+                >
+                  {saving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  Save
+                </Button>
+              </div>
             </div>
-            {s.completed && (
-              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-            )}
-          </li>
-        ))}
-      </ul>
+          </motion.form>
+        )}
+      </AnimatePresence>
+
+      {/* Sessions list */}
+      {focusSessions.length === 0 ? (
+        <EmptyTab icon={Timer} message="No focus sessions logged for this subject yet. Click ‘Log session’ to add one." />
+      ) : (
+        <ul className="space-y-2">
+          {focusSessions.slice(0, 20).map((s) => (
+            <li
+              key={s.id}
+              className="flex items-center gap-3 rounded-2xl border border-border/40 bg-background/40 p-3"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
+                <Timer className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold tabular-nums">
+                  {s.duration} min
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  {format(parseISO(s.date), "MMM d, yyyy")} ·{" "}
+                  {formatDistanceToNow(parseISO(s.createdAt), { addSuffix: true })}
+                </p>
+              </div>
+              {s.completed && (
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

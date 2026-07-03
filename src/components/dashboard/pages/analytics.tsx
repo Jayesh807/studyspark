@@ -44,6 +44,7 @@ import {
   StaggerContainer,
   StaggerItem,
 } from "@/components/shared/motion";
+import { ContributionHeatmap } from "@/components/dashboard/contribution-heatmap";
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { cn } from "@/lib/utils";
@@ -249,6 +250,13 @@ export function AnalyticsPage() {
             gradient="from-amber-500 to-yellow-500"
             loading={loading}
           />
+        </StaggerItem>
+      </StaggerContainer>
+
+      {/* === Contribution heatmap === */}
+      <StaggerContainer>
+        <StaggerItem>
+          <ContributionHeatmap />
         </StaggerItem>
       </StaggerContainer>
 
