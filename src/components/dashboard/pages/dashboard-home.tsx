@@ -1273,6 +1273,308 @@ function QuickStartCard({ onNavigate }: { onNavigate: (view: AppView) => void })
 }
 
 /* -------------------------------------------------------------------------- */
+/*  AI Study Insights panel                                                    */
+/* -------------------------------------------------------------------------- */
+
+type InsightTone = "info" | "warning" | "success" | "tip";
+
+interface Insight {
+  id: string;
+  tone: InsightTone;
+  icon: LucideIcon;
+  title: string;
+  message: string;
+  ctaLabel?: string;
+  ctaView?: AppView;
+}
+
+const INSIGHT_TONE_CONFIG: Record<
+  InsightTone,
+  { gradient: string; ring: string; chipBg: string; chipText: string; iconBg: string }
+> = {
+  info: {
+    gradient: "from-violet-500/15 via-fuchsia-500/10 to-transparent",
+    ring: "ring-violet-500/20",
+    chipBg: "bg-violet-500/15",
+    chipText: "text-violet-600 dark:text-violet-400",
+    iconBg: "bg-gradient-to-br from-violet-500 to-fuchsia-500",
+  },
+  warning: {
+    gradient: "from-amber-500/15 via-orange-500/10 to-transparent",
+    ring: "ring-amber-500/25",
+    chipBg: "bg-amber-500/15",
+    chipText: "text-amber-600 dark:text-amber-400",
+    iconBg: "bg-gradient-to-br from-amber-500 to-orange-500",
+  },
+  success: {
+    gradient: "from-emerald-500/15 via-teal-500/10 to-transparent",
+    ring: "ring-emerald-500/25",
+    chipBg: "bg-emerald-500/15",
+    chipText: "text-emerald-600 dark:text-emerald-400",
+    iconBg: "bg-gradient-to-br from-emerald-500 to-teal-500",
+  },
+  tip: {
+    gradient: "from-cyan-500/15 via-blue-500/10 to-transparent",
+    ring: "ring-cyan-500/25",
+    chipBg: "bg-cyan-500/15",
+    chipText: "text-cyan-600 dark:text-cyan-400",
+    iconBg: "bg-gradient-to-br from-cyan-500 to-blue-500",
+  },
+};
+
+function computeInsights(
+  analytics: Analytics,
+  todos: Todo[]
+): Insight[] {
+  const insights: Insight[] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 1. Overdue tasks
+  const overdueTodos = todos.filter((t) => {
+    if (t.status === "completed" || !t.dueDate) return false;
+    const d = new Date(t.dueDate);
+    d.setHours(0, 0, 0, 0);
+    return d < today;
+  });
+  if (overdueTodos.length > 0) {
+    insights.push({
+      id: "overdue",
+      tone: "warning",
+      icon: AlarmClock,
+      title: `${overdueTodos.length} overdue task${overdueTodos.length === 1 ? "" : "s"}`,
+      message: `You have ${overdueTodos.length} task${overdueTodos.length === 1 ? "" : "s"} past due. Clearing these will reduce stress and boost momentum.`,
+      ctaLabel: "Review tasks",
+      ctaView: "todos",
+    });
+  }
+
+  // 2. Exam approaching within 7 days
+  const upcomingSoon = analytics.upcomingExams.find((e) => {
+    const days = Math.ceil(
+      (new Date(e.date).getTime() - today.getTime()) / 86_400_000
+    );
+    return days >= 0 && days <= 7;
+  });
+  if (upcomingSoon) {
+    const days = Math.ceil(
+      (new Date(upcomingSoon.date).getTime() - today.getTime()) / 86_400_000
+    );
+    insights.push({
+      id: "exam-soon",
+      tone: "warning",
+      icon: GraduationCap,
+      title: `${upcomingSoon.examName} is ${days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`}`,
+      message:
+        days === 0
+          ? "Your exam is today. Focus on a quick review session and stay calm. You've got this!"
+          : `You're at ${upcomingSoon.progress}% readiness. ${100 - upcomingSoon.progress}% to go — a focused session now will pay off.`,
+      ctaLabel: "Prepare now",
+      ctaView: "exams",
+    });
+  }
+
+  // 3. Focus goal behind
+  const targetMinutes = analytics.stats.targetHours * 60;
+  const focusTodayMin = analytics.stats.focusTodayMinutes;
+  if (targetMinutes > 0 && focusTodayMin < targetMinutes * 0.5) {
+    const remaining = Math.max(0, targetMinutes - focusTodayMin);
+    insights.push({
+      id: "focus-goal",
+      tone: "info",
+      icon: Timer,
+      title: `${Math.round(remaining)} min away from today's goal`,
+      message: `You've focused for ${Math.round(focusTodayMin)} of ${analytics.stats.targetHours}h today. A single Pomodoro could close the gap.`,
+      ctaLabel: "Start focus",
+      ctaView: "focus",
+    });
+  } else if (targetMinutes > 0 && focusTodayMin >= targetMinutes) {
+    insights.push({
+      id: "focus-goal-done",
+      tone: "success",
+      icon: CheckCheck,
+      title: "Daily goal smashed! 🎉",
+      message: `You've hit ${Math.round((focusTodayMin / 60) * 10) / 10}h of your ${analytics.stats.targetHours}h goal. Outstanding work — consider a well-earned break.`,
+    });
+  }
+
+  // 4. Weakest subject
+  const weakest = [...analytics.subjectPerformance].sort(
+    (a, b) => a.progress - b.progress
+  )[0];
+  if (weakest && weakest.progress < 60) {
+    insights.push({
+      id: "weak-subject",
+      tone: "tip",
+      icon: BookOpen,
+      title: `${weakest.name} needs attention`,
+      message: `Your progress in ${weakest.name} is ${weakest.progress}%. A dedicated 30-minute session could move the needle significantly.`,
+      ctaLabel: "Study this",
+      ctaView: "subjects",
+    });
+  }
+
+  // 5. Streak at risk (no focus session today)
+  const hasSessionToday = focusTodayMin > 0;
+  if (analytics.stats.studyStreak > 0 && !hasSessionToday) {
+    insights.push({
+      id: "streak-risk",
+      tone: "warning",
+      icon: Flame,
+      title: `Don't break your ${analytics.stats.studyStreak}-day streak!`,
+      message:
+        "You haven't logged a focus session today. Even 15 minutes keeps your streak alive.",
+      ctaLabel: "Keep the streak",
+      ctaView: "focus",
+    });
+  } else if (analytics.stats.studyStreak >= 7) {
+    insights.push({
+      id: "streak-strong",
+      tone: "success",
+      icon: Flame,
+      title: `${analytics.stats.studyStreak}-day streak — incredible!`,
+      message:
+        "Consistency is the secret to mastery. You're building a habit that compounds over time.",
+    });
+  }
+
+  // 6. Weekly momentum
+  const weeklyHours = analytics.weeklyData.reduce((s, d) => s + d.hours, 0);
+  if (weeklyHours >= analytics.stats.targetHours * 5) {
+    insights.push({
+      id: "momentum",
+      tone: "success",
+      icon: TrendingUp,
+      title: "Big week — keep the momentum!",
+      message: `You've logged ${Math.round(weeklyHours)}h this week. That's excellent volume. Maintain this pace and results will follow.`,
+    });
+  } else if (weeklyHours < analytics.stats.targetHours && weeklyHours > 0) {
+    insights.push({
+      id: "low-volume",
+      tone: "tip",
+      icon: TrendingUp,
+      title: "Light study week so far",
+      message: `Only ${Math.round(weeklyHours)}h logged this week. Scheduling one focus block per day can dramatically increase your weekly output.`,
+      ctaLabel: "Plan a session",
+      ctaView: "focus",
+    });
+  }
+
+  // Limit to 3 most actionable insights, prioritizing warnings then info/tips then success
+  const priority: Record<InsightTone, number> = { warning: 0, info: 1, tip: 2, success: 3 };
+  return insights.sort((a, b) => priority[a.tone] - priority[b.tone]).slice(0, 3);
+}
+
+function AIInsightsPanel({
+  analytics,
+  todos,
+  onNavigate,
+}: {
+  analytics: Analytics;
+  todos: Todo[];
+  onNavigate: (view: AppView) => void;
+}) {
+  const insights = useMemo(() => computeInsights(analytics, todos), [analytics, todos]);
+
+  if (insights.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+    >
+      <GlassCard className="overflow-hidden">
+        <div className="relative p-5 sm:p-6">
+          {/* Decorative blobs */}
+          <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-fuchsia-500/10 blur-3xl" />
+
+          <div className="relative z-[1]">
+            {/* Header */}
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="live-pulse flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold tracking-tight">
+                    Smart Insights
+                  </h2>
+                  <p className="text-[11px] text-muted-foreground">
+                    Personalized recommendations based on your activity
+                  </p>
+                </div>
+              </div>
+              <span className="hidden items-center gap-1.5 rounded-full bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400 sm:inline-flex">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-violet-500" />
+                </span>
+                AI-powered
+              </span>
+            </div>
+
+            {/* Insight cards */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <AnimatePresence mode="popLayout">
+                {insights.map((insight, i) => {
+                  const config = INSIGHT_TONE_CONFIG[insight.tone];
+                  const Icon = insight.icon;
+                  return (
+                    <motion.div
+                      key={insight.id}
+                      layout
+                      initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.35, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                      className={cn(
+                        "relative overflow-hidden rounded-2xl bg-gradient-to-br p-4 ring-1",
+                        config.gradient,
+                        config.ring
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={cn(
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-md",
+                            config.iconBg
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold leading-tight">
+                            {insight.title}
+                          </p>
+                          <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                            {insight.message}
+                          </p>
+                          {insight.ctaLabel && insight.ctaView && (
+                            <button
+                              onClick={() => onNavigate(insight.ctaView)}
+                              className="mt-2.5 inline-flex items-center gap-1 rounded-lg bg-background/70 px-2.5 py-1 text-[11px] font-semibold text-foreground opacity-90 backdrop-blur transition-all hover:opacity-100 hover:shadow-sm"
+                            >
+                              {insight.ctaLabel}
+                              <ArrowRight className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          </div>
+        </div>
+      </GlassCard>
+    </motion.div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Main component                                                             */
 /* -------------------------------------------------------------------------- */
 
@@ -1349,6 +1651,13 @@ export function DashboardHome() {
           <TodaysGoalRing
             focusMinutes={analytics.stats.focusTodayMinutes}
             targetHours={analytics.stats.targetHours}
+          />
+
+          {/* Smart Insights panel — AI-powered personalized recommendations */}
+          <AIInsightsPanel
+            analytics={analytics}
+            todos={todos}
+            onNavigate={setView}
           />
 
           {/* Two-column section */}

@@ -19,7 +19,6 @@ import { apiFetch } from "@/lib/api";
 import type { Analytics, Todo, Exam, FocusSession } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -192,6 +191,7 @@ const VIEW_TITLES: Record<AppView, { title: string; subtitle: string }> = {
   subjects: { title: "Subjects", subtitle: "Manage your courses" },
   exams: { title: "Upcoming Exams", subtitle: "Stay ahead of your exams" },
   focus: { title: "Focus Timer", subtitle: "Pomodoro focus sessions" },
+  achievements: { title: "Achievements", subtitle: "Your badges and milestones" },
   settings: { title: "Settings", subtitle: "Customize your experience" },
 };
 
@@ -385,7 +385,7 @@ function NotificationPopover() {
 /*  Topbar                                                                     */
 /* -------------------------------------------------------------------------- */
 
-export function Topbar() {
+export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
   const { currentView, setMobileSidebarOpen, user } = useAppStore();
   const { theme, setTheme } = useTheme();
 
@@ -424,17 +424,29 @@ export function Topbar() {
         </p>
       </motion.div>
 
-      {/* Search (decorative on desktop) */}
-      <div className="relative hidden md:block">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search..."
-          className="h-9 w-44 pl-9 pr-12 rounded-xl bg-muted/50 border-transparent focus-visible:bg-background lg:w-56"
-        />
-        <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 select-none items-center gap-1 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:flex">
+      {/* Search — opens command palette */}
+      <button
+        type="button"
+        onClick={onOpenPalette}
+        className="group relative hidden h-9 w-44 items-center gap-2 rounded-xl border border-transparent bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground md:flex lg:w-56"
+        aria-label="Open command palette"
+      >
+        <Search className="h-4 w-4 shrink-0" />
+        <span className="flex-1 text-left">Search...</span>
+        <kbd className="pointer-events-none hidden select-none items-center gap-1 rounded border bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground group-hover:border-border/60 lg:flex">
           <Command className="h-2.5 w-2.5" />K
         </kbd>
-      </div>
+      </button>
+      {/* Mobile search icon button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 rounded-xl md:hidden"
+        onClick={onOpenPalette}
+        aria-label="Open command palette"
+      >
+        <Search className="h-[18px] w-[18px]" />
+      </Button>
 
       {/* Theme toggle */}
       <TooltipProvider delayDuration={0}>

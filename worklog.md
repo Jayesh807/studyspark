@@ -627,3 +627,109 @@ The StudySpark app is **stable and feature-complete**. All 9 dashboard pages ren
 - **No critical bugs** — all features verified working
 - **Minor**: agent-browser `fill` command doesn't trigger React onChange on controlled inputs (testing limitation, not app bug). Forms work correctly when using native browser input.
 - **Next focus areas**: Accessibility audit (ARIA labels, focus management), performance optimization (React.memo for chart components), more landing page interactive elements, onboarding tutorial/walkthrough for new users
+
+---
+Task ID: r4-feat-1 + r4-feat-2 + r4-feat-3 + r4-style-1
+Agent: orchestrator (main) — round 4
+Task: QA assessment + implement Command Palette (Cmd+K), Achievements/Badges system, AI Study Insights panel, and styling polish
+
+## Current Project Status
+
+The StudySpark app entered this round **stable and feature-complete** (per round 3 handover). QA via agent-browser confirmed all 9 existing dashboard pages, auth, landing, dark mode, mobile drawer, and notifications worked with no console errors and clean lint.
+
+One clear **gap** was identified: the topbar search box displayed a `⌘K` keyboard hint but no actual command palette existed — only a decorative input. This round closes that gap and adds two net-new feature surfaces plus targeted styling polish.
+
+## Current Goals / Completed Modifications / Verification Results
+
+### QA findings (pre-implementation)
+- ✅ Landing, auth (signup/login/session persist), all 9 dashboard pages render
+- ✅ Dark mode toggle, mobile drawer (390×844), notifications popover all functional
+- ✅ Seeded demo data loads correctly (5 subjects, 10 todos, 5 events, 4 exams, 14 focus sessions)
+- ❌ **Gap found**: `⌘K` hint in topbar search but no command palette functionality
+- Lint clean (0 errors), dev server compiles cleanly, no JS console errors
+
+### New Features Added This Round
+
+#### 1. Command Palette (Cmd+K) — `src/components/dashboard/command-palette.tsx` (NEW)
+- **Trigger**: `⌘K` / `Ctrl+K` global shortcut, OR click the topbar search box (now a real button), OR mobile search icon button
+- **17 commands** across 3 groups:
+  - **Navigate** (10): Dashboard, Daily Tasks, Calendar, Subjects, Upcoming Exams, Focus Timer, Analytics, Achievements, Profile, Settings
+  - **Actions** (4): Create new task (N), Start focus session (F), Load demo data, Log out
+  - **Theme** (3): Toggle theme, Set light theme, Set dark theme
+- ** UX**: fuzzy search (label + subtitle + keywords + group), ArrowUp/Down to navigate, Enter to select, Escape to close, hover-to-highlight, scroll active item into view, footer with key hints
+- **Architecture**: Split into `CommandPalette` (AnimatePresence wrapper) → `PaletteBackdrop` (overlay) → `PaletteInner` (keyed by `sessionId` so internal state resets cleanly on each open). Avoids `setState`-in-effect lint errors via derived `safeIndex` clamping during render.
+- **Quick shortcuts**: `N` → Daily Tasks, `F` → Focus Timer (when not typing in an input)
+
+#### 2. Achievements / Badges System — NEW page + API
+- **API** `src/app/api/achievements/route.ts` (NEW): Computes 22 badges across 6 categories (tasks, focus, streak, subjects, exams, special) and 4 tiers (bronze/silver/gold/platinum). Returns badges with `earned` boolean, tier stats, milestone progress, and a summary of key totals.
+- **Page** `src/components/dashboard/pages/achievements.tsx` (NEW): Gamified achievements gallery with:
+  - **Hero header**: glass card with gradient trophy medallion (float-y animation), 4 twinkling sparkles on a rotating ring, overall completion % bar, and 4 tier progress cards (Bronze/Silver/Gold/Platinum)
+  - **Summary stat cards**: 6 cards (Tasks Done, Focus Hours, Sessions, Day Streak, Subjects, Exams) with gradient icon chips
+  - **Milestone progress**: 5 key badges with current/target progress bars (emerald when earned, violet when in-progress)
+  - **Filter bar**: 9 filters (All, Earned, Locked, Tasks, Focus, Streak, Subjects, Exams, Special)
+  - **Badges grid**: 2/3/4-col responsive grid. Earned badges show gradient medallion with periodic shine sweep (`badge-shine`, every 4s) + tier ribbon + category pill. Locked badges show grayscale emoji + Lock icon.
+  - **Share button**: uses `navigator.share` if available, else copies to clipboard
+  - **Empty state**: filter-specific EmptyState with CTA
+- **Sidebar**: Added "Achievements" nav item with Trophy icon (between Analytics and Profile)
+- **Store**: Added `"achievements"` to `AppView` union type
+- **Topbar**: Added `achievements` entry to `VIEW_TITLES`
+
+#### 3. AI Study Insights Panel — `src/components/dashboard/pages/dashboard-home.tsx` (enhanced)
+- New `AIInsightsPanel` component rendered on the dashboard home between Today's Goal ring and the chart section
+- **`computeInsights()`** generates up to 3 prioritized insights from analytics + todos:
+  1. **Overdue tasks** (warning) — count of past-due incomplete tasks → "Review tasks"
+  2. **Exam approaching** (warning) — exam within 7 days, shows readiness % → "Prepare now"
+  3. **Focus goal behind** (info) — focus minutes < 50% of target → "Start focus"
+  4. **Daily goal smashed** (success) — focus ≥ target → celebratory message
+  5. **Weakest subject** (tip) — subject with < 60% progress → "Study this"
+  6. **Streak at risk** (warning) — streak > 0 but no session today → "Keep the streak"
+  7. **Streak strong** (success) — streak ≥ 7 days → encouragement
+  8. **Weekly momentum** (success/tip) — based on weekly hours vs target
+- **Priority sort**: warnings → info → tips → success; capped at 3 insights
+- **4 tone configs** (info/warning/success/tip) with gradient backgrounds, ring colors, and gradient icon chips
+- **Header**: live-pulse glow on Sparkles icon + "AI-powered" badge with animated ping dot
+- **Insight cards**: gradient-to-br background, icon medallion, title, message, and CTA button (navigates to relevant page via `onNavigate`)
+- Uses `AnimatePresence mode="popLayout"` for smooth add/remove animations
+
+### Styling Polish This Round
+
+#### 4. New CSS animations — `src/app/globals.css` (6 new keyframes + utilities)
+- `badgeShineSweep` + `.badge-shine` — periodic diagonal shine sweep across earned badge medallions (every 4s, 60% idle then sweep)
+- `livePulse` + `.live-pulse` — expanding ring shadow pulse (violet) for "live" AI indicators
+- `floatY` + `.float-y` — gentle 6px vertical float (3.5s loop) for hero medallions
+- `twinkle` + `.twinkle` — opacity + scale twinkle (2s loop) for decorative sparkles, with staggered `animation-delay`
+- `earnedGlow` + `.earned-glow` — amber glow ring pulse for recently-earned badges
+- `.kbd-hint` — styled `<kbd>` element for keyboard shortcut hints (border, muted bg, 0.625rem font)
+- `.scrollbar-thin` — themed thin scrollbar (6px, border color, hover state) for webkit + firefox
+
+#### 5. Applied polish
+- **AI Insights icon**: `live-pulse` class → continuous violet ring pulse
+- **AI Insights badge**: "AI-powered" now has animated ping dot (Tailwind `animate-ping`) + inline-flex
+- **Earned badge medallions**: `badge-shine` sweep replaces hover-only shine — runs every 4s on all 9 earned badges
+- **Achievements trophy**: `float-y` replaces Framer Motion y-loop; 4 surrounding sparkles use `twinkle` with staggered delays (0s/0.5s/1s/1.5s)
+- **Sidebar nav**: `kbd-hint` badges show "N" (Daily Tasks) and "F" (Focus Timer) shortcuts when sidebar expanded and item not active
+- **Topbar search**: now a real button (opens command palette) on desktop + mobile search icon button
+
+### Verification Results (agent-browser + VLM)
+- ✅ **Command Palette**: opens via search button (dialog=true, input=true, 17 items); typing "calendar" filters to 1 result; ArrowDown+Enter navigates to Calendar and closes dialog; "n" quick shortcut navigates to Daily Tasks
+- ✅ **Achievements page**: "9 of 22 unlocked" displayed; all 9 filter buttons present and functional; 9 `badge-shine` elements on earned badges; 1 `float-y` trophy; 4 `twinkle` sparkles; VLM confirms "clean, modern layout... vibrant gradient... sparkle stars twinkle... tier progress bars clearly displayed... no visible visual issues"
+- ✅ **Smart Insights panel**: "Smart Insights" header present; 3 insight cards detected (focus goal, weak subject, streak); `live-pulse` on icon; "AI-powered" badge with ping dot; VLM confirms "3 insight cards with colored gradient backgrounds, icons, titles, messages, and CTA buttons. No visual issues"
+- ✅ **Sidebar kbd hints**: `["N","F"]` rendered correctly
+- ✅ **Full navigation sweep**: all 10 nav items (Dashboard → Settings) navigate correctly
+- ✅ **Dark mode**: toggle works (dark ↔ light)
+- ✅ **Lint**: clean (0 errors, 0 warnings)
+- ✅ **Dev server**: compiles cleanly, no JS errors, all API routes return 200
+- ✅ **Achievements API**: returns 22 badges, 9 earned for seeded QA user, tier stats correct (Bronze 4/6, Silver 4/8, Gold 1/6, Platinum 0/2)
+
+## Unresolved Issues or Risks
+
+- **No critical bugs** — all features verified working end-to-end
+- **Minor testing note**: agent-browser `fill` command does not trigger React onChange on controlled inputs (known limitation). Login form tested via API cookie injection instead. App itself works correctly with native browser input.
+- **Background dev server**: the sandbox's auto-run dev server was not running at the start of this round; started it manually in single-command QA batches (server + tests in one Bash call) since background processes don't persist between tool calls in this environment.
+- **Next focus areas** (recommendations for next round):
+  1. **Onboarding walkthrough**: first-time user tour highlighting the 10 nav items + command palette + insights (using a driver.js-style overlay)
+  2. **Achievements "recently earned"**: persist timestamps of when each badge was earned (new DB column or separate table) to enable "New!" pulse and a recent-activity feed
+  3. **Confetti celebration**: trigger a confetti burst when a user earns a new badge in-session (canvas-confetti library)
+  4. **Calendar event drag-and-drop**: allow dragging events between days in the month view
+  5. **Subject detail drawer**: click a subject to open a detail drawer showing all its tasks, exams, and focus sessions
+  6. **Accessibility audit**: ARIA labels on icon-only buttons, focus trap in command palette, keyboard nav for badge grid
