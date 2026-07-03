@@ -50,6 +50,7 @@ interface Badge {
   icon: string;
   category: Category;
   earned: boolean;
+  earnedAt?: string | null;
 }
 
 interface TierStat {
@@ -65,7 +66,7 @@ interface AchievementsData {
     totalCount: number;
     completionPct: number;
     tierStats: TierStat[];
-    recentBadges: string[];
+    recentBadges: { id: string; earnedAt: string | null }[];
   };
   progress: { id: string; current: number; target: number }[];
   summary: {
@@ -516,7 +517,21 @@ export function AchievementsPage() {
   // first-time visitors with an empty timeline until a manual refetch.)
   const [earnedAtMap, setEarnedAtMap] = useState<Record<string, number>>({});
   useEffect(() => {
-    setEarnedAtMap(getEarnedAtMap());
+    // Merge localStorage (in-session "just earned" stamps) with DB-backed
+    // earnedAt from the API. localStorage takes precedence for instant feedback;
+    // DB timestamps provide cross-device persistence for the Recent Activity timeline.
+    const localMap = getEarnedAtMap();
+    const dbMap: Record<string, number> = {};
+    if (data?.badges) {
+      for (const b of data.badges) {
+        if (b.earned && b.earnedAt) {
+          dbMap[b.id] = new Date(b.earnedAt).getTime();
+        }
+      }
+    }
+    // localStorage wins for badges stamped "just now" in-session; DB fills gaps
+    const merged = { ...dbMap, ...localMap };
+    setEarnedAtMap(merged);
   }, [data]);
 
   // Badges earned in the last 30 days — drives the Recent Activity timeline.
