@@ -16,6 +16,7 @@ export type AppView =
   | "exams"
   | "focus"
   | "achievements"
+  | "planner"
   | "settings";
 
 export type AccentColor = "277" | "300" | "162" | "16" | "200" | "70";

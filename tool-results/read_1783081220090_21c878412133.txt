@@ -1,0 +1,1719 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Area,
+     7→  AreaChart,
+     8→  Bar,
+     9→  BarChart,
+    10→  CartesianGrid,
+    11→  ResponsiveContainer,
+    12→  Tooltip,
+    13→  XAxis,
+    14→  YAxis,
+    15→} from "recharts";
+    16→import {
+    17→  AlarmClock,
+    18→  ArrowRight,
+    19→  BookOpen,
+    20→  CalendarDays,
+    21→  CheckCheck,
+    22→  CheckCircle2,
+    23→  Circle,
+    24→  Clock,
+    25→  Flame,
+    26→  GraduationCap,
+    27→  ListTodo,
+    28→  MapPin,
+    29→  Play,
+    30→  Plus,
+    31→  Quote,
+    32→  RefreshCw,
+    33→  Sparkles,
+    34→  Timer,
+    35→  TrendingUp,
+    36→} from "lucide-react";
+    37→import type { LucideIcon } from "lucide-react";
+    38→import { format } from "date-fns";
+    39→import { toast } from "sonner";
+    40→
+    41→import { cn } from "@/lib/utils";
+    42→import { useAppStore, type AppView } from "@/lib/store";
+    43→import { apiFetch, handleError } from "@/lib/api";
+    44→import {
+    45→  type Analytics,
+    46→  type Exam,
+    47→  type FocusSession,
+    48→  type Priority,
+    49→  type Todo,
+    50→  colorOf,
+    51→  PRIORITY_CONFIG,
+    52→} from "@/lib/types";
+    53→import { AnimatedCounter } from "@/components/shared/animated-counter";
+    54→import {
+    55→  GlassCard,
+    56→  PageTransition,
+    57→  StaggerContainer,
+    58→  StaggerItem,
+    59→} from "@/components/shared/motion";
+    60→import {
+    61→  CardSkeleton,
+    62→  EmptyState,
+    63→  Skeleton,
+    64→} from "@/components/shared/feedback";
+    65→import { Button } from "@/components/ui/button";
+    66→import { Progress } from "@/components/ui/progress";
+    67→
+    68→/* -------------------------------------------------------------------------- */
+    69→/*  Constants                                                                  */
+    70→/* -------------------------------------------------------------------------- */
+    71→
+    72→interface StatCardConfig {
+    73→  key: string;
+    74→  icon: LucideIcon;
+    75→  label: string;
+    76→  gradient: string; // tailwind gradient classes
+    77→  glow: string; // tailwind bg for blob
+    78→  suffix?: string;
+    79→  prefix?: string;
+    80→  decimals?: number;
+    81→  subtitle: (s: Analytics["stats"]) => string;
+    82→  value: (s: Analytics["stats"]) => number;
+    83→}
+    84→
+    85→const STAT_CARDS: StatCardConfig[] = [
+    86→  {
+    87→    key: "todayTasks",
+    88→    icon: CheckCircle2,
+    89→    label: "Today's Tasks",
+    90→    gradient: "from-violet-500 to-purple-600",
+    91→    glow: "bg-violet-500",
+    92→    subtitle: () => "scheduled today",
+    93→    value: (s) => s.todayTasks,
+    94→  },
+    95→  {
+    96→    key: "completedTasks",
+    97→    icon: CheckCheck,
+    98→    label: "Completed Tasks",
+    99→    gradient: "from-emerald-500 to-teal-600",
+   100→    glow: "bg-emerald-500",
+   101→    subtitle: (s) => `of ${s.totalTasks} total`,
+   102→    value: (s) => s.completedTasks,
+   103→  },
+   104→  {
+   105→    key: "upcomingExams",
+   106→    icon: GraduationCap,
+   107→    label: "Upcoming Exams",
+   108→    gradient: "from-amber-500 to-orange-600",
+   109→    glow: "bg-amber-500",
+   110→    subtitle: () => "on the horizon",
+   111→    value: (s) => s.upcomingExams,
+   112→  },
+   113→  {
+   114→    key: "focusToday",
+   115→    icon: Timer,
+   116→    label: "Focus Time Today",
+   117→    gradient: "from-rose-500 to-pink-600",
+   118→    glow: "bg-rose-500",
+   119→    suffix: " min",
+   120→    subtitle: () => "today",
+   121→    value: (s) => s.focusTodayMinutes,
+   122→  },
+   123→  // NOTE: studyStreak removed from generic cards — rendered as enhanced StreakCard below
+   124→];
+   125→
+   126→interface QuoteItem {
+   127→  text: string;
+   128→  author: string;
+   129→}
+   130→
+   131→const QUOTES: QuoteItem[] = [
+   132→  {
+   133→    text: "The secret of getting ahead is getting started.",
+   134→    author: "Mark Twain",
+   135→  },
+   136→  {
+   137→    text: "Success is the sum of small efforts, repeated day in and day out.",
+   138→    author: "Robert Collier",
+   139→  },
+   140→  {
+   141→    text: "Don't watch the clock; do what it does. Keep going.",
+   142→    author: "Sam Levenson",
+   143→  },
+   144→  {
+   145→    text: "The future depends on what you do today.",
+   146→    author: "Mahatma Gandhi",
+   147→  },
+   148→  {
+   149→    text: "Learning never exhausts the mind.",
+   150→    author: "Leonardo da Vinci",
+   151→  },
+   152→  {
+   153→    text: "Believe you can and you're halfway there.",
+   154→    author: "Theodore Roosevelt",
+   155→  },
+   156→  {
+   157→    text: "An investment in knowledge pays the best interest.",
+   158→    author: "Benjamin Franklin",
+   159→  },
+   160→  {
+   161→    text: "Push yourself, because no one else is going to do it for you.",
+   162→    author: "Anonymous",
+   163→  },
+   164→];
+   165→
+   166→/* -------------------------------------------------------------------------- */
+   167→/*  Helpers                                                                    */
+   168→/* -------------------------------------------------------------------------- */
+   169→
+   170→function greetingFor(hour: number): string {
+   171→  if (hour < 12) return "Good morning";
+   172→  if (hour < 18) return "Good afternoon";
+   173→  return "Good evening";
+   174→}
+   175→
+   176→function isSameDay(a: Date, b: Date): boolean {
+   177→  return (
+   178→    a.getFullYear() === b.getFullYear() &&
+   179→    a.getMonth() === b.getMonth() &&
+   180→    a.getDate() === b.getDate()
+   181→  );
+   182→}
+   183→
+   184→function daysUntil(dateStr: string): number {
+   185→  const target = new Date(dateStr);
+   186→  if (Number.isNaN(target.getTime())) return Number.POSITIVE_INFINITY;
+   187→  target.setHours(0, 0, 0, 0);
+   188→  const today = new Date();
+   189→  today.setHours(0, 0, 0, 0);
+   190→  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+   191→}
+   192→
+   193→function formatCountdown(days: number): string {
+   194→  if (days < 0) return `${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago`;
+   195→  if (days === 0) return "Today";
+   196→  if (days === 1) return "Tomorrow";
+   197→  return `in ${days} days`;
+   198→}
+   199→
+   200→/* -------------------------------------------------------------------------- */
+   201→/*  Recharts tooltip                                                           */
+   202→/* -------------------------------------------------------------------------- */
+   203→
+   204→interface ChartTooltipPayloadItem {
+   205→  name?: string | number;
+   206→  value?: number | string;
+   207→  color?: string;
+   208→  payload?: { day?: string; hours?: number };
+   209→}
+   210→
+   211→function StudyTooltip({
+   212→  active,
+   213→  payload,
+   214→  label,
+   215→}: {
+   216→  active?: boolean;
+   217→  payload?: ChartTooltipPayloadItem[];
+   218→  label?: string | number;
+   219→}) {
+   220→  if (!active || !payload || payload.length === 0) return null;
+   221→  const value = payload[0]?.value;
+   222→  return (
+   223→    <div className="glass-strong rounded-xl border border-violet-500/20 px-3 py-2 shadow-xl">
+   224→      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+   225→      <p className="text-sm font-semibold text-foreground">
+   226→        {typeof value === "number" ? value.toFixed(1) : value}
+   227→        <span className="ml-1 text-xs text-muted-foreground">hrs</span>
+   228→      </p>
+   229→    </div>
+   230→  );
+   231→}
+   232→
+   233→/* -------------------------------------------------------------------------- */
+   234→/*  Greeting header with live clock                                            */
+   235→/* -------------------------------------------------------------------------- */
+   236→
+   237→function GreetingHeader({ username }: { username: string }) {
+   238→  const [now, setNow] = useState<Date>(() => new Date());
+   239→
+   240→  useEffect(() => {
+   241→    const id = setInterval(() => setNow(new Date()), 1000);
+   242→    return () => clearInterval(id);
+   243→  }, []);
+   244→
+   245→  const greeting = greetingFor(now.getHours());
+   246→
+   247→  return (
+   248→    <motion.div
+   249→      initial={{ opacity: 0, y: 8 }}
+   250→      animate={{ opacity: 1, y: 0 }}
+   251→      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+   252→      className="relative"
+   253→    >
+   254→      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+   255→        <div>
+   256→          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-600 dark:text-violet-300 ring-1 ring-violet-500/20">
+   257→            <Sparkles className="h-3.5 w-3.5" />
+   258→            <span>Welcome back to your dashboard</span>
+   259→          </div>
+   260→          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
+   261→            {greeting},{" "}
+   262→            <span className="text-gradient capitalize">{username}</span>{" "}
+   263→            <motion.span
+   264→              animate={{ rotate: [0, 14, -8, 14, 0] }}
+   265→              transition={{
+   266→                duration: 2.4,
+   267→                repeat: Infinity,
+   268→                repeatDelay: 1.6,
+   269→                ease: "easeInOut",
+   270→              }}
+   271→              className="inline-block origin-[70%_70%]"
+   272→            >
+   273→              👋
+   274→            </motion.span>
+   275→          </h1>
+   276→          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+   277→            <span className="inline-flex items-center gap-1.5">
+   278→              <CalendarDays className="h-4 w-4 text-violet-500" />
+   279→              <span>{format(now, "EEEE, MMMM d, yyyy")}</span>
+   280→            </span>
+   281→            <span className="hidden sm:inline text-muted-foreground/40">•</span>
+   282→            <span className="inline-flex items-center gap-1.5">
+   283→              <Clock className="h-4 w-4 text-violet-500" />
+   284→              <span className="tabular-nums font-medium text-foreground/80">
+   285→                {format(now, "HH:mm:ss")}
+   286→              </span>
+   287→            </span>
+   288→          </div>
+   289→        </div>
+   290→      </div>
+   291→    </motion.div>
+   292→  );
+   293→}
+   294→
+   295→/* -------------------------------------------------------------------------- */
+   296→/*  Enhanced Streak Card with 7-day circles                                    */
+   297→/* -------------------------------------------------------------------------- */
+   298→
+   299→function StreakCard({
+   300→  streak,
+   301→  focusSessions,
+   302→}: {
+   303→  streak: number;
+   304→  focusSessions: FocusSession[];
+   305→}) {
+   306→  const [circlesReady, setCirclesReady] = useState(false);
+   307→
+   308→  useEffect(() => {
+   309→    const timer = setTimeout(() => setCirclesReady(true), 100);
+   310→    return () => clearTimeout(timer);
+   311→  }, []);
+   312→
+   313→  // Compute which of the last 7 days had focus sessions
+   314→  const last7Days = useMemo(() => {
+   315→    const days: { date: Date; label: string; hadSession: boolean }[] = [];
+   316→    const today = new Date();
+   317→    today.setHours(0, 0, 0, 0);
+   318→    for (let i = 6; i >= 0; i--) {
+   319→      const d = new Date(today);
+   320→      d.setDate(d.getDate() - i);
+   321→      d.setHours(0, 0, 0, 0);
+   322→      const next = new Date(d);
+   323→      next.setDate(next.getDate() + 1);
+   324→      const had = focusSessions.some((s) => {
+   325→        const sd = new Date(s.date);
+   326→        return sd >= d && sd < next && s.type === "focus" && s.completed;
+   327→      });
+   328→      days.push({
+   329→        date: d,
+   330→        label: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()],
+   331→        hadSession: had,
+   332→      });
+   333→    }
+   334→    return days;
+   335→  }, [focusSessions]);
+   336→
+   337→  return (
+   338→    <StaggerItem className="h-full">
+   339→      <GlassCard
+   340→        hover
+   341→        className="group relative h-full overflow-hidden p-5"
+   342→      >
+   343→        {/* glow blob */}
+   344→        <div
+   345→          className={cn(
+   346→            "pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl transition-opacity duration-300 group-hover:opacity-40",
+   347→            streak > 0 ? "opacity-25" : "opacity-15",
+   348→            "bg-cyan-500"
+   349→          )}
+   350→        />
+   351→
+   352→        <div className="relative flex items-start justify-between">
+   353→          <div
+   354→            className={cn(
+   355→              "flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg shadow-black/5 transition-all duration-300",
+   356→              "from-cyan-500 to-teal-500",
+   357→              streak === 0 && "opacity-70 grayscale-[30%]"
+   358→            )}
+   359→          >
+   360→            <Flame className="h-6 w-6" />
+   361→          </div>
+   362→          {/* Animated fire emoji */}
+   363→          {streak > 0 && (
+   364→            <motion.span
+   365→              className="text-2xl"
+   366→              animate={{ scale: [1, 1.2, 1] }}
+   367→              transition={{
+   368→                duration: 1.5,
+   369→                repeat: Infinity,
+   370→                ease: "easeInOut",
+   371→              }}
+   372→            >
+   373→              🔥
+   374→            </motion.span>
+   375→          )}
+   376→        </div>
+   377→
+   378→        <div className="relative mt-4">
+   379→          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+   380→            Study Streak
+   381→          </p>
+   382→          {streak > 0 ? (
+   383→            <>
+   384→              <div className={cn("mt-1 text-3xl font-bold tracking-tight sm:text-4xl", "text-foreground")}>
+   385→                <AnimatedCounter value={streak} />
+   386→                <span className="ml-1 text-base font-medium text-muted-foreground">
+   387→                  day{streak === 1 ? "" : "s"}
+   388→                </span>
+   389→              </div>
+   390→              <p className="mt-1 text-xs text-muted-foreground">keep it up!</p>
+   391→            </>
+   392→          ) : (
+   393→            <>
+   394→              <p className="mt-1 text-lg font-semibold text-foreground">
+   395→                Start your streak!
+   396→              </p>
+   397→              <p className="mt-1 text-xs text-muted-foreground">
+   398→                Study today to begin 🔥
+   399→              </p>
+   400→            </>
+   401→          )}
+   402→        </div>
+   403→
+   404→        {/* 7-day circles */}
+   405→        <div className="relative mt-4 flex items-center justify-between gap-1.5">
+   406→          {last7Days.map((day, i) => (
+   407→            <div key={i} className="flex flex-col items-center gap-1">
+   408→              <motion.div
+   409→                initial={false}
+   410→                animate={
+   411→                  circlesReady && day.hadSession
+   412→                    ? { scale: [0, 1.2, 1], opacity: 1 }
+   413→                    : { scale: 1, opacity: 1 }
+   414→                }
+   415→                transition={{
+   416→                  duration: 0.4,
+   417→                  delay: circlesReady && day.hadSession ? i * 0.08 : 0,
+   418→                  ease: [0.22, 1, 0.36, 1],
+   419→                }}
+   420→                className={cn(
+   421→                  "h-5 w-5 rounded-full transition-all duration-300",
+   422→                  day.hadSession
+   423→                    ? "bg-gradient-to-br from-cyan-400 to-teal-500 shadow-sm shadow-cyan-500/30"
+   424→                    : "bg-muted border border-border/60"
+   425→                )}
+   426→              />
+   427→              <span
+   428→                className={cn(
+   429→                  "text-[9px] font-medium",
+   430→                  day.hadSession
+   431→                    ? "text-cyan-600 dark:text-cyan-400"
+   432→                    : "text-muted-foreground"
+   433→                )}
+   434→              >
+   435→                {day.label}
+   436→              </span>
+   437→            </div>
+   438→          ))}
+   439→        </div>
+   440→      </GlassCard>
+   441→    </StaggerItem>
+   442→  );
+   443→}
+   444→
+   445→/* -------------------------------------------------------------------------- */
+   446→/*  Today's Goal — circular progress ring                                      */
+   447→/* -------------------------------------------------------------------------- */
+   448→
+   449→function TodaysGoalRing({
+   450→  focusMinutes,
+   451→  targetHours,
+   452→}: {
+   453→  focusMinutes: number;
+   454→  targetHours: number;
+   455→}) {
+   456→  const targetMinutes = targetHours * 60;
+   457→  const rawPct = targetMinutes > 0 ? (focusMinutes / targetMinutes) * 100 : 0;
+   458→  const pct = Math.min(rawPct, 100);
+   459→  const displayPct = Math.round(rawPct);
+   460→  const exceeded = rawPct > 100;
+   461→
+   462→  // SVG ring params
+   463→  const radius = 52;
+   464→  const stroke = 8;
+   465→  const normalizedRadius = radius - stroke / 2;
+   466→  const circumference = 2 * Math.PI * normalizedRadius;
+   467→  const strokeDashoffset = circumference - (pct / 100) * circumference;
+   468→
+   469→  return (
+   470→    <motion.div
+   471→      initial={{ opacity: 0, y: 12 }}
+   472→      animate={{ opacity: 1, y: 0 }}
+   473→      transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+   474→    >
+   475→      <GlassCard className="relative overflow-hidden p-5 sm:p-6">
+   476→        {/* Subtle pulsing glow when behind goal */}
+   477→        {!exceeded && rawPct < 100 && (
+   478→          <motion.div
+   479→            animate={{ opacity: [0.15, 0.35, 0.15] }}
+   480→            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+   481→            className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-500/30 blur-3xl"
+   482→          />
+   483→        )}
+   484→        <div className="relative flex items-center gap-5 sm:gap-6">
+   485→          <div className="relative shrink-0">
+   486→            <svg
+   487→              width={(radius + 4) * 2}
+   488→              height={(radius + 4) * 2}
+   489→              viewBox={`0 0 ${(radius + 4) * 2} ${(radius + 4) * 2}`}
+   490→              className="-rotate-90"
+   491→            >
+   492→              <defs>
+   493→                <linearGradient id="goalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+   494→                  <stop offset="0%" stopColor="#8b5cf6" />
+   495→                  <stop offset="100%" stopColor="#d946ef" />
+   496→                </linearGradient>
+   497→              </defs>
+   498→              {/* Background track */}
+   499→              <circle
+   500→                cx={radius + 4}
+   501→                cy={radius + 4}
+   502→                r={normalizedRadius}
+   503→                fill="none"
+   504→                stroke="currentColor"
+   505→                strokeWidth={stroke}
+   506→                className="text-muted/40"
+   507→              />
+   508→              {/* Filled arc */}
+   509→              <motion.circle
+   510→                cx={radius + 4}
+   511→                cy={radius + 4}
+   512→                r={normalizedRadius}
+   513→                fill="none"
+   514→                stroke="url(#goalGrad)"
+   515→                strokeWidth={stroke}
+   516→                strokeLinecap="round"
+   517→                strokeDasharray={circumference}
+   518→                initial={{ strokeDashoffset: circumference }}
+   519→                animate={{ strokeDashoffset }}
+   520→                transition={{ duration: 1.2, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+   521→              />
+   522→            </svg>
+   523→            {/* Center text */}
+   524→            <div className="absolute inset-0 flex flex-col items-center justify-center">
+   525→              <span className="text-xl font-bold tabular-nums">
+   526→                {displayPct}%
+   527→              </span>
+   528→              <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">
+   529→                of goal
+   530→              </span>
+   531→            </div>
+   532→          </div>
+   533→
+   534→          <div className="min-w-0 flex-1">
+   535→            <div className="flex items-center gap-2">
+   536→              <h3 className="text-sm font-semibold">Today&apos;s Goal</h3>
+   537→              {exceeded ? (
+   538→                <motion.span
+   539→                  initial={{ scale: 0 }}
+   540→                  animate={{ scale: 1 }}
+   541→                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
+   542→                  className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400"
+   543→                >
+   544→                  ✨ Goal exceeded!
+   545→                </motion.span>
+   546→              ) : rawPct < 50 ? (
+   547→                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+   548→                  Keep going
+   549→                </span>
+   550→              ) : (
+   551→                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+   552→                  Almost there
+   553→                </span>
+   554→              )}
+   555→            </div>
+   556→            <p className="mt-1 text-xs text-muted-foreground">
+   557→              <span className="font-semibold text-foreground tabular-nums">
+   558→                {focusMinutes}
+   559→              </span>{" "}
+   560→              / <span className="tabular-nums">{targetMinutes}</span> min target
+   561→              {!exceeded && rawPct < 100 && (
+   562→                <span className="ml-1 text-muted-foreground/70">
+   563→                  · {Math.max(0, targetMinutes - focusMinutes)} min to go
+   564→                </span>
+   565→              )}
+   566→            </p>
+   567→            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+   568→              <motion.div
+   569→                initial={{ width: 0 }}
+   570→                animate={{ width: `${Math.min(rawPct, 100)}%` }}
+   571→                transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+   572→                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+   573→              />
+   574→            </div>
+   575→          </div>
+   576→        </div>
+   577→      </GlassCard>
+   578→    </motion.div>
+   579→  );
+   580→}
+   581→
+   582→/* -------------------------------------------------------------------------- */
+   583→/*  Stat card                                                                  */
+   584→/* -------------------------------------------------------------------------- */
+   585→
+   586→function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics["stats"] }) {
+   587→  const Icon = config.icon;
+   588→  const value = config.value(stats);
+   589→  const subtitle = config.subtitle(stats);
+   590→  const isEmpty = value === 0;
+   591→
+   592→  return (
+   593→    <StaggerItem className="h-full">
+   594→      <div className="gradient-border-hover h-full">
+   595→      <GlassCard
+   596→        hover
+   597→        className={cn("group relative h-full overflow-hidden p-5", isEmpty && "icon-chip-shimmer")}
+   598→        style={isEmpty ? {
+   599→          backgroundImage: undefined,
+   600→        } : undefined}
+   601→      >
+   602→        {/* glow blob */}
+   603→        <div
+   604→          className={cn(
+   605→            "pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl transition-opacity duration-300 group-hover:opacity-40",
+   606→            isEmpty ? "opacity-15 empty-pulse-glow" : "opacity-25",
+   607→            config.glow
+   608→          )}
+   609→        />
+   610→        <div className="relative flex items-start justify-between">
+   611→          <div
+   612→            className={cn(
+   613→              "flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg shadow-black/5 transition-all duration-300",
+   614→              config.gradient,
+   615→              isEmpty && "opacity-70 grayscale-[30%]"
+   616→            )}
+   617→          >
+   618→            <Icon className="h-6 w-6" />
+   619→          </div>
+   620→        </div>
+   621→        <div className="relative mt-4">
+   622→          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+   623→            {config.label}
+   624→          </p>
+   625→          <div className={cn("mt-1 text-3xl font-bold tracking-tight sm:text-4xl", isEmpty ? "text-muted-foreground/60" : "text-foreground")}>
+   626→            <AnimatedCounter
+   627→              value={value}
+   628→              suffix={config.suffix}
+   629→              prefix={config.prefix}
+   630→              decimals={config.decimals}
+   631→            />
+   632→          </div>
+   633→          <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+   634→        </div>
+   635→      </GlassCard>
+   636→      </div>
+   637→    </StaggerItem>
+   638→  );
+   639→}
+   640→
+   641→/* -------------------------------------------------------------------------- */
+   642→/*  Weekly study hours chart                                                   */
+   643→/* -------------------------------------------------------------------------- */
+   644→
+   645→function WeeklyChart({ data }: { data: Analytics["weeklyData"] }) {
+   646→  return (
+   647→    <GlassCard className="p-5 sm:p-6">
+   648→      <div className="mb-4 flex items-start justify-between">
+   649→        <div>
+   650→          <h3 className="flex items-center gap-2 text-base font-semibold">
+   651→            <TrendingUp className="h-4 w-4 text-violet-500" />
+   652→            Weekly Study Hours
+   653→          </h3>
+   654→          <p className="mt-0.5 text-xs text-muted-foreground">
+   655→            Last 7 days focus time
+   656→          </p>
+   657→        </div>
+   658→      </div>
+   659→      <div className="h-[220px] w-full">
+   660→        <ResponsiveContainer width="100%" height="100%">
+   661→          <AreaChart
+   662→            data={data}
+   663→            margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+   664→          >
+   665→            <defs>
+   666→              <linearGradient id="weeklyGrad" x1="0" y1="0" x2="0" y2="1">
+   667→                <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.45} />
+   668→                <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.02} />
+   669→              </linearGradient>
+   670→              <linearGradient id="weeklyStroke" x1="0" y1="0" x2="1" y2="0">
+   671→                <stop offset="0%" stopColor="#a855f7" />
+   672→                <stop offset="100%" stopColor="#ec4899" />
+   673→              </linearGradient>
+   674→            </defs>
+   675→            <CartesianGrid
+   676→              strokeDasharray="3 3"
+   677→              stroke="currentColor"
+   678→              strokeOpacity={0.08}
+   679→              vertical={false}
+   680→            />
+   681→            <XAxis
+   682→              dataKey="day"
+   683→              tickLine={false}
+   684→              axisLine={false}
+   685→              tick={{ fontSize: 12, fill: "currentColor", fillOpacity: 0.6 }}
+   686→              dy={8}
+   687→            />
+   688→            <YAxis
+   689→              tickLine={false}
+   690→              axisLine={false}
+   691→              tick={{ fontSize: 12, fill: "currentColor", fillOpacity: 0.6 }}
+   692→              width={40}
+   693→            />
+   694→            <Tooltip
+   695→              content={<StudyTooltip />}
+   696→              cursor={{ stroke: "#8b5cf6", strokeWidth: 1, strokeOpacity: 0.3 }}
+   697→            />
+   698→            <Area
+   699→              type="monotone"
+   700→              dataKey="hours"
+   701→              stroke="url(#weeklyStroke)"
+   702→              strokeWidth={3}
+   703→              fill="url(#weeklyGrad)"
+   704→              dot={{
+   705→                r: 3,
+   706→                fill: "#8b5cf6",
+   707→                strokeWidth: 0,
+   708→              }}
+   709→              activeDot={{
+   710→                r: 5,
+   711→                fill: "#8b5cf6",
+   712→                stroke: "#fff",
+   713→                strokeWidth: 2,
+   714→              }}
+   715→            />
+   716→          </AreaChart>
+   717→        </ResponsiveContainer>
+   718→      </div>
+   719→    </GlassCard>
+   720→  );
+   721→}
+   722→
+   723→/* -------------------------------------------------------------------------- */
+   724→/*  Monthly study hours chart                                                  */
+   725→/* -------------------------------------------------------------------------- */
+   726→
+   727→function MonthlyChart({ data }: { data: Analytics["monthlyData"] }) {
+   728→  return (
+   729→    <GlassCard className="p-5 sm:p-6">
+   730→      <div className="mb-4 flex items-start justify-between">
+   731→        <div>
+   732→          <h3 className="flex items-center gap-2 text-base font-semibold">
+   733→            <Timer className="h-4 w-4 text-fuchsia-500" />
+   734→            Monthly Study Hours
+   735→          </h3>
+   736→          <p className="mt-0.5 text-xs text-muted-foreground">
+   737→            Last 30 days focus time
+   738→          </p>
+   739→        </div>
+   740→      </div>
+   741→      <div className="h-[200px] w-full">
+   742→        <ResponsiveContainer width="100%" height="100%">
+   743→          <BarChart
+   744→            data={data}
+   745→            margin={{ top: 8, right: 8, left: -16, bottom: 0 }}
+   746→            barCategoryGap="12%"
+   747→          >
+   748→            <defs>
+   749→              <linearGradient id="monthlyBar" x1="0" y1="0" x2="0" y2="1">
+   750→                <stop offset="0%" stopColor="#d946ef" />
+   751→                <stop offset="100%" stopColor="#8b5cf6" />
+   752→              </linearGradient>
+   753→            </defs>
+   754→            <CartesianGrid
+   755→              strokeDasharray="3 3"
+   756→              stroke="currentColor"
+   757→              strokeOpacity={0.08}
+   758→              vertical={false}
+   759→            />
+   760→            <XAxis
+   761→              dataKey="day"
+   762→              tickLine={false}
+   763→              axisLine={false}
+   764→              tick={{ fontSize: 10, fill: "currentColor", fillOpacity: 0.6 }}
+   765→              interval={3}
+   766→              dy={8}
+   767→            />
+   768→            <YAxis
+   769→              tickLine={false}
+   770→              axisLine={false}
+   771→              tick={{ fontSize: 12, fill: "currentColor", fillOpacity: 0.6 }}
+   772→              width={40}
+   773→            />
+   774→            <Tooltip
+   775→              content={<StudyTooltip />}
+   776→              cursor={{ fill: "#8b5cf6", fillOpacity: 0.08 }}
+   777→            />
+   778→            <Bar
+   779→              dataKey="hours"
+   780→              fill="url(#monthlyBar)"
+   781→              radius={[6, 6, 0, 0]}
+   782→              maxBarSize={14}
+   783→            />
+   784→          </BarChart>
+   785→        </ResponsiveContainer>
+   786→      </div>
+   787→    </GlassCard>
+   788→  );
+   789→}
+   790→
+   791→/* -------------------------------------------------------------------------- */
+   792→/*  Motivational quote card                                                    */
+   793→/* -------------------------------------------------------------------------- */
+   794→
+   795→function QuoteCard() {
+   796→  const [index, setIndex] = useState<number>(() =>
+   797→    Math.floor(Math.random() * QUOTES.length)
+   798→  );
+   799→
+   800→  const next = useCallback(() => {
+   801→    setIndex((i) => (i + 1) % QUOTES.length);
+   802→  }, []);
+   803→
+   804→  const quote = QUOTES[index];
+   805→
+   806→  return (
+   807→    <GlassCard className="relative flex h-full flex-col overflow-hidden p-6">
+   808→      {/* decorative blobs */}
+   809→      <div className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-violet-500/15 blur-3xl" />
+   810→      <div className="pointer-events-none absolute -bottom-10 -right-6 h-32 w-32 rounded-full bg-fuchsia-500/15 blur-3xl" />
+   811→
+   812→      <div className="relative flex items-start justify-between">
+   813→        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/20">
+   814→          <Quote className="h-5 w-5" />
+   815→        </div>
+   816→        <Button
+   817→          variant="ghost"
+   818→          size="icon"
+   819→          onClick={next}
+   820→          className="h-8 w-8 rounded-full text-muted-foreground hover:text-violet-500"
+   821→          aria-label="Next quote"
+   822→        >
+   823→          <RefreshCw className="h-4 w-4" />
+   824→        </Button>
+   825→      </div>
+   826→
+   827→      <div className="relative mt-4 flex-1">
+   828→        <AnimatePresence mode="wait">
+   829→          <motion.blockquote
+   830→            key={index}
+   831→            initial={{ opacity: 0, y: 8 }}
+   832→            animate={{ opacity: 1, y: 0 }}
+   833→            exit={{ opacity: 0, y: -8 }}
+   834→            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+   835→            className="space-y-3"
+   836→          >
+   837→            <p className="text-base font-medium italic leading-relaxed text-foreground/90 sm:text-lg">
+   838→              &ldquo;{quote.text}&rdquo;
+   839→            </p>
+   840→            <footer className="text-sm font-medium text-violet-600 dark:text-violet-300">
+   841→              — {quote.author}
+   842→            </footer>
+   843→          </motion.blockquote>
+   844→        </AnimatePresence>
+   845→      </div>
+   846→
+   847→      <div className="relative mt-4 flex items-center gap-1.5">
+   848→        {QUOTES.map((_, i) => (
+   849→          <button
+   850→            key={i}
+   851→            onClick={() => setIndex(i)}
+   852→            aria-label={`Quote ${i + 1}`}
+   853→            className={cn(
+   854→              "h-1.5 rounded-full transition-all",
+   855→              i === index
+   856→                ? "w-6 bg-violet-500"
+   857→                : "w-1.5 bg-violet-500/25 hover:bg-violet-500/50"
+   858→            )}
+   859→          />
+   860→        ))}
+   861→      </div>
+   862→    </GlassCard>
+   863→  );
+   864→}
+   865→
+   866→/* -------------------------------------------------------------------------- */
+   867→/*  Subject progress list                                                      */
+   868→/* -------------------------------------------------------------------------- */
+   869→
+   870→function SubjectProgressList({
+   871→  data,
+   872→}: {
+   873→  data: Analytics["subjectPerformance"];
+   874→}) {
+   875→  const top = useMemo(() => [...data].sort((a, b) => b.progress - a.progress).slice(0, 4), [data]);
+   876→
+   877→  return (
+   878→    <GlassCard className="p-5 sm:p-6">
+   879→      <div className="mb-4 flex items-center justify-between">
+   880→        <h3 className="flex items-center gap-2 text-base font-semibold">
+   881→          <GraduationCap className="h-4 w-4 text-violet-500" />
+   882→          Subject Progress
+   883→        </h3>
+   884→        <span className="text-xs text-muted-foreground">Top {top.length}</span>
+   885→      </div>
+   886→      {top.length === 0 ? (
+   887→        <div className="py-8 text-center text-sm text-muted-foreground">
+   888→          No subjects tracked yet.
+   889→        </div>
+   890→      ) : (
+   891→        <ul className="space-y-4">
+   892→          {top.map((subject, i) => {
+   893→            const c = colorOf(subject.color);
+   894→            return (
+   895→              <motion.li
+   896→                key={`${subject.name}-${i}`}
+   897→                initial={{ opacity: 0, x: -8 }}
+   898→                animate={{ opacity: 1, x: 0 }}
+   899→                transition={{ duration: 0.3, delay: i * 0.06 }}
+   900→              >
+   901→                <div className="mb-1.5 flex items-center justify-between text-sm">
+   902→                  <span className="flex items-center gap-2 font-medium">
+   903→                    <span
+   904→                      className="h-2.5 w-2.5 rounded-full"
+   905→                      style={{ backgroundColor: c.chart }}
+   906→                    />
+   907→                    {subject.name}
+   908→                  </span>
+   909→                  <span className="tabular-nums text-muted-foreground">
+   910→                    {subject.progress}%
+   911→                  </span>
+   912→                </div>
+   913→                <div
+   914→                  className="h-2 w-full overflow-hidden rounded-full bg-muted"
+   915→                  role="progressbar"
+   916→                  aria-valuenow={subject.progress}
+   917→                  aria-valuemin={0}
+   918→                  aria-valuemax={100}
+   919→                >
+   920→                  <motion.div
+   921→                    initial={{ width: 0 }}
+   922→                    animate={{ width: `${subject.progress}%` }}
+   923→                    transition={{ duration: 0.8, delay: 0.1 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
+   924→                    className="h-full rounded-full"
+   925→                    style={{ backgroundColor: c.chart }}
+   926→                  />
+   927→                </div>
+   928→              </motion.li>
+   929→            );
+   930→          })}
+   931→        </ul>
+   932→      )}
+   933→    </GlassCard>
+   934→  );
+   935→}
+   936→
+   937→/* -------------------------------------------------------------------------- */
+   938→/*  Upcoming exams preview                                                     */
+   939→/* -------------------------------------------------------------------------- */
+   940→
+   941→function ExamsPreview({
+   942→  exams,
+   943→  onViewAll,
+   944→}: {
+   945→  exams: Exam[];
+   946→  onViewAll: () => void;
+   947→}) {
+   948→  const next = useMemo(
+   949→    () =>
+   950→      [...exams]
+   951→        .filter((e) => daysUntil(e.date) >= 0)
+   952→        .sort(
+   953→          (a, b) =>
+   954→            new Date(a.date).getTime() - new Date(b.date).getTime()
+   955→        )
+   956→        .slice(0, 3),
+   957→    [exams]
+   958→  );
+   959→
+   960→  return (
+   961→    <GlassCard className="p-5 sm:p-6">
+   962→      <div className="mb-4 flex items-center justify-between">
+   963→        <h3 className="flex items-center gap-2 text-base font-semibold">
+   964→          <AlarmClock className="h-4 w-4 text-amber-500" />
+   965→          Upcoming Exams
+   966→        </h3>
+   967→        <Button
+   968→          variant="ghost"
+   969→          size="sm"
+   970→          onClick={onViewAll}
+   971→          className="gap-1 text-muted-foreground hover:text-violet-500"
+   972→        >
+   973→          View all
+   974→          <ArrowRight className="h-3.5 w-3.5" />
+   975→        </Button>
+   976→      </div>
+   977→
+   978→      {next.length === 0 ? (
+   979→        <div className="relative flex flex-col items-center justify-center text-center py-10 px-6">
+   980→          {/* Pulsing glow behind */}
+   981→          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+   982→            <div className="h-32 w-32 rounded-full bg-amber-500/10 empty-pulse-glow blur-2xl" />
+   983→          </div>
+   984→          <div className="relative">
+   985→            <EmptyState
+   986→              icon={GraduationCap}
+   987→              title="No upcoming exams"
+   988→              description="Enjoy the calm — schedule a new exam and we'll help you prepare."
+   989→              className="py-0"
+   990→            />
+   991→          </div>
+   992→        </div>
+   993→      ) : (
+   994→        <ul className="space-y-3">
+   995→          <AnimatePresence initial={false}>
+   996→            {next.map((exam, i) => {
+   997→              const days = daysUntil(exam.date);
+   998→              const priority = exam.priority as Priority;
+   999→              const pc = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.medium;
+  1000→              const dateObj = new Date(exam.date);
+  1001→
+  1002→              return (
+  1003→                <motion.li
+  1004→                  key={exam.id}
+  1005→                  initial={{ opacity: 0, y: 8 }}
+  1006→                  animate={{ opacity: 1, y: 0 }}
+  1007→                  transition={{ duration: 0.3, delay: i * 0.06 }}
+  1008→                  className="group flex items-center gap-3 rounded-2xl border border-violet-500/10 bg-violet-500/[0.03] p-3 transition-colors hover:border-violet-500/25 hover:bg-violet-500/[0.06]"
+  1009→                >
+  1010→                  <div
+  1011→                    className={cn(
+  1012→                      "flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl text-white shadow-md",
+  1013→                      "bg-gradient-to-br from-amber-500 to-orange-600"
+  1014→                    )}
+  1015→                  >
+  1016→                    <span className="text-sm font-bold leading-none">
+  1017→                      {Number.isNaN(dateObj.getTime()) ? "--" : dateObj.getDate()}
+  1018→                    </span>
+  1019→                    <span className="text-[9px] font-medium uppercase leading-none mt-0.5">
+  1020→                      {Number.isNaN(dateObj.getTime())
+  1021→                        ? "--"
+  1022→                        : format(dateObj, "MMM")}
+  1023→                    </span>
+  1024→                  </div>
+  1025→
+  1026→                  <div className="min-w-0 flex-1">
+  1027→                    <div className="flex items-center gap-2">
+  1028→                      <p className="truncate text-sm font-semibold">
+  1029→                        {exam.examName}
+  1030→                      </p>
+  1031→                      <span
+  1032→                        className={cn("h-1.5 w-1.5 shrink-0 rounded-full", pc.dot)}
+  1033→                        title={`${pc.label} priority`}
+  1034→                      />
+  1035→                    </div>
+  1036→                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+  1037→                      <span className="font-medium text-foreground/70">
+  1038→                        {exam.subject || "General"}
+  1039→                      </span>
+  1040→                      {exam.location && (
+  1041→                        <>
+  1042→                          <span className="text-muted-foreground/40">·</span>
+  1043→                          <span className="inline-flex items-center gap-0.5">
+  1044→                            <MapPin className="h-3 w-3" />
+  1045→                            {exam.location}
+  1046→                          </span>
+  1047→                        </>
+  1048→                      )}
+  1049→                      {exam.time && (
+  1050→                        <>
+  1051→                          <span className="text-muted-foreground/40">·</span>
+  1052→                          <span className="inline-flex items-center gap-0.5">
+  1053→                            <Clock className="h-3 w-3" />
+  1054→                            {exam.time}
+  1055→                          </span>
+  1056→                        </>
+  1057→                      )}
+  1058→                    </div>
+  1059→                  </div>
+  1060→
+  1061→                  <div className="shrink-0 text-right">
+  1062→                    <span
+  1063→                      className={cn(
+  1064→                        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+  1065→                        days <= 1
+  1066→                          ? "bg-rose-500/15 text-rose-600 dark:text-rose-300"
+  1067→                          : days <= 7
+  1068→                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-300"
+  1069→                            : "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+  1070→                      )}
+  1071→                    >
+  1072→                      {formatCountdown(days)}
+  1073→                    </span>
+  1074→                  </div>
+  1075→                </motion.li>
+  1076→              );
+  1077→            })}
+  1078→          </AnimatePresence>
+  1079→        </ul>
+  1080→      )}
+  1081→    </GlassCard>
+  1082→  );
+  1083→}
+  1084→
+  1085→/* -------------------------------------------------------------------------- */
+  1086→/*  Today's tasks preview                                                      */
+  1087→/* -------------------------------------------------------------------------- */
+  1088→
+  1089→function TodayTasksPreview({
+  1090→  todos,
+  1091→  onViewAll,
+  1092→}: {
+  1093→  todos: Todo[];
+  1094→  onViewAll: () => void;
+  1095→}) {
+  1096→  const todays = useMemo(() => {
+  1097→    const today = new Date();
+  1098→    return todos
+  1099→      .filter((t) => {
+  1100→        if (!t.dueDate) return false;
+  1101→        const d = new Date(t.dueDate);
+  1102→        return Number.isNaN(d.getTime()) ? false : isSameDay(d, today);
+  1103→      })
+  1104→      .slice(0, 5);
+  1105→  }, [todos]);
+  1106→
+  1107→  return (
+  1108→    <GlassCard className="p-5 sm:p-6">
+  1109→      <div className="mb-4 flex items-center justify-between">
+  1110→        <h3 className="flex items-center gap-2 text-base font-semibold">
+  1111→          <ListTodo className="h-4 w-4 text-violet-500" />
+  1112→          Today's Tasks
+  1113→        </h3>
+  1114→        <Button
+  1115→          variant="ghost"
+  1116→          size="sm"
+  1117→          onClick={onViewAll}
+  1118→          className="gap-1 text-muted-foreground hover:text-violet-500"
+  1119→        >
+  1120→          View all
+  1121→          <ArrowRight className="h-3.5 w-3.5" />
+  1122→        </Button>
+  1123→      </div>
+  1124→
+  1125→      {todays.length === 0 ? (
+  1126→        <div className="relative flex flex-col items-center justify-center text-center py-10 px-6">
+  1127→          {/* Pulsing glow behind */}
+  1128→          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+  1129→            <div className="h-32 w-32 rounded-full bg-violet-500/10 empty-pulse-glow blur-2xl" />
+  1130→          </div>
+  1131→          <div className="relative">
+  1132→            <EmptyState
+  1133→              icon={CheckCircle2}
+  1134→              title="Nothing due today"
+  1135→              description="You're all caught up. Add a task or take a well-deserved break."
+  1136→              className="py-0"
+  1137→            />
+  1138→          </div>
+  1139→        </div>
+  1140→      ) : (
+  1141→        <ul className="space-y-2">
+  1142→          <AnimatePresence initial={false}>
+  1143→            {todays.map((todo, i) => {
+  1144→              const priority = todo.priority as Priority;
+  1145→              const pc = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.medium;
+  1146→              const isDone = todo.status === "completed";
+  1147→
+  1148→              return (
+  1149→                <motion.li
+  1150→                  key={todo.id}
+  1151→                  initial={{ opacity: 0, y: 6 }}
+  1152→                  animate={{ opacity: 1, y: 0 }}
+  1153→                  transition={{ duration: 0.25, delay: i * 0.05 }}
+  1154→                  className="group flex items-center gap-3 rounded-xl border border-violet-500/5 bg-violet-500/[0.02] px-3 py-2.5 transition-colors hover:border-violet-500/20 hover:bg-violet-500/[0.06]"
+  1155→                >
+  1156→                  <span
+  1157→                    className={cn("h-2 w-2 shrink-0 rounded-full", pc.dot)}
+  1158→                    title={`${pc.label} priority`}
+  1159→                  />
+  1160→                  <div className="min-w-0 flex-1">
+  1161→                    <p
+  1162→                      className={cn(
+  1163→                        "truncate text-sm font-medium",
+  1164→                        isDone && "text-muted-foreground line-through"
+  1165→                      )}
+  1166→                    >
+  1167→                      {todo.title}
+  1168→                    </p>
+  1169→                    {todo.subject && (
+  1170→                      <p className="truncate text-xs text-muted-foreground">
+  1171→                        {todo.subject}
+  1172→                      </p>
+  1173→                    )}
+  1174→                  </div>
+  1175→                  {isDone ? (
+  1176→                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+  1177→                      <CheckCheck className="h-3.5 w-3.5" />
+  1178→                    </span>
+  1179→                  ) : (
+  1180→                    <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-muted-foreground/30 text-transparent">
+  1181→                      <Circle className="h-3 w-3" />
+  1182→                    </span>
+  1183→                  )}
+  1184→                </motion.li>
+  1185→              );
+  1186→            })}
+  1187→          </AnimatePresence>
+  1188→        </ul>
+  1189→      )}
+  1190→    </GlassCard>
+  1191→  );
+  1192→}
+  1193→
+  1194→/* -------------------------------------------------------------------------- */
+  1195→/*  Loading skeletons                                                          */
+  1196→/* -------------------------------------------------------------------------- */
+  1197→
+  1198→function DashboardSkeleton() {
+  1199→  return (
+  1200→    <div className="space-y-6">
+  1201→      <div className="space-y-2">
+  1202→        <Skeleton className="h-4 w-44" />
+  1203→        <Skeleton className="h-9 w-72" />
+  1204→        <Skeleton className="h-4 w-56" />
+  1205→      </div>
+  1206→      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+  1207→        {Array.from({ length: 5 }).map((_, i) => (
+  1208→          <CardSkeleton key={i} />
+  1209→        ))}
+  1210→      </div>
+  1211→      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  1212→        <div className="space-y-6 lg:col-span-2">
+  1213→          <Skeleton className="h-[260px] w-full rounded-3xl" />
+  1214→          <Skeleton className="h-[240px] w-full rounded-3xl" />
+  1215→        </div>
+  1216→        <div className="space-y-6">
+  1217→          <Skeleton className="h-[240px] w-full rounded-3xl" />
+  1218→          <Skeleton className="h-[200px] w-full rounded-3xl" />
+  1219→        </div>
+  1220→      </div>
+  1221→      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+  1222→        <Skeleton className="h-[260px] w-full rounded-3xl" />
+  1223→        <Skeleton className="h-[260px] w-full rounded-3xl" />
+  1224→      </div>
+  1225→    </div>
+  1226→  );
+  1227→}
+  1228→
+  1229→/* -------------------------------------------------------------------------- */
+  1230→/*  Welcome Quick Start card (shows only when no data)                        */
+  1231→/* -------------------------------------------------------------------------- */
+  1232→
+  1233→function QuickStartCard({ onNavigate }: { onNavigate: (view: AppView) => void }) {
+  1234→  const actions = [
+  1235→    { label: "Add your first subject", icon: BookOpen, view: "subjects" as AppView, gradient: "from-violet-500 to-purple-600" },
+  1236→    { label: "Create a task", icon: Plus, view: "todos" as AppView, gradient: "from-emerald-500 to-teal-600" },
+  1237→    { label: "Start a focus session", icon: Play, view: "focus" as AppView, gradient: "from-rose-500 to-pink-600" },
+  1238→  ];
+  1239→
+  1240→  return (
+  1241→    <motion.div
+  1242→      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+  1243→      animate={{ opacity: 1, y: 0, scale: 1 }}
+  1244→      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+  1245→      className="relative overflow-hidden rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] via-fuchsia-500/[0.06] to-purple-500/[0.08] p-6 backdrop-blur-xl"
+  1246→    >
+  1247→      {/* Sparkle decorations */}
+  1248→      <div className="pointer-events-none absolute left-[15%] top-[20%] sparkle-float" style={{ animationDelay: "0s" }}>
+  1249→        <Sparkles className="h-4 w-4 text-violet-400/60" />
+  1250→      </div>
+  1251→      <div className="pointer-events-none absolute right-[20%] top-[15%] sparkle-float" style={{ animationDelay: "0.8s" }}>
+  1252→        <Sparkles className="h-3 w-3 text-fuchsia-400/50" />
+  1253→      </div>
+  1254→      <div className="pointer-events-none absolute left-[60%] bottom-[20%] sparkle-float" style={{ animationDelay: "1.6s" }}>
+  1255→        <Sparkles className="h-3.5 w-3.5 text-purple-400/50" />
+  1256→      </div>
+  1257→      <div className="pointer-events-none absolute left-[8%] bottom-[25%] sparkle-float" style={{ animationDelay: "2.1s" }}>
+  1258→        <Sparkles className="h-3 w-3 text-violet-300/40" />
+  1259→      </div>
+  1260→
+  1261→      {/* Glow blob */}
+  1262→      <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/15 blur-3xl" />
+  1263→      <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-fuchsia-500/10 blur-3xl" />
+  1264→
+  1265→      <div className="relative">
+  1266→        <h2 className="text-xl font-bold sm:text-2xl">
+  1267→          Welcome to StudySpark! 🎉
+  1268→        </h2>
+  1269→        <p className="mt-1.5 text-sm text-muted-foreground max-w-lg">
+  1270→          Get started by adding some data — your dashboard will light up with insights in no time.
+  1271→        </p>
+  1272→
+  1273→        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+  1274→          {actions.map((action, i) => {
+  1275→            const ActionIcon = action.icon;
+  1276→            return (
+  1277→              <motion.button
+  1278→                key={action.label}
+  1279→                initial={{ opacity: 0, x: -8 }}
+  1280→                animate={{ opacity: 1, x: 0 }}
+  1281→                transition={{ duration: 0.3, delay: 0.15 + i * 0.08 }}
+  1282→                whileHover={{ scale: 1.03, y: -2 }}
+  1283→                whileTap={{ scale: 0.97 }}
+  1284→                onClick={() => onNavigate(action.view)}
+  1285→                className={cn(
+  1286→                  "flex items-center gap-2.5 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl",
+  1287→                  `bg-gradient-to-br ${action.gradient}`
+  1288→                )}
+  1289→              >
+  1290→                <ActionIcon className="h-4 w-4" />
+  1291→                {action.label}
+  1292→              </motion.button>
+  1293→            );
+  1294→          })}
+  1295→        </div>
+  1296→      </div>
+  1297→    </motion.div>
+  1298→  );
+  1299→}
+  1300→
+  1301→/* -------------------------------------------------------------------------- */
+  1302→/*  AI Study Insights panel                                                    */
+  1303→/* -------------------------------------------------------------------------- */
+  1304→
+  1305→type InsightTone = "info" | "warning" | "success" | "tip";
+  1306→
+  1307→interface Insight {
+  1308→  id: string;
+  1309→  tone: InsightTone;
+  1310→  icon: LucideIcon;
+  1311→  title: string;
+  1312→  message: string;
+  1313→  ctaLabel?: string;
+  1314→  ctaView?: AppView;
+  1315→}
+  1316→
+  1317→const INSIGHT_TONE_CONFIG: Record<
+  1318→  InsightTone,
+  1319→  { gradient: string; ring: string; chipBg: string; chipText: string; iconBg: string }
+  1320→> = {
+  1321→  info: {
+  1322→    gradient: "from-violet-500/15 via-fuchsia-500/10 to-transparent",
+  1323→    ring: "ring-violet-500/20",
+  1324→    chipBg: "bg-violet-500/15",
+  1325→    chipText: "text-violet-600 dark:text-violet-400",
+  1326→    iconBg: "bg-gradient-to-br from-violet-500 to-fuchsia-500",
+  1327→  },
+  1328→  warning: {
+  1329→    gradient: "from-amber-500/15 via-orange-500/10 to-transparent",
+  1330→    ring: "ring-amber-500/25",
+  1331→    chipBg: "bg-amber-500/15",
+  1332→    chipText: "text-amber-600 dark:text-amber-400",
+  1333→    iconBg: "bg-gradient-to-br from-amber-500 to-orange-500",
+  1334→  },
+  1335→  success: {
+  1336→    gradient: "from-emerald-500/15 via-teal-500/10 to-transparent",
+  1337→    ring: "ring-emerald-500/25",
+  1338→    chipBg: "bg-emerald-500/15",
+  1339→    chipText: "text-emerald-600 dark:text-emerald-400",
+  1340→    iconBg: "bg-gradient-to-br from-emerald-500 to-teal-500",
+  1341→  },
+  1342→  tip: {
+  1343→    gradient: "from-cyan-500/15 via-blue-500/10 to-transparent",
+  1344→    ring: "ring-cyan-500/25",
+  1345→    chipBg: "bg-cyan-500/15",
+  1346→    chipText: "text-cyan-600 dark:text-cyan-400",
+  1347→    iconBg: "bg-gradient-to-br from-cyan-500 to-blue-500",
+  1348→  },
+  1349→};
+  1350→
+  1351→function computeInsights(
+  1352→  analytics: Analytics,
+  1353→  todos: Todo[]
+  1354→): Insight[] {
+  1355→  const insights: Insight[] = [];
+  1356→  const today = new Date();
+  1357→  today.setHours(0, 0, 0, 0);
+  1358→
+  1359→  // 1. Overdue tasks
+  1360→  const overdueTodos = todos.filter((t) => {
+  1361→    if (t.status === "completed" || !t.dueDate) return false;
+  1362→    const d = new Date(t.dueDate);
+  1363→    d.setHours(0, 0, 0, 0);
+  1364→    return d < today;
+  1365→  });
+  1366→  if (overdueTodos.length > 0) {
+  1367→    insights.push({
+  1368→      id: "overdue",
+  1369→      tone: "warning",
+  1370→      icon: AlarmClock,
+  1371→      title: `${overdueTodos.length} overdue task${overdueTodos.length === 1 ? "" : "s"}`,
+  1372→      message: `You have ${overdueTodos.length} task${overdueTodos.length === 1 ? "" : "s"} past due. Clearing these will reduce stress and boost momentum.`,
+  1373→      ctaLabel: "Review tasks",
+  1374→      ctaView: "todos",
+  1375→    });
+  1376→  }
+  1377→
+  1378→  // 2. Exam approaching within 7 days
+  1379→  const upcomingSoon = analytics.upcomingExams.find((e) => {
+  1380→    const days = Math.ceil(
+  1381→      (new Date(e.date).getTime() - today.getTime()) / 86_400_000
+  1382→    );
+  1383→    return days >= 0 && days <= 7;
+  1384→  });
+  1385→  if (upcomingSoon) {
+  1386→    const days = Math.ceil(
+  1387→      (new Date(upcomingSoon.date).getTime() - today.getTime()) / 86_400_000
+  1388→    );
+  1389→    insights.push({
+  1390→      id: "exam-soon",
+  1391→      tone: "warning",
+  1392→      icon: GraduationCap,
+  1393→      title: `${upcomingSoon.examName} is ${days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`}`,
+  1394→      message:
+  1395→        days === 0
+  1396→          ? "Your exam is today. Focus on a quick review session and stay calm. You've got this!"
+  1397→          : `You're at ${upcomingSoon.progress}% readiness. ${100 - upcomingSoon.progress}% to go — a focused session now will pay off.`,
+  1398→      ctaLabel: "Prepare now",
+  1399→      ctaView: "exams",
+  1400→    });
+  1401→  }
+  1402→
+  1403→  // 3. Focus goal behind
+  1404→  const targetMinutes = analytics.stats.targetHours * 60;
+  1405→  const focusTodayMin = analytics.stats.focusTodayMinutes;
+  1406→  if (targetMinutes > 0 && focusTodayMin < targetMinutes * 0.5) {
+  1407→    const remaining = Math.max(0, targetMinutes - focusTodayMin);
+  1408→    insights.push({
+  1409→      id: "focus-goal",
+  1410→      tone: "info",
+  1411→      icon: Timer,
+  1412→      title: `${Math.round(remaining)} min away from today's goal`,
+  1413→      message: `You've focused for ${Math.round(focusTodayMin)} of ${analytics.stats.targetHours}h today. A single Pomodoro could close the gap.`,
+  1414→      ctaLabel: "Start focus",
+  1415→      ctaView: "focus",
+  1416→    });
+  1417→  } else if (targetMinutes > 0 && focusTodayMin >= targetMinutes) {
+  1418→    insights.push({
+  1419→      id: "focus-goal-done",
+  1420→      tone: "success",
+  1421→      icon: CheckCheck,
+  1422→      title: "Daily goal smashed! 🎉",
+  1423→      message: `You've hit ${Math.round((focusTodayMin / 60) * 10) / 10}h of your ${analytics.stats.targetHours}h goal. Outstanding work — consider a well-earned break.`,
+  1424→    });
+  1425→  }
+  1426→
+  1427→  // 4. Weakest subject
+  1428→  const weakest = [...analytics.subjectPerformance].sort(
+  1429→    (a, b) => a.progress - b.progress
+  1430→  )[0];
+  1431→  if (weakest && weakest.progress < 60) {
+  1432→    insights.push({
+  1433→      id: "weak-subject",
+  1434→      tone: "tip",
+  1435→      icon: BookOpen,
+  1436→      title: `${weakest.name} needs attention`,
+  1437→      message: `Your progress in ${weakest.name} is ${weakest.progress}%. A dedicated 30-minute session could move the needle significantly.`,
+  1438→      ctaLabel: "Study this",
+  1439→      ctaView: "subjects",
+  1440→    });
+  1441→  }
+  1442→
+  1443→  // 5. Streak at risk (no focus session today)
+  1444→  const hasSessionToday = focusTodayMin > 0;
+  1445→  if (analytics.stats.studyStreak > 0 && !hasSessionToday) {
+  1446→    insights.push({
+  1447→      id: "streak-risk",
+  1448→      tone: "warning",
+  1449→      icon: Flame,
+  1450→      title: `Don't break your ${analytics.stats.studyStreak}-day streak!`,
+  1451→      message:
+  1452→        "You haven't logged a focus session today. Even 15 minutes keeps your streak alive.",
+  1453→      ctaLabel: "Keep the streak",
+  1454→      ctaView: "focus",
+  1455→    });
+  1456→  } else if (analytics.stats.studyStreak >= 7) {
+  1457→    insights.push({
+  1458→      id: "streak-strong",
+  1459→      tone: "success",
+  1460→      icon: Flame,
+  1461→      title: `${analytics.stats.studyStreak}-day streak — incredible!`,
+  1462→      message:
+  1463→        "Consistency is the secret to mastery. You're building a habit that compounds over time.",
+  1464→    });
+  1465→  }
+  1466→
+  1467→  // 6. Weekly momentum
+  1468→  const weeklyHours = analytics.weeklyData.reduce((s, d) => s + d.hours, 0);
+  1469→  if (weeklyHours >= analytics.stats.targetHours * 5) {
+  1470→    insights.push({
+  1471→      id: "momentum",
+  1472→      tone: "success",
+  1473→      icon: TrendingUp,
+  1474→      title: "Big week — keep the momentum!",
+  1475→      message: `You've logged ${Math.round(weeklyHours)}h this week. That's excellent volume. Maintain this pace and results will follow.`,
+  1476→    });
+  1477→  } else if (weeklyHours < analytics.stats.targetHours && weeklyHours > 0) {
+  1478→    insights.push({
+  1479→      id: "low-volume",
+  1480→      tone: "tip",
+  1481→      icon: TrendingUp,
+  1482→      title: "Light study week so far",
+  1483→      message: `Only ${Math.round(weeklyHours)}h logged this week. Scheduling one focus block per day can dramatically increase your weekly output.`,
+  1484→      ctaLabel: "Plan a session",
+  1485→      ctaView: "focus",
+  1486→    });
+  1487→  }
+  1488→
+  1489→  // Limit to 3 most actionable insights, prioritizing warnings then info/tips then success
+  1490→  const priority: Record<InsightTone, number> = { warning: 0, info: 1, tip: 2, success: 3 };
+  1491→  return insights.sort((a, b) => priority[a.tone] - priority[b.tone]).slice(0, 3);
+  1492→}
+  1493→
+  1494→function AIInsightsPanel({
+  1495→  analytics,
+  1496→  todos,
+  1497→  onNavigate,
+  1498→}: {
+  1499→  analytics: Analytics;
+  1500→  todos: Todo[];
+  1501→  onNavigate: (view: AppView) => void;
+  1502→}) {
+  1503→  const insights = useMemo(() => computeInsights(analytics, todos), [analytics, todos]);
+  1504→
+  1505→  if (insights.length === 0) return null;
+  1506→
+  1507→  return (
+  1508→    <motion.div
+  1509→      initial={{ opacity: 0, y: 16 }}
+  1510→      animate={{ opacity: 1, y: 0 }}
+  1511→      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+  1512→    >
+  1513→      <GlassCard className="overflow-hidden">
+  1514→        <div className="relative p-5 sm:p-6">
+  1515→          {/* Decorative blobs */}
+  1516→          <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl" />
+  1517→          <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-fuchsia-500/10 blur-3xl" />
+  1518→
+  1519→          <div className="relative z-[1]">
+  1520→            {/* Header */}
+  1521→            <div className="mb-4 flex items-center justify-between">
+  1522→              <div className="flex items-center gap-2.5">
+  1523→                <div className="live-pulse flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25">
+  1524→                  <Sparkles className="h-4 w-4" />
+  1525→                </div>
+  1526→                <div>
+  1527→                  <h2 className="text-sm font-semibold tracking-tight">
+  1528→                    Smart Insights
+  1529→                  </h2>
+  1530→                  <p className="text-[11px] text-muted-foreground">
+  1531→                    Personalized recommendations based on your activity
+  1532→                  </p>
+  1533→                </div>
+  1534→              </div>
+  1535→              <span className="hidden items-center gap-1.5 rounded-full bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400 sm:inline-flex">
+  1536→                <span className="relative flex h-1.5 w-1.5">
+  1537→                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500 opacity-75" />
+  1538→                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-violet-500" />
+  1539→                </span>
+  1540→                AI-powered
+  1541→              </span>
+  1542→            </div>
+  1543→
+  1544→            {/* Insight cards */}
+  1545→            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  1546→              <AnimatePresence mode="popLayout">
+  1547→                {insights.map((insight, i) => {
+  1548→                  const config = INSIGHT_TONE_CONFIG[insight.tone];
+  1549→                  const Icon = insight.icon;
+  1550→                  return (
+  1551→                    <motion.div
+  1552→                      key={insight.id}
+  1553→                      layout
+  1554→                      initial={{ opacity: 0, y: 10, scale: 0.97 }}
+  1555→                      animate={{ opacity: 1, y: 0, scale: 1 }}
+  1556→                      exit={{ opacity: 0, scale: 0.95 }}
+  1557→                      transition={{ duration: 0.35, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+  1558→                      className={cn(
+  1559→                        "relative overflow-hidden rounded-2xl bg-gradient-to-br p-4 ring-1",
+  1560→                        config.gradient,
+  1561→                        config.ring
+  1562→                      )}
+  1563→                    >
+  1564→                      <div className="flex items-start gap-3">
+  1565→                        <div
+  1566→                          className={cn(
+  1567→                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-md",
+  1568→                            config.iconBg
+  1569→                          )}
+  1570→                        >
+  1571→                          <Icon className="h-4 w-4" />
+  1572→                        </div>
+  1573→                        <div className="min-w-0 flex-1">
+  1574→                          <p className="text-sm font-semibold leading-tight">
+  1575→                            {insight.title}
+  1576→                          </p>
+  1577→                          <p className="mt-1 text-xs leading-snug text-muted-foreground">
+  1578→                            {insight.message}
+  1579→                          </p>
+  1580→                          {insight.ctaLabel && insight.ctaView && (
+  1581→                            <button
+  1582→                              onClick={() => onNavigate(insight.ctaView)}
+  1583→                              className="mt-2.5 inline-flex items-center gap-1 rounded-lg bg-background/70 px-2.5 py-1 text-[11px] font-semibold text-foreground opacity-90 backdrop-blur transition-all hover:opacity-100 hover:shadow-sm"
+  1584→                            >
+  1585→                              {insight.ctaLabel}
+  1586→                              <ArrowRight className="h-3 w-3" />
+  1587→                            </button>
+  1588→                          )}
+  1589→                        </div>
+  1590→                      </div>
+  1591→                    </motion.div>
+  1592→                  );
+  1593→                })}
+  1594→              </AnimatePresence>
+  1595→            </div>
+  1596→          </div>
+  1597→        </div>
+  1598→      </GlassCard>
+  1599→    </motion.div>
+  1600→  );
+  1601→}
+  1602→
+  1603→/* -------------------------------------------------------------------------- */
+  1604→/*  Main component                                                             */
+  1605→/* -------------------------------------------------------------------------- */
+  1606→
+  1607→export function DashboardHome() {
+  1608→  const user = useAppStore((s) => s.user);
+  1609→  const setView = useAppStore((s) => s.setView);
+  1610→
+  1611→  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  1612→  const [todos, setTodos] = useState<Todo[]>([]);
+  1613→  const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
+  1614→  const [loading, setLoading] = useState(true);
+  1615→
+  1616→  useEffect(() => {
+  1617→    let active = true;
+  1618→    (async () => {
+  1619→      setLoading(true);
+  1620→      try {
+  1621→        const [a, t, fs] = await Promise.all([
+  1622→          apiFetch<Analytics>("/api/analytics"),
+  1623→          apiFetch<{ todos: Todo[] }>("/api/todos")
+  1624→            .then((r) => r.todos ?? [])
+  1625→            .catch(() => [] as Todo[]),
+  1626→          apiFetch<{ sessions: FocusSession[] }>("/api/focus-session")
+  1627→            .then((r) => r.sessions ?? [])
+  1628→            .catch(() => [] as FocusSession[]),
+  1629→        ]);
+  1630→        if (!active) return;
+  1631→        setAnalytics(a);
+  1632→        setTodos(t);
+  1633→        setFocusSessions(fs);
+  1634→      } catch (err) {
+  1635→        handleError(err, "Failed to load dashboard");
+  1636→        toast.error("Could not load your dashboard. Please try again.");
+  1637→      } finally {
+  1638→        if (active) setLoading(false);
+  1639→      }
+  1640→    })();
+  1641→    return () => {
+  1642→      active = false;
+  1643→    };
+  1644→  }, []);
+  1645→
+  1646→  const username = user?.username ?? "there";
+  1647→
+  1648→  return (
+  1649→    <PageTransition className="space-y-6 sm:space-y-8">
+  1650→      <GreetingHeader username={username} />
+  1651→
+  1652→      {loading || !analytics ? (
+  1653→        <DashboardSkeleton />
+  1654→      ) : (
+  1655→        <>
+  1656→          {/* Quick Start card — only when user has zero tasks and zero subjects */}
+  1657→          {analytics.stats.totalTasks === 0 && analytics.subjectPerformance.length === 0 && (
+  1658→            <QuickStartCard onNavigate={setView} />
+  1659→          )}
+  1660→
+  1661→          {/* Stat cards + enhanced streak */}
+  1662→          <StaggerContainer className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+  1663→            {STAT_CARDS.map((cfg) => (
+  1664→              <StatCard
+  1665→                key={cfg.key}
+  1666→                config={cfg}
+  1667→                stats={analytics.stats}
+  1668→              />
+  1669→            ))}
+  1670→            <StreakCard
+  1671→              streak={analytics.stats.studyStreak}
+  1672→              focusSessions={focusSessions}
+  1673→            />
+  1674→          </StaggerContainer>
+  1675→
+  1676→          {/* Today's Goal progress ring */}
+  1677→          <TodaysGoalRing
+  1678→            focusMinutes={analytics.stats.focusTodayMinutes}
+  1679→            targetHours={analytics.stats.targetHours}
+  1680→          />
+  1681→
+  1682→          {/* Smart Insights panel — AI-powered personalized recommendations */}
+  1683→          <AIInsightsPanel
+  1684→            analytics={analytics}
+  1685→            todos={todos}
+  1686→            onNavigate={setView}
+  1687→          />
+  1688→
+  1689→          {/* Two-column section */}
+  1690→          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+  1691→            <div className="space-y-6 lg:col-span-2">
+  1692→              <WeeklyChart data={analytics.weeklyData} />
+  1693→              <MonthlyChart data={analytics.monthlyData} />
+  1694→            </div>
+  1695→            <div className="space-y-6">
+  1696→              <QuoteCard />
+  1697→              <SubjectProgressList data={analytics.subjectPerformance} />
+  1698→            </div>
+  1699→          </div>
+  1700→
+  1701→          {/* Exams + Today's tasks */}
+  1702→          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+  1703→            <ExamsPreview
+  1704→              exams={analytics.upcomingExams}
+  1705→              onViewAll={() => setView("exams")}
+  1706→            />
+  1707→            <TodayTasksPreview
+  1708→              todos={todos}
+  1709→              onViewAll={() => setView("todos")}
+  1710→            />
+  1711→          </div>
+  1712→        </>
+  1713→      )}
+  1714→    </PageTransition>
+  1715→  );
+  1716→}
+  1717→
+  1718→export default DashboardHome;
+  1719→

@@ -1,0 +1,202 @@
+     1→     1→# StudySpark — Student Analytics Dashboard · Worklog
+     2→     2→
+     3→     3→This is the shared handover document for all agents working on the StudySpark
+     4→     4→project. Read this before starting, and append your section after finishing.
+     5→     5→
+     6→     6→---
+     7→     7→Task ID: 1
+     8→     8→Agent: orchestrator (main)
+     9→     9→Task: Foundation — DB schema, auth lib (JWT/bcrypt), all API routes, theme/globals, stores, shared components
+    10→    10→
+    11→    11→Work Log:
+    12→    12→- Replaced `prisma/schema.prisma` with full data model: User, Profile, Todo, Event, Subject, Exam, FocusSession (all relations cascade on user delete).
+    13→    13→- Ran `bun run db:push` — schema synced to SQLite at `db/custom.db`.
+    14→    14→- Installed `bcryptjs`, `jsonwebtoken` (+ types).
+    15→    15→- Created `src/lib/auth.ts`: password hashing/verification, JWT sign/verify, cookie helpers (`setAuthCookie`, `clearAuthCookie`, `getCurrentUser`, `getToken`). Cookie name `studyspark_token`, 30-day expiry, httpOnly.
+    16→    16→- Created all API routes under `src/app/api/`:
+    17→    17→  - `auth/signup`, `auth/login`, `auth/logout`, `auth/me` (GET)
+    18→    18→  - `profile` (GET, PUT) — upsert pattern
+    19→    19→  - `todos` (GET, POST) + `todos/[id]` (PUT, DELETE)
+    20→    20→  - `subjects` (GET, POST) + `subjects/[id]` (PUT, DELETE)
+    21→    21→  - `events` (GET, POST) + `events/[id]` (PUT, DELETE)
+    22→    22→  - `exams` (GET, POST) + `exams/[id]` (PUT, DELETE)
+    23→    23→  - `focus-session` (GET, POST)
+    24→    24→  - `analytics` (GET) — aggregated weekly/monthly study hours, subject performance, task completion by category/priority, 14-day completion trend, focus distribution by subject, exam progress.
+    25→    25→- All routes validate input with `zod`, return `{ error }` on failure, and verify ownership (`findFirst` by `userId`) before update/delete.
+    26→    26→- Rewrote `src/app/globals.css` with a premium soft-pastel theme (light + dark). Added utilities: `.glass`, `.glass-strong`, `.text-gradient`, `.animated-gradient`, `.blob`, `.shimmer`, `.scrollbar-thin`, `.accent-bg/text/gradient`. Added keyframes: `gradientShift`, `blobFloat`, `shimmer`, `pulse-ring`. Rounded radius 0.875rem.
+    27→    27→- Created `src/lib/store.ts` — Zustand store with `persist` middleware. State: `user`, `isAuthenticated`, `authLoading`, `currentView` (AppView union), `sidebarOpen`, `mobileSidebarOpen`, `accentColor`, `notifications`, `reduceMotion`. Persists only UI prefs (accent, notifications, reduceMotion, sidebarOpen) to localStorage.
+    28→    28→- Created `src/lib/types.ts` — shared TS interfaces matching DB models + `Analytics`, plus `COLOR_MAP`, `PRIORITY_CONFIG`, `CATEGORY_CONFIG` helper maps.
+    29→    29→- Created `src/lib/api.ts` — `apiFetch` wrapper (throws `ApiError` with status), `handleError` (sonner toast).
+    30→    30→- Created `src/hooks/use-auth.ts` — `useAuth` hook: checks `/api/auth/me` on mount, exposes `login`/`signup`/`logout`.
+    31→    31→- Created shared components:
+    32→    32→  - `src/components/shared/animated-counter.tsx` — `AnimatedCounter` (spring-based count-up on in-view)
+    33→    33→  - `src/components/shared/animated-blobs.tsx` — `AnimatedBlobs` (floating gradient blobs, landing/dashboard variants)
+    34→    34→  - `src/components/shared/motion.tsx` — `PageTransition`, `GlassCard`, `StaggerContainer`, `StaggerItem` (respect `reduceMotion`)
+    35→    35→  - `src/components/shared/feedback.tsx` — `Skeleton`, `CardSkeleton`, `EmptyState`, `PageLoader`
+    36→    36→  - `src/components/theme-provider.tsx` — next-themes wrapper
+    37→    37→  - `src/components/accent-color-applier.tsx` — applies `--accent-color` + remaps primary/ring/chart-1 to chosen hue
+    38→    38→- Updated `src/app/layout.tsx` — wraps app in ThemeProvider, renders AccentColorApplier + Sonner Toaster (richColors, top-right). Metadata = StudySpark.
+    39→    39→
+    40→    40→Stage Summary:
+    41→    41→- **Backend complete**: all CRUD + auth + analytics endpoints live and validated.
+    42→    42→- **Design system complete**: premium theme tokens, glassmorphism, gradients, animations, skeleton/empty-state primitives.
+    43→    43→- **State layer complete**: Zustand store + persist, auth hook, typed API client.
+    44→    44→- **Architecture**: SPA model — everything renders on `/` route. Navigation is driven by `useAppStore.currentView` (landing → login/signup → dashboard + sub-views). No other Next.js routes are user-visible.
+    45→    45→- Next subagents should build: (3) Landing page, (4) Auth UI, (5) Dashboard shell + (6-a..6-h) feature pages, then (7) main `page.tsx` assembly wires it all via `currentView`.
+    46→    46→- Shared conventions: use `apiFetch` for requests, `handleError` for toasts, `useAppStore` for nav/state, `GlassCard`/`PageTransition`/`StaggerContainer` for layout, `colorOf`/`PRIORITY_CONFIG`/`CATEGORY_CONFIG` from `@/lib/types` for theming. Framer Motion everywhere. NO indigo/blue as primary brand (we use violet/purple palette by default; accent hue is configurable). All cards 20-24px radius. Sticky footer on landing.
+    47→    47→
+    48→    48→---
+    49→    49→Task ID: 6-a
+    50→    50→Agent: dashboard-home-builder
+    51→    51→Task: Build the Dashboard Home page (`DashboardHome`) — the premium landing view inside the dashboard shell after login. Fetches `/api/analytics` and `/api/todos`, renders a warm greeting with a live clock, 5 staggered animated stat cards, two-column section with weekly area chart + monthly bar chart + rotating motivational quote + subject progress list, and previews of upcoming exams + today's tasks with empty states and "View all" navigation via `useAppStore.setView`.
+    52→    52→
+    53→    53→Work Log:
+    54→    54→- Created `/home/z/my-project/src/components/dashboard/pages/dashboard-home.tsx` (single `"use client"` file, named export `DashboardHome`).
+    55→    55→- Read worklog and existing shared infra first: `@/lib/store` (useAppStore with `user`, `setView`), `@/lib/api` (apiFetch / handleError / ApiError), `@/lib/types` (Analytics, Todo, Exam, colorOf, PRIORITY_CONFIG), `@/components/shared/animated-counter`, `@/components/shared/motion` (PageTransition, GlassCard, StaggerContainer, StaggerItem), `@/components/shared/feedback` (Skeleton, CardSkeleton, EmptyState, PageLoader), and verified todos API returns `{ todos: Todo[] }`.
+    56→    56→- **GreetingHeader** — isolated component with own `setInterval` (1s) so the parent doesn't re-render every second. Computes greeting from current hour (`<12` morning, `<18` afternoon, else evening). Renders `<h1>` with `text-gradient` username + emoji wave animation (Framer Motion rotate loop), `date-fns` full date ("EEEE, MMMM d, yyyy"), and live `HH:mm:ss` clock. Wrapped in a "Welcome back to your dashboard" violet chip with Sparkles icon. Fade-in on mount.
+    57→    57→- **Stat cards** — 5 cards driven by a `STAT_CARDS` config array (icon, label, gradient, glow, suffix/subtitle/value getters). Each renders inside `StaggerItem` inside `StaggerContainer`, grid `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5`. Each `GlassCard hover` with: gradient icon chip (12x12 rounded-2xl), glow blob (absolute, blurred, opacity 25→40 on hover), uppercase label, big `AnimatedCounter` value (3xl→4xl), subtitle. Distinct gradients per spec: violet→purple (Today's Tasks), emerald→teal (Completed), amber→orange (Exams), rose→pink (Focus Time, suffix " min"), cyan→teal (Streak, suffix " days").
+    58→    58→- **Two-column section** (`grid-cols-1 lg:grid-cols-3`, left `lg:col-span-2`):
+    59→    59→  - **WeeklyChart** — Recharts `AreaChart` of `weeklyData` with violet→pink stroke gradient + violet gradient fill, monotone curve, custom dots/active dots, dashed CartesianGrid, custom `StudyTooltip` glass tooltip. Title "Weekly Study Hours" with TrendingUp icon.
+    60→    60→  - **MonthlyChart** — Recharts `BarChart` of `monthlyData` (30 bars) with fuchsia→violet gradient fill, rounded top corners (`radius={[6,6,0,0]}`), `maxBarSize=14`, X axis interval=3 to avoid label crowding. Title "Monthly Study Hours" with Timer icon.
+    61→    61→  - **QuoteCard** — 8 curated study quotes (`QUOTES` array). Random initial index. Refresh button (ghost icon) cycles forward; dot indicators below allow direct jump. AnimatePresence with `mode="wait"` for fade/slide transitions between quotes. Big Quote icon in violet→fuchsia gradient chip, decorative blurred blobs, italic text with curly quotes, "— Author" footer in violet.
+    62→    62→  - **SubjectProgressList** — Top 4 subjects sorted by progress. Each row: colored dot (from `colorOf(subject.color).chart`), name, % value, then a custom progress bar with motion-animated width fill (color via `style.backgroundColor = chart color` for accurate theming). Staggered entrance per row.
+    63→    63→- **ExamsPreview** — Filters `analytics.upcomingExams` to non-past, sorts by date, takes first 3. Each exam: calendar-style date badge (amber gradient with day + month abbreviation), title + priority dot, subject + optional location/time chips with MapPin/Clock icons, countdown pill colored by urgency (≤1 day rose, ≤7 days amber, else violet) with text "Today"/"Tomorrow"/"in N days"/"N days ago". EmptyState with GraduationCap if none. "View all" button → `setView("exams")`.
+    64→    64→- **TodayTasksPreview** — Filters `todos` by `dueDate` matching today (`isSameDay` helper, also guards against NaN dates), takes first 5. Each task: priority dot, title (strikethrough if completed), subject, status icon (filled emerald circle with checkmark if done, hollow bordered circle otherwise). EmptyState with CheckCircle2 if none. "View all" → `setView("todos")`.
+    65→    65→- **Loading** — `DashboardSkeleton` mirrors the full layout: greeting skeleton, 5 `CardSkeleton`s, two-column skeleton block with skeleton charts, and bottom 2-col skeleton row. Used while `loading || !analytics`. No `PageLoader` since data loads inline.
+    66→    66→- **Error handling** — `Promise.all` fetches both endpoints; on failure, `handleError` shows toast, plus a secondary `toast.error("Could not load your dashboard. Please try again.")`. Todos fetch failure is non-fatal (caught → `[]`).
+    67→    67→- **Design fidelity** — Premium glassmorphism via `GlassCard` + `.glass`/`.glass-strong` global classes. Violet/purple/fuchsia palette throughout (no indigo/blue as primary brand). Distinct accent colors per stat card for visual variety. All cards `rounded-3xl` (24px). Fully responsive (mobile-first, stacking on small screens). Framer Motion: page fade-in via `PageTransition`, staggered stat entrance, hover lifts on cards, animated counters, quote crossfade, progress bar width animation, staggered list items.
+    68→    68→- TypeScript strict — no `any`. Explicit `LucideIcon` type for icon props, `Priority` cast for safety, `ChartTooltipPayloadItem` typed tooltip payload. Custom `StudyTooltip` component typed with optional fields.
+    69→    69→
+    70→    70→Stage Summary:
+    71→    71→- ✅ Single deliverable file at `/home/z/my-project/src/components/dashboard/pages/dashboard-home.tsx`.
+    72→    72→- ✅ Named export `DashboardHome`, `"use client"`, TypeScript strict, zero `any`.
+    73→    73→- ✅ Uses all the available shared infra (`useAppStore`, `apiFetch`/`handleError`, `AnimatedCounter`, `PageTransition`/`GlassCard`/`StaggerContainer`/`StaggerItem`, `CardSkeleton`/`EmptyState`, `colorOf`/`PRIORITY_CONFIG`).
+    74→    74→- ✅ Recharts with gradient fills, rounded bars, custom glass tooltips, responsive.
+    75→    75→- ✅ All 5 content sections present in order: greeting header, stat cards row, two-column charts+quote+subject section, upcoming exams preview, today's tasks preview.
+    76→    76→- ✅ Lint-clean on this file (no errors/warnings). Remaining lint errors in other agents' files (exams.tsx, profile.tsx, settings.tsx) are out of scope.
+    77→    77→- ✅ Navigation wired via `useAppStore.setView("exams" | "todos")`.
+    78→    78→- ⚠️ Did NOT modify page.tsx, layout, prisma, or API routes (per rules).
+    79→    79→- Next agents: integrate `DashboardHome` into the dashboard shell's main content area when `currentView === "dashboard"`. The component is self-contained and reads `user` from the store, so no props are required.
+    80→    80→
+    81→    81→---
+    82→    82→Task ID: 4
+    83→    83→Agent: auth-builder
+    84→    84→Task: Build the Authentication UI (`AuthScreen`) — a premium split-screen login / signup page driven by `useAppStore.currentView`.
+    85→    85→
+    86→    86→Work Log:
+    87→    87→- Created 3 files under `src/components/auth/`:
+    88→    88→  - `auth-left-panel.tsx` — branded LEFT visual panel (lg+ only).
+    89→    89→    * Full-bleed gradient backdrop `from-violet-600 via-purple-600 to-fuchsia-600` + layered radial wash + 3 localized floating blobs (fuchsia/violet/rose — NO indigo/blue).
+    90→    90→    * Top: StudySpark logo (Sparkles icon in glassy rounded tile + wordmark).
+    91→    91→    * Middle: tagline "Study smarter, not harder." + supporting paragraph + 3 benefit bullets (`ListChecks`, `Timer`, `BarChart3`) with staggered Framer Motion entrance.
+    92→    92→    * Bottom: floating mock stat card "Focus this week 12.5h (+18%)" with animated bar sparkline, gently bobbing on a 5s loop.
+    93→    93→  - `auth-form.tsx` — RIGHT form card (GlassCard) with all interactions.
+    94→    94→    * Segmented control "Login / Sign Up" with animated sliding pill (Framer Motion `layoutId="auth-segmented-pill"`); toggling calls `setView("login" | "signup")`.
+    95→    95→    * Mode derived from `useAppStore((s) => s.currentView)`.
+    96→    96→    * Two separate RHF forms (`LoginForm`, `SignupForm`) crossfaded via `AnimatePresence mode="wait"`. Switching modes remounts the form → automatic reset of field values & validation state.
+    97→    97→    * Schemas (zod v4 + `zodResolver`):
+    98→    98→      - login: `username`/`password` required (non-empty).
+    99→    99→      - signup: `username` 3–20 chars + `^[a-zA-Z0-9_]+$`, `password` min 6, `confirmPassword` matches via `.refine`.
+   100→   100→    * Reusable `PasswordField` with leading icon + show/hide toggle (Eye/EyeOff) and inline red error text.
+   101→   101→    * Inline errors under every field (small, `text-destructive`).
+   102→   102→    * Login-only: "Remember me" `Checkbox` (local `useState`, persists username to `localStorage["studyspark_remember"]` — decorative) + "Forgot password?" muted link (decorative).
+   103→   103→    * Submit button: full-width gradient (`from-violet-600 via-purple-600 to-fuchsia-600`), `whileHover`/`whileTap` spring, disabled + `Loader2` spinner while submitting, hover sheen sweep.
+   104→   104→    * Submit handler: calls `login`/`signup` from `useAuth()` in try/catch. On `ApiError` → `toast.error(err.message)`; on success → `toast.success("Welcome back!" | "Account created! Welcome to StudySpark.")`. The hook auto-navigates to dashboard.
+   105→   105→    * Below form: switch-mode link ("Don't have an account? Sign up" / "Already have an account? Login").
+   106→   106→    * "Back to home" link at top-left of card → `setView("landing")`.
+   107→   107→    * Mobile: hides the left panel and shows a compact StudySpark logo + wordmark inside the card.
+   108→   108→  - `auth-screen.tsx` — thin wrapper that combines `AuthLeftPanel` + `AuthForm` inside `PageTransition`. Uses `min-h-screen lg:grid-cols-2` split layout, with a soft violet radial backdrop behind the form panel for depth.
+   109→   109→- Design choices: violet/purple/fuchsia palette only (NO indigo/blue primary); generous padding (`p-8 sm:p-10`); `rounded-3xl` glass card with `shadow-2xl`; inputs are `h-11 rounded-xl` with leading icons for a premium feel. Fully responsive (single column on mobile, split on lg+).
+   110→   110→- Used existing infra: `useAppStore`, `useAuth`, `ApiError`, `PageTransition`, shadcn `Input`/`Label`/`Checkbox`, `sonner` toast, `lucide-react` icons, Framer Motion, react-hook-form + `@hookform/resolvers/zod` + zod v4.
+   111→   111→- Did NOT modify `page.tsx`, layout, prisma, or any API route. Did NOT create API routes. No test code. Did NOT start dev server or run build.
+   112→   112→- Verified: `npx eslint src/components/auth/` → 0 errors / 0 warnings. `tsc --noEmit` → no errors in auth files. Dev server still compiles cleanly.
+   113→   113→
+   114→   114→Stage Summary:
+   115→   115→- **Files created**:
+   116→   116→  - `src/components/auth/auth-screen.tsx` — named export `AuthScreen()` (the entry point).
+   117→   117→  - `src/components/auth/auth-left-panel.tsx` — named export `AuthLeftPanel()`.
+   118→   118→  - `src/components/auth/auth-form.tsx` — named export `AuthForm()` (plus internal `LoginForm`, `SignupForm`, `SegmentedControl`, `PasswordField`, `SubmitButton`).
+   119→   119→- **Import path**: `import { AuthScreen } from "@/components/auth/auth-screen"`.
+   120→   120→- **Integration note for orchestrator (Task 7)**: in `src/app/page.tsx`, render `<AuthScreen />` when `currentView === "login" || currentView === "signup"`. The component reads `currentView` itself to pick the form mode, so no props are needed. On successful auth, `useAuth` automatically calls `setView("dashboard")`.
+   121→   121→- **Conventions followed**: violet/purple palette (no indigo/blue primary), glassmorphism via `.glass-strong`, Framer Motion entrance + crossfade + micro-interactions, full responsive (mobile-first), 20–24px card radius, ≥44px touch targets.
+   122→   122→
+   123→   123→---
+   124→   124→Task ID: 6-de
+   125→   125→Agent: exams-subjects-builder
+   126→   126→Task: Build the Exams Page and Subjects Page for the StudySpark dashboard (Next.js 16 + TS + Tailwind 4 + shadcn/ui + Framer Motion). Both render inside the dashboard main content area as part of the SPA on `/`.
+   127→   127→
+   128→   128→Work Log:
+   129→   129→- Created `src/components/dashboard/pages/exams.tsx` — named export `ExamsPage` (also default). Loads exams from `GET /api/exams` and subjects from `GET /api/subjects` (subject names drive a colored Select picker inside the add/edit form, with free-text fallback).
+   130→   130→  - Header: "Upcoming Exams" + subtitle, gradient (violet → fuchsia) "Add Exam" button.
+   131→   131→  - Stats row (4 GlassCards, AnimatedCounter): Total exams · Upcoming (today/future) · High priority count · Avg. progress %.
+   132→   132→  - Exam cards (1/2/3 responsive grid, GlassCard with hover lift): colored subject badge (color matched from subjects list, fallback violet), exam name (big), formatted date (date-fns), time, location (MapPin), priority badge (PRIORITY_CONFIG).
+   133→   133→  - Live countdown timer per card — `FlipDigit` per unit (days/hours/min/sec), AnimatePresence flip animation, ticks every 1s via `setInterval` + cleanup. Urgency color-coding: rose <3d, amber <7d, violet otherwise. "Exam window passed" state for past exams.
+   134→   134→  - Animated gradient progress bar (color shifts by progress level). Truncated notes preview.
+   135→   135→  - Edit/Delete via dropdown menu → dialog (edit) / alert dialog (delete with optimistic mutation + rollback).
+   136→   136→  - Add/Edit dialog: subject (Select from /api/subjects or free text), examName (required), date (required), time, location, priority (Select), progress (Slider 0-100), notes (Textarea). Validates required fields. POST on create / PUT on update. Toast feedback.
+   137→   137→  - Past exams section: Collapsible list with mini progress bars and animated chevron.
+   138→   138→  - Empty / loading / error states: skeletons, EmptyState with CTA, toast errors via `handleError`.
+   139→   139→- Created `src/components/dashboard/pages/subjects.tsx` — named export `SubjectsPage` (also default). Loads subjects from `GET /api/subjects`.
+   140→   140→  - Header: "My Subjects" + subtitle, gradient "Add Subject" button.
+   141→   141→  - Overview row (4 GlassCards, AnimatedCounter): Total subjects · Total credits · Avg. attendance · Avg. progress.
+   142→   142→  - Subject cards (1/2/3 responsive grid, GlassCard with hover lift): colored left accent bar + dot using subject color, name (big), teacher (User icon), credits badge, prep-progress badge.
+   143→   143→  - Circular SVG attendance ring (`AttendanceRing`) with `strokeDashoffset` draw animation; color-coded (emerald ≥75, amber 60-74, rose <60) with "Good / At risk / Low" status label.
+   144→   144→  - Linear progress bar using subject color (chart hex). Notes preview (2 lines, StickyNote icon).
+   145→   145→  - Edit/Delete via dropdown menu → dialog / alert dialog (optimistic mutation + rollback).
+   146→   146→  - Add/Edit dialog: name (required), teacher, credits (1-10), attendance (Slider 0-100), color (6-swatch EventColor picker with check animation), progress (Slider 0-100), notes (Textarea). Validates name + credits. POST/PUT. Toast feedback.
+   147→   147→  - Empty / loading / error states: skeletons, EmptyState with CTA, toast errors.
+   148→   148→- Both files: `"use client"`, TS strict, no `any`, premium glassy violet/purple palette (NO indigo/blue primary), 24px radius cards, soft shadows, fully responsive, Framer Motion everywhere (page transition, stagger entrance, hover lift, countdown flip, progress width animation, ring draw, dialog scale/fade via radix+shadcn).
+   149→   149→- Imported only from existing libs: `@/lib/api`, `@/lib/types`, `@/lib/store`, `@/lib/utils`, `@/components/shared/{motion,feedback,animated-counter}`, `@/components/ui/*`, `framer-motion`, `sonner`, `date-fns`, `lucide-react`.
+   150→   150→- Did NOT modify `page.tsx`, `layout.tsx`, prisma schema, or any API route. No new dependencies installed.
+   151→   151→- Lint clean on both new files (one targeted `eslint-disable-next-line react-hooks/set-state-in-effect` in exams.tsx for legitimate countdown resync when the exam target changes). Remaining lint errors in the project belong to other agents' files (profile.tsx, settings.tsx).
+   152→   152→
+   153→   153→Stage Summary:
+   154→   154→- **Exams page complete** (`src/components/dashboard/pages/exams.tsx`):
+   155→   155→  - `export function ExamsPage()` + default export.
+   156→   156→  - Exciting live countdown timers with flip-clock animation + urgency color coding, full CRUD with optimistic updates, past exams collapsible, stats row, loading/empty/error states.
+   157→   157→- **Subjects page complete** (`src/components/dashboard/pages/subjects.tsx`):
+   158→   158→  - `export function SubjectsPage()` + default export.
+   159→   159→  - Organized subject cards with animated circular attendance rings + linear progress bars + colored accent bars, full CRUD with optimistic updates, 6-swatch color picker, stats row, loading/empty/error states.
+   160→   160→- **Ready to wire**: Import `ExamsPage` / `SubjectsPage` from `@/components/dashboard/pages/exams` / `@/components/dashboard/pages/subjects` and render when `useAppStore.currentView === "exams"` / `"subjects"` in the main `page.tsx`.
+   161→   161→- Work record saved at `/home/z/my-project/agent-ctx/6-de-exams-subjects-builder.md`.
+   162→   162→
+   163→   163→---
+   164→   164→Task ID: 6-fg
+   165→   165→Agent: focus-analytics-builder
+   166→   166→Task: Build the Focus Timer page and Analytics page for the StudySpark dashboard (two `"use client"` React components rendered inside the dashboard main content area when `currentView === "focus"` / `"analytics"`).
+   167→   167→
+   168→   168→Work Log:
+   169→   169→- **FILE 1 — `src/components/dashboard/pages/focus-timer.tsx`** (`export function FocusTimerPage()`):
+   170→   170→  - Header: "Focus Timer" title + subtitle, plus a `Sparkles`-accented Badge showing sessions completed in the current sitting.
+   171→   171→  - Main timer card (GlassCard, 2/3 width on lg): animated mode-tab pill (Focus 25m / Short Break 5m / Long Break 15m) using `layoutId` shared-element transition; each mode has its own gradient ring + glow color (violet→fuchsia for focus, cyan for short, rose for long).
+   172→   172→  - Big circular SVG progress ring (RADIUS 132, STROKE 14, CIRCUMFERENCE = 2πr) with gradient stroke (`linearGradient`) + soft blur glow filter, animated `strokeDashoffset` via Framer Motion. Center: small mode label, large mono `MM:SS` countdown (AnimatePresence digit transition), and "Session N" counter.
+   173→   173→  - Controls: ghost `RotateCcw` reset, big gradient Play/Pause button (whileHover/whileTap), ghost `SkipForward` skip-to-end. Status line below.
+   174→   174→  - Custom duration row: preset chips (15/25/45/60 for focus, 3/5/10/15 for short, 10/15/20/30 for long) that highlight active preset + numeric `<Input>` (clamped 1–180).
+   175→   175→  - Subject tag `<Input>` + "Auto start break" `<Switch>` toggle in a 2-col footer.
+   176→   176→  - Timer logic: setInterval ticks decrements `remaining` (cleanup on unmount/pause). `loggedRef` guard ensures completion side-effects fire exactly once per cycle. On hit 0: toast notification (`Coffee` for focus-end, `Brain` for break-end), POST `/api/focus-session` with `{duration, type, subject, completed:true}`, then auto-switch to short/long break if `autoBreak` (long break every 4th focus session) or back to focus. Refreshes sessions list on success.
+   177→   177→  - Break reminders card: two decorative `ReminderCard` items (Stretch w/ Coffee icon, Hydrate w/ Droplets icon), each with a dismiss X that toasts.
+   178→   178→  - Focus statistics card (right column): 4 AnimatedCounter stat boxes — Today (minutes), This Week (hours, 1dp), This Month (hours, 1dp), Total sessions. Below: 7-day BarChart of focus minutes (gradient violet→fuchsia bars, rounded top, custom ChartTooltip, CartesianGrid).
+   179→   179→  - Recent sessions list: last 8 sessions, each row has focus/break icon (Brain/Coffee) in tinted square, subject or default label, `formatDistanceToNow` time-ago, duration, and a `CheckCircle2` for completed. `max-h-96 overflow-y-auto scrollbar-thin`. Empty state when no sessions.
+   180→   180→  - Loading skeletons everywhere; error toasts via `handleError`.
+   181→   181→- **FILE 2 — `src/components/dashboard/pages/analytics.tsx`** (`export function AnalyticsPage()`):
+   182→   182→  - Header: "Analytics" title + subtitle, plus a Weekly/Monthly toggle pill (`layoutId` shared-element) that switches the Study Hours chart source and X-axis density.
+   183→   183→  - KPI row (4 GlassCards, AnimatedCounter): Total Focus Hours, Weekly Focus Hours, Monthly Focus Hours, Study Streak (days). Each card has a gradient icon chip + decorative blurred gradient orb.
+   184→   184→  - Study Hours Over Time (big, 2/3 width): `AreaChart` with violet→fuchsia gradient fill, smooth monotone line, gradient stroke, active dot, custom ChartTooltip. Weekly shows 7 days, monthly shows 30 days with `interval={4}` to avoid X-axis crowding.
+   185→   185→  - Tasks Completed (14 days): `BarChart` of `trendData` with purple→pink gradient bars, rounded tops.
+   186→   186→  - Subject Progress: horizontal `BarChart` (layout="vertical") of `subjectPerformance`, each bar colored by `colorOf(entry.color).chart`, progress % on X-axis 0–100.
+   187→   187→  - Focus Time by Subject: donut `PieChart` of `focusBySubject` with `innerRadius={55}`, cells colored by subject color, white stroke separators, bottom legend. EmptyState when no data.
+   188→   188→  - Exam Readiness: `RadialBarChart` of `examProgress` with `PolarAngleAxis` domain 0–100, rounded bars, palette `CHART_PALETTE` (violet→cyan 8 colors), bottom legend. EmptyState when no exams.
+   189→   189→  - Tasks by Category: grouped `BarChart` (total + completed) of `categoryStats`.
+   190→   190→  - Tasks by Priority: grouped `BarChart` of `priorityStats` with completed bars using gradient.
+   191→   191→  - Attendance Overview card: animated SVG radial gauge showing average attendance across all subjects (green→cyan gradient stroke draw animation), plus a scrollable per-subject list with custom motion-div progress bars colored by subject color.
+   192→   192→  - All charts wrapped in `GlassCard` + `StaggerContainer`/`StaggerItem` for entrance animations, `ResponsiveContainer` with fixed heights (h-56 / h-64 / h-72), `text-border` CartesianGrid, `text-muted-foreground` axis ticks, glass-strong custom tooltips. Loading skeletons, empty states, error toasts throughout. Respects `reduceMotion` (skips chart animation duration + ring draw).
+   193→   193→- Both files: `"use client"`, TS strict (no `any` — replaced with explicit `ChartTooltipProps` interface), premium glassy violet/purple palette (NO indigo/blue primary), 20–24px radius cards, soft shadows, fully responsive (single column on mobile, 3-col grids on lg), Framer Motion everywhere (page transition, stagger entrance, shared layout pills, ring stroke animation, hover lifts, digit transitions, progress width animations).
+   194→   194→- Imported only from existing libs: `@/lib/api`, `@/lib/types`, `@/lib/store`, `@/lib/utils`, `@/components/shared/{motion,feedback,animated-counter}`, `@/components/ui/{button,input,switch,badge}`, `framer-motion`, `recharts`, `sonner`, `date-fns`, `lucide-react`.
+   195→   195→- Did NOT modify `page.tsx`, `layout.tsx`, prisma schema, or any API route. No new dependencies installed.
+   196→   196→- Lint clean on both new files (verified `npx eslint` exits 0 on both files individually). Remaining lint errors in the project belong to other agents' files (`profile.tsx`, `settings.tsx`, `use-auth.ts`).
+   197→   197→
+   198→   198→Stage Summary:
+   199→   199→- **Focus Timer page complete** (`src/components/dashboard/pages/focus-timer.tsx`):
+   200→   200→  - `export function FocusTimerPage()` — premium Pomodoro timer with animated circular SVG ring, mode tabs (Focus/Short/Long), Start/Pause/Reset/Skip controls, custom duration presets + numeric input, subject tag, Auto-Break toggle, completion toasts + auto POST to `/api/focus-session`, break reminder cards, focus statistics with AnimatedCounters + 7-day BarChart, and a recent sessions list. Tracks remaining seconds (not end-time) so pauses work correctly; interval cleaned up on unmount.
+
+[showing lines 1-200 of 1122; use offset=201 with limit to continue reading]

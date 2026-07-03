@@ -47,6 +47,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -558,7 +564,11 @@ function ExamDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg">
+      <DialogContent
+        className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg"
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
@@ -634,13 +644,34 @@ function ExamDialog({
               <Label htmlFor="exam-date">
                 Date <span className="text-rose-500">*</span>
               </Label>
-              <Input
-                id="exam-date"
-                type="date"
-                value={form.date}
-                onChange={(e) => update("date", e.target.value)}
-                aria-invalid={!!errors.date}
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="exam-date"
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !form.date && "text-muted-foreground"
+                    )}
+                    aria-invalid={!!errors.date}
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {form.date
+                      ? format(parseISO(form.date), "MMM d, yyyy")
+                      : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={form.date ? parseISO(form.date) : undefined}
+                    onSelect={(d) =>
+                      update("date", d ? format(d, "yyyy-MM-dd") : "")
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
               {errors.date && (
                 <p className="text-xs text-rose-500">{errors.date}</p>
               )}

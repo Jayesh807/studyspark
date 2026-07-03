@@ -1,0 +1,1128 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import { toast } from "sonner";
+     6→import {
+     7→  CalendarClock,
+     8→  ClipboardList,
+     9→  Flame,
+    10→  Plus,
+    11→  Pencil,
+    12→  Trash2,
+    13→  MapPin,
+    14→  Clock,
+    15→  CalendarDays,
+    16→  AlertTriangle,
+    17→  ChevronDown,
+    18→  History,
+    19→  Sparkles,
+    20→  GraduationCap,
+    21→} from "lucide-react";
+    22→import { format, isAfter, isToday, parseISO } from "date-fns";
+    23→
+    24→import { apiFetch, handleError } from "@/lib/api";
+    25→import {
+    26→  Exam,
+    27→  Subject,
+    28→  Priority,
+    29→  PRIORITY_CONFIG,
+    30→  colorOf,
+    31→} from "@/lib/types";
+    32→import { cn } from "@/lib/utils";
+    33→import { useAppStore } from "@/lib/store";
+    34→
+    35→import { Button } from "@/components/ui/button";
+    36→import { Badge } from "@/components/ui/badge";
+    37→import { Input } from "@/components/ui/input";
+    38→import { Label } from "@/components/ui/label";
+    39→import { Textarea } from "@/components/ui/textarea";
+    40→import { Slider } from "@/components/ui/slider";
+    41→import {
+    42→  Dialog,
+    43→  DialogContent,
+    44→  DialogDescription,
+    45→  DialogFooter,
+    46→  DialogHeader,
+    47→  DialogTitle,
+    48→} from "@/components/ui/dialog";
+    49→import {
+    50→  AlertDialog,
+    51→  AlertDialogAction,
+    52→  AlertDialogCancel,
+    53→  AlertDialogContent,
+    54→  AlertDialogDescription,
+    55→  AlertDialogFooter,
+    56→  AlertDialogHeader,
+    57→  AlertDialogTitle,
+    58→} from "@/components/ui/alert-dialog";
+    59→import {
+    60→  DropdownMenu,
+    61→  DropdownMenuContent,
+    62→  DropdownMenuItem,
+    63→  DropdownMenuSeparator,
+    64→  DropdownMenuTrigger,
+    65→} from "@/components/ui/dropdown-menu";
+    66→import {
+    67→  Select,
+    68→  SelectContent,
+    69→  SelectItem,
+    70→  SelectTrigger,
+    71→  SelectValue,
+    72→} from "@/components/ui/select";
+    73→import {
+    74→  Collapsible,
+    75→  CollapsibleContent,
+    76→  CollapsibleTrigger,
+    77→} from "@/components/ui/collapsible";
+    78→
+    79→import {
+    80→  PageTransition,
+    81→  GlassCard,
+    82→  StaggerContainer,
+    83→  StaggerItem,
+    84→} from "@/components/shared/motion";
+    85→import { Skeleton, EmptyState } from "@/components/shared/feedback";
+    86→import { AnimatedCounter } from "@/components/shared/animated-counter";
+    87→
+    88→// ---------------------------------------------------------------------------
+    89→// Helpers
+    90→// ---------------------------------------------------------------------------
+    91→
+    92→interface CountdownParts {
+    93→  days: number;
+    94→  hours: number;
+    95→  minutes: number;
+    96→  seconds: number;
+    97→  totalMs: number;
+    98→  isPast: boolean;
+    99→}
+   100→
+   101→function getCountdown(target: Date): CountdownParts {
+   102→  const diff = target.getTime() - Date.now();
+   103→  if (diff <= 0) {
+   104→    return { days: 0, hours: 0, minutes: 0, seconds: 0, totalMs: 0, isPast: true };
+   105→  }
+   106→  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+   107→  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+   108→  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+   109→  const seconds = Math.floor((diff / 1000) % 60);
+   110→  return { days, hours, minutes, seconds, totalMs: diff, isPast: false };
+   111→}
+   112→
+   113→function urgencyOf(target: Date): "critical" | "soon" | "normal" | "past" {
+   114→  const diff = target.getTime() - Date.now();
+   115→  if (diff <= 0) return "past";
+   116→  const days = diff / (1000 * 60 * 60 * 24);
+   117→  if (days < 3) return "critical";
+   118→  if (days < 7) return "soon";
+   119→  return "normal";
+   120→}
+   121→
+   122→function examDate(exam: Exam): Date {
+   123→  // Combine date + time if provided (ISO date string from input)
+   124→  const base = parseISO(exam.date);
+   125→  if (exam.time) {
+   126→    const [h, m] = exam.time.split(":").map((v) => Number(v));
+   127→    if (!Number.isNaN(h) && !Number.isNaN(m)) {
+   128→      base.setHours(h, m, 0, 0);
+   129→    }
+   130→  }
+   131→  return base;
+   132→}
+   133→
+   134→// ---------------------------------------------------------------------------
+   135→// Countdown digit (animated flip-like)
+   136→// ---------------------------------------------------------------------------
+   137→
+   138→function FlipDigit({ value, label }: { value: number; label: string }) {
+   139→  const display = String(value).padStart(2, "0");
+   140→  return (
+   141→    <div className="flex flex-col items-center gap-1">
+   142→      <div className="relative overflow-hidden rounded-xl bg-gradient-to-b from-violet-500/10 to-fuchsia-500/10 px-2 py-1.5 ring-1 ring-violet-500/15 dark:from-violet-500/15 dark:to-fuchsia-500/15 sm:px-2.5 sm:py-2">
+   143→        <AnimatePresence mode="popLayout" initial={false}>
+   144→          <motion.span
+   145→            key={display}
+   146→            initial={{ y: -14, opacity: 0, rotateX: -90 }}
+   147→            animate={{ y: 0, opacity: 1, rotateX: 0 }}
+   148→            exit={{ y: 14, opacity: 0, rotateX: 90 }}
+   149→            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+   150→            className="block text-base font-bold tabular-nums tracking-tight text-foreground sm:text-xl"
+   151→          >
+   152→            {display}
+   153→          </motion.span>
+   154→        </AnimatePresence>
+   155→      </div>
+   156→      <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground sm:text-[10px]">
+   157→        {label}
+   158→      </span>
+   159→    </div>
+   160→  );
+   161→}
+   162→
+   163→function CountdownTimer({ target }: { target: Date }) {
+   164→  const [parts, setParts] = useState<CountdownParts>(() => getCountdown(target));
+   165→  const urgency = urgencyOf(target);
+   166→
+   167→  useEffect(() => {
+   168→    // Re-sync if target changes (e.g., after editing the exam).
+   169→    // The lint rule discourages setState in effects, but here we genuinely
+   170→    // need to resync internal countdown state to a changed external target.
+   171→    // eslint-disable-next-line react-hooks/set-state-in-effect
+   172→    setParts(getCountdown(target));
+   173→    const id = setInterval(() => {
+   174→      setParts(getCountdown(target));
+   175→    }, 1000);
+   176→    return () => clearInterval(id);
+   177→  }, [target]);
+   178→
+   179→  if (parts.isPast) {
+   180→    return (
+   181→      <div className="inline-flex items-center gap-1.5 rounded-xl bg-muted/60 px-3 py-2 text-xs font-semibold text-muted-foreground ring-1 ring-border">
+   182→        <History className="h-3.5 w-3.5" />
+   183→        Exam window passed
+   184→      </div>
+   185→    );
+   186→  }
+   187→
+   188→  const urgencyStyles =
+   189→    urgency === "critical"
+   190→      ? "from-rose-500/15 to-rose-500/5 ring-rose-500/30"
+   191→      : urgency === "soon"
+   192→        ? "from-amber-500/15 to-amber-500/5 ring-amber-500/30"
+   193→        : "from-violet-500/10 to-fuchsia-500/10 ring-violet-500/20";
+   194→
+   195→  const dotColor =
+   196→    urgency === "critical"
+   197→      ? "bg-rose-500"
+   198→      : urgency === "soon"
+   199→        ? "bg-amber-500"
+   200→        : "bg-violet-500";
+   201→
+   202→  return (
+   203→    <div
+   204→      className={cn(
+   205→        "relative rounded-2xl bg-gradient-to-br p-3 ring-1",
+   206→        urgencyStyles
+   207→      )}
+   208→    >
+   209→      <div className="mb-2 flex items-center justify-between">
+   210→        <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+   211→          <span className={cn("h-1.5 w-1.5 rounded-full", dotColor)} />
+   212→          Time remaining
+   213→        </span>
+   214→        {urgency === "critical" && (
+   215→          <Badge className="bg-rose-500/15 text-rose-600 dark:text-rose-400" variant="secondary">
+   216→            <Flame className="h-3 w-3" />
+   217→            Urgent
+   218→          </Badge>
+   219→        )}
+   220→      </div>
+   221→      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+   222→        <FlipDigit value={parts.days} label="Days" />
+   223→        <FlipDigit value={parts.hours} label="Hrs" />
+   224→        <FlipDigit value={parts.minutes} label="Min" />
+   225→        <FlipDigit value={parts.seconds} label="Sec" />
+   226→      </div>
+   227→    </div>
+   228→  );
+   229→}
+   230→
+   231→// ---------------------------------------------------------------------------
+   232→// Stat card
+   233→// ---------------------------------------------------------------------------
+   234→
+   235→interface StatCardProps {
+   236→  icon: React.ElementType;
+   237→  label: string;
+   238→  value: number;
+   239→  decimals?: number;
+   240→  suffix?: string;
+   241→  gradient: string;
+   242→}
+   243→
+   244→function StatCard({ icon: Icon, label, value, decimals = 0, suffix, gradient }: StatCardProps) {
+   245→  return (
+   246→    <GlassCard className="relative overflow-hidden p-4 sm:p-5">
+   247→      <div
+   248→        className={cn(
+   249→          "absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-30 blur-2xl",
+   250→          gradient
+   251→        )}
+   252→      />
+   253→      <div className="relative flex items-start justify-between gap-3">
+   254→        <div>
+   255→          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+   256→          <p className="mt-1.5 text-2xl font-bold tracking-tight sm:text-3xl">
+   257→            <AnimatedCounter value={value} decimals={decimals} suffix={suffix} />
+   258→          </p>
+   259→        </div>
+   260→        <div
+   261→          className={cn(
+   262→            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1",
+   263→            gradient,
+   264→            "ring-white/20 dark:ring-white/10"
+   265→          )}
+   266→        >
+   267→          <Icon className="h-4.5 w-4.5 text-white" />
+   268→        </div>
+   269→      </div>
+   270→    </GlassCard>
+   271→  );
+   272→}
+   273→
+   274→// ---------------------------------------------------------------------------
+   275→// Exam card
+   276→// ---------------------------------------------------------------------------
+   277→
+   278→interface ExamCardProps {
+   279→  exam: Exam;
+   280→  subjects: Subject[];
+   281→  onEdit: (exam: Exam) => void;
+   282→  onDelete: (exam: Exam) => void;
+   283→}
+   284→
+   285→function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
+   286→  const target = useMemo(() => examDate(exam), [exam]);
+   287→  const date = target;
+   288→
+   289→  // Map subject name → color from subjects list (fallback violet)
+   290→  const matchedSubject = subjects.find((s) => s.name === exam.subject);
+   291→  const colorKey = matchedSubject?.color ?? "violet";
+   292→  const color = colorOf(colorKey);
+   293→
+   294→  const priority = PRIORITY_CONFIG[exam.priority];
+   295→
+   296→  return (
+   297→    <GlassCard hover className="group relative flex flex-col gap-4 p-5 sm:p-6">
+   298→      {/* Accent glow */}
+   299→      <div
+   300→        className={cn(
+   301→          "pointer-events-none absolute -left-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-2xl",
+   302→          color.bg
+   303→        )}
+   304→      />
+   305→
+   306→      {/* Top row: subject badge + menu */}
+   307→      <div className="relative flex items-start justify-between gap-2">
+   308→        <div className="flex flex-wrap items-center gap-2">
+   309→          <Badge
+   310→            className={cn("border-transparent text-white", color.bg)}
+   311→            variant="default"
+   312→          >
+   313→            <GraduationCap className="h-3 w-3" />
+   314→            {exam.subject || "General"}
+   315→          </Badge>
+   316→          <Badge
+   317→            className={cn(priority.soft, priority.text, "border-transparent")}
+   318→            variant="secondary"
+   319→          >
+   320→            <span className={cn("h-1.5 w-1.5 rounded-full", priority.dot)} />
+   321→            {priority.label} priority
+   322→          </Badge>
+   323→        </div>
+   324→        <DropdownMenu>
+   325→          <DropdownMenuTrigger asChild>
+   326→            <Button
+   327→              variant="ghost"
+   328→              size="icon"
+   329→              className="h-8 w-8 -mr-1.5 -mt-1.5 opacity-60 transition-opacity hover:opacity-100"
+   330→              aria-label="Exam actions"
+   331→            >
+   332→              <svg
+   333→                className="h-4 w-4"
+   334→                viewBox="0 0 24 24"
+   335→                fill="currentColor"
+   336→                aria-hidden
+   337→              >
+   338→                <circle cx="5" cy="12" r="2" />
+   339→                <circle cx="12" cy="12" r="2" />
+   340→                <circle cx="19" cy="12" r="2" />
+   341→              </svg>
+   342→            </Button>
+   343→          </DropdownMenuTrigger>
+   344→          <DropdownMenuContent align="end" className="w-40">
+   345→            <DropdownMenuItem onSelect={() => onEdit(exam)}>
+   346→              <Pencil className="h-4 w-4" />
+   347→              Edit
+   348→            </DropdownMenuItem>
+   349→            <DropdownMenuSeparator />
+   350→            <DropdownMenuItem
+   351→              variant="destructive"
+   352→              onSelect={() => onDelete(exam)}
+   353→            >
+   354→              <Trash2 className="h-4 w-4" />
+   355→              Delete
+   356→            </DropdownMenuItem>
+   357→          </DropdownMenuContent>
+   358→        </DropdownMenu>
+   359→      </div>
+   360→
+   361→      {/* Exam name */}
+   362→      <div className="relative">
+   363→        <h3 className="text-lg font-bold leading-tight tracking-tight sm:text-xl">
+   364→          {exam.examName}
+   365→        </h3>
+   366→        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+   367→          <span className="inline-flex items-center gap-1">
+   368→            <CalendarDays className="h-3.5 w-3.5" />
+   369→            {format(date, "EEE, MMM d, yyyy")}
+   370→          </span>
+   371→          {exam.time && (
+   372→            <span className="inline-flex items-center gap-1">
+   373→              <Clock className="h-3.5 w-3.5" />
+   374→              {exam.time}
+   375→            </span>
+   376→          )}
+   377→          {exam.location && (
+   378→            <span className="inline-flex items-center gap-1">
+   379→              <MapPin className="h-3.5 w-3.5" />
+   380→              {exam.location}
+   381→            </span>
+   382→          )}
+   383→        </div>
+   384→      </div>
+   385→
+   386→      {/* Countdown */}
+   387→      <CountdownTimer target={target} />
+   388→
+   389→      {/* Progress */}
+   390→      <div className="relative space-y-2">
+   391→        <div className="flex items-center justify-between text-xs">
+   392→          <span className="font-medium text-muted-foreground">
+   393→            Preparation progress
+   394→          </span>
+   395→          <span className="font-semibold tabular-nums text-foreground">
+   396→            {exam.progress}%
+   397→          </span>
+   398→        </div>
+   399→        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+   400→          <motion.div
+   401→            className={cn(
+   402→              "h-full rounded-full bg-gradient-to-r",
+   403→              exam.progress >= 80
+   404→                ? "from-emerald-500 to-teal-500"
+   405→                : exam.progress >= 40
+   406→                  ? "from-violet-500 to-fuchsia-500"
+   407→                  : "from-amber-500 to-orange-500"
+   408→            )}
+   409→            initial={{ width: 0 }}
+   410→            animate={{ width: `${exam.progress}%` }}
+   411→            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+   412→          />
+   413→        </div>
+   414→      </div>
+   415→
+   416→      {/* Notes */}
+   417→      {exam.notes && (
+   418→        <p className="relative line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+   419→          {exam.notes}
+   420→        </p>
+   421→      )}
+   422→    </GlassCard>
+   423→  );
+   424→}
+   425→
+   426→// ---------------------------------------------------------------------------
+   427→// Past exam row
+   428→// ---------------------------------------------------------------------------
+   429→
+   430→function PastExamRow({ exam }: { exam: Exam }) {
+   431→  const target = examDate(exam);
+   432→  return (
+   433→    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/40 px-3 py-2.5 transition-colors hover:bg-accent/40">
+   434→      <div className="flex min-w-0 items-center gap-3">
+   435→        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+   436→          <History className="h-4 w-4" />
+   437→        </div>
+   438→        <div className="min-w-0">
+   439→          <p className="truncate text-sm font-medium">{exam.examName}</p>
+   440→          <p className="truncate text-xs text-muted-foreground">
+   441→            {exam.subject} · {format(target, "MMM d, yyyy")}
+   442→          </p>
+   443→        </div>
+   444→      </div>
+   445→      <div className="flex items-center gap-3">
+   446→        <div className="hidden text-right sm:block">
+   447→          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+   448→            Progress
+   449→          </p>
+   450→          <p className="text-sm font-semibold tabular-nums">{exam.progress}%</p>
+   451→        </div>
+   452→        <div className="h-8 w-16 overflow-hidden rounded-full bg-muted">
+   453→          <motion.div
+   454→            className="h-full bg-violet-500/70"
+   455→            initial={{ width: 0 }}
+   456→            animate={{ width: `${exam.progress}%` }}
+   457→            transition={{ duration: 0.6 }}
+   458→          />
+   459→        </div>
+   460→      </div>
+   461→    </div>
+   462→  );
+   463→}
+   464→
+   465→// ---------------------------------------------------------------------------
+   466→// Form dialog
+   467→// ---------------------------------------------------------------------------
+   468→
+   469→interface ExamFormData {
+   470→  subject: string;
+   471→  examName: string;
+   472→  date: string;
+   473→  time: string;
+   474→  location: string;
+   475→  priority: Priority;
+   476→  progress: number;
+   477→  notes: string;
+   478→}
+   479→
+   480→const EMPTY_FORM: ExamFormData = {
+   481→  subject: "",
+   482→  examName: "",
+   483→  date: "",
+   484→  time: "",
+   485→  location: "",
+   486→  priority: "medium",
+   487→  progress: 0,
+   488→  notes: "",
+   489→};
+   490→
+   491→interface ExamDialogProps {
+   492→  open: boolean;
+   493→  onOpenChange: (open: boolean) => void;
+   494→  initial?: Exam | null;
+   495→  subjects: Subject[];
+   496→  onSubmit: (data: ExamFormData) => Promise<void>;
+   497→}
+   498→
+   499→function ExamDialog({
+   500→  open,
+   501→  onOpenChange,
+   502→  initial,
+   503→  subjects,
+   504→  onSubmit,
+   505→}: ExamDialogProps) {
+   506→  const [form, setForm] = useState<ExamFormData>(EMPTY_FORM);
+   507→  const [errors, setErrors] = useState<Partial<Record<keyof ExamFormData, string>>>({});
+   508→  const [submitting, setSubmitting] = useState(false);
+   509→
+   510→  useEffect(() => {
+   511→    if (open) {
+   512→      if (initial) {
+   513→        setForm({
+   514→          subject: initial.subject ?? "",
+   515→          examName: initial.examName ?? "",
+   516→          date: initial.date ? initial.date.slice(0, 10) : "",
+   517→          time: initial.time ?? "",
+   518→          location: initial.location ?? "",
+   519→          priority: initial.priority ?? "medium",
+   520→          progress: initial.progress ?? 0,
+   521→          notes: initial.notes ?? "",
+   522→        });
+   523→      } else {
+   524→        setForm(EMPTY_FORM);
+   525→      }
+   526→      setErrors({});
+   527→    }
+   528→  }, [open, initial]);
+   529→
+   530→  const update = <K extends keyof ExamFormData>(key: K, value: ExamFormData[K]) => {
+   531→    setForm((f) => ({ ...f, [key]: value }));
+   532→    setErrors((e) => ({ ...e, [key]: undefined }));
+   533→  };
+   534→
+   535→  const validate = (): boolean => {
+   536→    const next: Partial<Record<keyof ExamFormData, string>> = {};
+   537→    if (!form.examName.trim()) next.examName = "Exam name is required";
+   538→    if (!form.date) next.date = "Date is required";
+   539→    if (form.progress < 0 || form.progress > 100)
+   540→      next.progress = "Progress must be between 0 and 100";
+   541→    setErrors(next);
+   542→    return Object.keys(next).length === 0;
+   543→  };
+   544→
+   545→  const handleSubmit = async (e: React.FormEvent) => {
+   546→    e.preventDefault();
+   547→    if (!validate()) return;
+   548→    setSubmitting(true);
+   549→    try {
+   550→      await onSubmit(form);
+   551→      onOpenChange(false);
+   552→    } catch (err) {
+   553→      handleError(err, "Failed to save exam");
+   554→    } finally {
+   555→      setSubmitting(false);
+   556→    }
+   557→  };
+   558→
+   559→  return (
+   560→    <Dialog open={open} onOpenChange={onOpenChange}>
+   561→      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg">
+   562→        <DialogHeader>
+   563→          <DialogTitle className="flex items-center gap-2 text-xl">
+   564→            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+   565→              <ClipboardList className="h-4 w-4" />
+   566→            </span>
+   567→            {initial ? "Edit Exam" : "Add New Exam"}
+   568→          </DialogTitle>
+   569→          <DialogDescription>
+   570→            {initial
+   571→              ? "Update the details for this exam."
+   572→              : "Track an upcoming exam with a live countdown and prep progress."}
+   573→          </DialogDescription>
+   574→        </DialogHeader>
+   575→
+   576→        <form onSubmit={handleSubmit} className="space-y-4">
+   577→          {/* Subject */}
+   578→          <div className="space-y-1.5">
+   579→            <Label htmlFor="exam-subject">Subject</Label>
+   580→            {subjects.length > 0 ? (
+   581→              <Select
+   582→                value={form.subject}
+   583→                onValueChange={(v) => update("subject", v)}
+   584→              >
+   585→                <SelectTrigger id="exam-subject" className="w-full">
+   586→                  <SelectValue placeholder="Choose a subject" />
+   587→                </SelectTrigger>
+   588→                <SelectContent>
+   589→                  {subjects.map((s) => (
+   590→                    <SelectItem key={s.id} value={s.name}>
+   591→                      <span className="flex items-center gap-2">
+   592→                        <span
+   593→                          className={cn(
+   594→                            "h-2 w-2 rounded-full",
+   595→                            colorOf(s.color).bg
+   596→                          )}
+   597→                        />
+   598→                        {s.name}
+   599→                      </span>
+   600→                    </SelectItem>
+   601→                  ))}
+   602→                </SelectContent>
+   603→              </Select>
+   604→            ) : (
+   605→              <Input
+   606→                id="exam-subject"
+   607→                placeholder="e.g. Mathematics"
+   608→                value={form.subject}
+   609→                onChange={(e) => update("subject", e.target.value)}
+   610→              />
+   611→            )}
+   612→          </div>
+   613→
+   614→          {/* Exam name */}
+   615→          <div className="space-y-1.5">
+   616→            <Label htmlFor="exam-name">
+   617→              Exam Name <span className="text-rose-500">*</span>
+   618→            </Label>
+   619→            <Input
+   620→              id="exam-name"
+   621→              placeholder="e.g. Midterm Examination"
+   622→              value={form.examName}
+   623→              onChange={(e) => update("examName", e.target.value)}
+   624→              aria-invalid={!!errors.examName}
+   625→            />
+   626→            {errors.examName && (
+   627→              <p className="text-xs text-rose-500">{errors.examName}</p>
+   628→            )}
+   629→          </div>
+   630→
+   631→          {/* Date + Time */}
+   632→          <div className="grid grid-cols-2 gap-3">
+   633→            <div className="space-y-1.5">
+   634→              <Label htmlFor="exam-date">
+   635→                Date <span className="text-rose-500">*</span>
+   636→              </Label>
+   637→              <Input
+   638→                id="exam-date"
+   639→                type="date"
+   640→                value={form.date}
+   641→                onChange={(e) => update("date", e.target.value)}
+   642→                aria-invalid={!!errors.date}
+   643→              />
+   644→              {errors.date && (
+   645→                <p className="text-xs text-rose-500">{errors.date}</p>
+   646→              )}
+   647→            </div>
+   648→            <div className="space-y-1.5">
+   649→              <Label htmlFor="exam-time">Time</Label>
+   650→              <Input
+   651→                id="exam-time"
+   652→                type="time"
+   653→                value={form.time}
+   654→                onChange={(e) => update("time", e.target.value)}
+   655→              />
+   656→            </div>
+   657→          </div>
+   658→
+   659→          {/* Location + Priority */}
+   660→          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   661→            <div className="space-y-1.5">
+   662→              <Label htmlFor="exam-location">Location</Label>
+   663→              <Input
+   664→                id="exam-location"
+   665→                placeholder="e.g. Hall A, Room 204"
+   666→                value={form.location}
+   667→                onChange={(e) => update("location", e.target.value)}
+   668→              />
+   669→            </div>
+   670→            <div className="space-y-1.5">
+   671→              <Label>Priority</Label>
+   672→              <Select
+   673→                value={form.priority}
+   674→                onValueChange={(v) => update("priority", v as Priority)}
+   675→              >
+   676→                <SelectTrigger className="w-full">
+   677→                  <SelectValue />
+   678→                </SelectTrigger>
+   679→                <SelectContent>
+   680→                  {(Object.keys(PRIORITY_CONFIG) as Priority[]).map((p) => (
+   681→                    <SelectItem key={p} value={p}>
+   682→                      <span className="flex items-center gap-2">
+   683→                        <span
+   684→                          className={cn(
+   685→                            "h-2 w-2 rounded-full",
+   686→                            PRIORITY_CONFIG[p].dot
+   687→                          )}
+   688→                        />
+   689→                        {PRIORITY_CONFIG[p].label}
+   690→                      </span>
+   691→                    </SelectItem>
+   692→                  ))}
+   693→                </SelectContent>
+   694→              </Select>
+   695→            </div>
+   696→          </div>
+   697→
+   698→          {/* Progress */}
+   699→          <div className="space-y-2">
+   700→            <div className="flex items-center justify-between">
+   701→              <Label>Preparation progress</Label>
+   702→              <span className="text-sm font-semibold tabular-nums">
+   703→                {form.progress}%
+   704→              </span>
+   705→            </div>
+   706→            <Slider
+   707→              value={[form.progress]}
+   708→              onValueChange={(v) => update("progress", v[0] ?? 0)}
+   709→              min={0}
+   710→              max={100}
+   711→              step={1}
+   712→            />
+   713→          </div>
+   714→
+   715→          {/* Notes */}
+   716→          <div className="space-y-1.5">
+   717→            <Label htmlFor="exam-notes">Notes</Label>
+   718→            <Textarea
+   719→              id="exam-notes"
+   720→              placeholder="Topics to revise, materials to bring, anything…"
+   721→              value={form.notes}
+   722→              onChange={(e) => update("notes", e.target.value)}
+   723→              rows={3}
+   724→            />
+   725→          </div>
+   726→
+   727→          <DialogFooter className="pt-2">
+   728→            <Button
+   729→              type="button"
+   730→              variant="outline"
+   731→              onClick={() => onOpenChange(false)}
+   732→              disabled={submitting}
+   733→            >
+   734→              Cancel
+   735→            </Button>
+   736→            <Button
+   737→              type="submit"
+   738→              disabled={submitting}
+   739→              className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+   740→            >
+   741→              {submitting ? (
+   742→                <>
+   743→                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+   744→                  Saving…
+   745→                </>
+   746→              ) : (
+   747→                <>
+   748→                  <Sparkles className="h-4 w-4" />
+   749→                  {initial ? "Save changes" : "Add exam"}
+   750→                </>
+   751→              )}
+   752→            </Button>
+   753→          </DialogFooter>
+   754→        </form>
+   755→      </DialogContent>
+   756→    </Dialog>
+   757→  );
+   758→}
+   759→
+   760→// ---------------------------------------------------------------------------
+   761→// Exam card skeleton
+   762→// ---------------------------------------------------------------------------
+   763→
+   764→function ExamCardSkeleton() {
+   765→  return (
+   766→    <div className="glass rounded-3xl p-5 sm:p-6">
+   767→      <div className="flex items-center justify-between">
+   768→        <Skeleton className="h-6 w-24 rounded-full" />
+   769→        <Skeleton className="h-6 w-16 rounded-full" />
+   770→      </div>
+   771→      <Skeleton className="mt-4 h-5 w-3/4" />
+   772→      <Skeleton className="mt-2 h-3 w-2/3" />
+   773→      <Skeleton className="mt-4 h-20 w-full rounded-2xl" />
+   774→      <Skeleton className="mt-4 h-2 w-full rounded-full" />
+   775→      <Skeleton className="mt-3 h-3 w-full" />
+   776→    </div>
+   777→  );
+   778→}
+   779→
+   780→// ---------------------------------------------------------------------------
+   781→// Main page
+   782→// ---------------------------------------------------------------------------
+   783→
+   784→export function ExamsPage() {
+   785→  const [exams, setExams] = useState<Exam[]>([]);
+   786→  const [subjects, setSubjects] = useState<Subject[]>([]);
+   787→  const [loading, setLoading] = useState(true);
+   788→  const [dialogOpen, setDialogOpen] = useState(false);
+   789→  const [editing, setEditing] = useState<Exam | null>(null);
+   790→  const [deleting, setDeleting] = useState<Exam | null>(null);
+   791→  const [pastOpen, setPastOpen] = useState(false);
+   792→
+   793→  const reduceMotion = useAppStore((s) => s.reduceMotion);
+   794→
+   795→  const loadData = useCallback(async () => {
+   796→    setLoading(true);
+   797→    try {
+   798→      const [examsRes, subjectsRes] = await Promise.all([
+   799→        apiFetch<{ exams: Exam[] }>("/api/exams"),
+   800→        apiFetch<{ subjects: Subject[] }>("/api/subjects").catch(() => ({
+   801→          subjects: [] as Subject[],
+   802→        })),
+   803→      ]);
+   804→      setExams(examsRes.exams ?? []);
+   805→      setSubjects(subjectsRes.subjects ?? []);
+   806→    } catch (err) {
+   807→      handleError(err, "Failed to load exams");
+   808→    } finally {
+   809→      setLoading(false);
+   810→    }
+   811→  }, []);
+   812→
+   813→  useEffect(() => {
+   814→    void loadData();
+   815→  }, [loadData]);
+   816→
+   817→  const { upcoming, past } = useMemo(() => {
+   818→    const now = new Date();
+   819→    const sorted = [...exams].sort(
+   820→      (a, b) => examDate(a).getTime() - examDate(b).getTime()
+   821→    );
+   822→    const upcoming = sorted.filter((e) => {
+   823→      const d = examDate(e);
+   824→      return isAfter(d, now) || isToday(d);
+   825→    });
+   826→    const past = sorted
+   827→      .filter((e) => !isToday(examDate(e)) && !isAfter(examDate(e), now))
+   828→      .reverse();
+   829→    return { upcoming, past };
+   830→  }, [exams]);
+   831→
+   832→  const stats = useMemo(() => {
+   833→    const total = exams.length;
+   834→    const high = exams.filter((e) => e.priority === "high").length;
+   835→    const avgProgress =
+   836→      total === 0
+   837→        ? 0
+   838→        : Math.round(
+   839→            exams.reduce((sum, e) => sum + (e.progress ?? 0), 0) / total
+   840→          );
+   841→    return { total, upcoming: upcoming.length, high, avgProgress };
+   842→  }, [exams, upcoming]);
+   843→
+   844→  const handleAdd = () => {
+   845→    setEditing(null);
+   846→    setDialogOpen(true);
+   847→  };
+   848→
+   849→  const handleEdit = (exam: Exam) => {
+   850→    setEditing(exam);
+   851→    setDialogOpen(true);
+   852→  };
+   853→
+   854→  const handleDelete = (exam: Exam) => setDeleting(exam);
+   855→
+   856→  const confirmDelete = async () => {
+   857→    if (!deleting) return;
+   858→    const target = deleting;
+   859→    setDeleting(null);
+   860→    // Optimistic remove
+   861→    setExams((prev) => prev.filter((e) => e.id !== target.id));
+   862→    try {
+   863→      await apiFetch(`/api/exams/${target.id}`, { method: "DELETE" });
+   864→      toast.success("Exam deleted");
+   865→    } catch (err) {
+   866→      handleError(err, "Failed to delete exam");
+   867→      // Roll back
+   868→      setExams((prev) => [...prev, target]);
+   869→    }
+   870→  };
+   871→
+   872→  const handleSubmit = async (data: ExamFormData) => {
+   873→    const payload = {
+   874→      subject: data.subject.trim(),
+   875→      examName: data.examName.trim(),
+   876→      date: data.date,
+   877→      time: data.time,
+   878→      location: data.location.trim(),
+   879→      priority: data.priority,
+   880→      progress: data.progress,
+   881→      notes: data.notes.trim(),
+   882→    };
+   883→
+   884→    if (editing) {
+   885→      // Optimistic update
+   886→      const prev = exams;
+   887→      setExams((list) =>
+   888→        list.map((e) => (e.id === editing.id ? { ...e, ...payload } : e))
+   889→      );
+   890→      try {
+   891→        const res = await apiFetch<{ exam: Exam }>(
+   892→          `/api/exams/${editing.id}`,
+   893→          {
+   894→            method: "PUT",
+   895→            body: JSON.stringify(payload),
+   896→          }
+   897→        );
+   898→        setExams((list) =>
+   899→          list.map((e) => (e.id === editing.id ? res.exam : e))
+   900→        );
+   901→        toast.success("Exam updated");
+   902→      } catch (err) {
+   903→        handleError(err, "Failed to update exam");
+   904→        setExams(prev);
+   905→      }
+   906→    } else {
+   907→      try {
+   908→        const res = await apiFetch<{ exam: Exam }>("/api/exams", {
+   909→          method: "POST",
+   910→          body: JSON.stringify(payload),
+   911→        });
+   912→        setExams((list) => [...list, res.exam]);
+   913→        toast.success("Exam added — let's ace it! 🚀");
+   914→      } catch (err) {
+   915→        handleError(err, "Failed to add exam");
+   916→      }
+   917→    }
+   918→  };
+   919→
+   920→  return (
+   921→    <PageTransition className="space-y-6 sm:space-y-8">
+   922→      {/* Header */}
+   923→      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+   924→        <div className="space-y-1">
+   925→          <div className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-600 ring-1 ring-violet-500/20 dark:text-violet-300">
+   926→            <CalendarClock className="h-3.5 w-3.5" />
+   927→            Exam tracker
+   928→          </div>
+   929→          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+   930→            Upcoming Exams
+   931→          </h1>
+   932→          <p className="text-sm text-muted-foreground">
+   933→            Stay ahead with live countdowns and prep progress for every exam.
+   934→          </p>
+   935→        </div>
+   936→        <Button
+   937→          onClick={handleAdd}
+   938→          className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+   939→        >
+   940→          <Plus className="h-4 w-4" />
+   941→          Add Exam
+   942→        </Button>
+   943→      </header>
+   944→
+   945→      {/* Stats */}
+   946→      <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+   947→        {loading ? (
+   948→          Array.from({ length: 4 }).map((_, i) => (
+   949→            <Skeleton key={i} className="h-24 rounded-3xl" />
+   950→          ))
+   951→        ) : (
+   952→          <>
+   953→            <StatCard
+   954→              icon={ClipboardList}
+   955→              label="Total exams"
+   956→              value={stats.total}
+   957→              gradient="bg-gradient-to-br from-violet-500 to-fuchsia-500"
+   958→            />
+   959→            <StatCard
+   960→              icon={CalendarClock}
+   961→              label="Upcoming"
+   962→              value={stats.upcoming}
+   963→              gradient="bg-gradient-to-br from-fuchsia-500 to-pink-500"
+   964→            />
+   965→            <StatCard
+   966→              icon={Flame}
+   967→              label="High priority"
+   968→              value={stats.high}
+   969→              gradient="bg-gradient-to-br from-rose-500 to-orange-500"
+   970→            />
+   971→            <StatCard
+   972→              icon={Sparkles}
+   973→              label="Avg. progress"
+   974→              value={stats.avgProgress}
+   975→              suffix="%"
+   976→              gradient="bg-gradient-to-br from-emerald-500 to-teal-500"
+   977→            />
+   978→          </>
+   979→        )}
+   980→      </section>
+   981→
+   982→      {/* Upcoming exams grid */}
+   983→      <section>
+   984→        {loading ? (
+   985→          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+   986→            {Array.from({ length: 3 }).map((_, i) => (
+   987→              <ExamCardSkeleton key={i} />
+   988→            ))}
+   989→          </div>
+   990→        ) : upcoming.length === 0 && past.length === 0 ? (
+   991→          <EmptyState
+   992→            icon={ClipboardList}
+   993→            title="No exams yet"
+   994→            description="Add your first exam and watch the countdown begin. You've got this!"
+   995→            action={
+   996→              <Button
+   997→                onClick={handleAdd}
+   998→                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+   999→              >
+  1000→                <Plus className="h-4 w-4" />
+  1001→                Add your first exam
+  1002→              </Button>
+  1003→            }
+  1004→            className="glass rounded-3xl"
+  1005→          />
+  1006→        ) : upcoming.length === 0 ? (
+  1007→          <EmptyState
+  1008→            icon={CalendarClock}
+  1009→            title="No upcoming exams"
+  1010→            description="All clear for now. Add a future exam to start tracking your countdown."
+  1011→            action={
+  1012→              <Button
+  1013→                onClick={handleAdd}
+  1014→                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+  1015→              >
+  1016→                <Plus className="h-4 w-4" />
+  1017→                Add exam
+  1018→              </Button>
+  1019→            }
+  1020→            className="glass rounded-3xl"
+  1021→          />
+  1022→        ) : (
+  1023→          <StaggerContainer
+  1024→            className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+  1025→          >
+  1026→            {upcoming.map((exam) => (
+  1027→              <StaggerItem key={exam.id}>
+  1028→                <ExamCard
+  1029→                  exam={exam}
+  1030→                  subjects={subjects}
+  1031→                  onEdit={handleEdit}
+  1032→                  onDelete={handleDelete}
+  1033→                />
+  1034→              </StaggerItem>
+  1035→            ))}
+  1036→          </StaggerContainer>
+  1037→        )}
+  1038→      </section>
+  1039→
+  1040→      {/* Past exams */}
+  1041→      {!loading && past.length > 0 && (
+  1042→        <section>
+  1043→          <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
+  1044→            <GlassCard className="overflow-hidden p-0">
+  1045→              <CollapsibleTrigger asChild>
+  1046→                <button
+  1047→                  className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-accent/40"
+  1048→                  aria-expanded={pastOpen}
+  1049→                >
+  1050→                  <div className="flex items-center gap-3">
+  1051→                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+  1052→                      <History className="h-4 w-4" />
+  1053→                    </div>
+  1054→                    <div>
+  1055→                      <p className="text-sm font-semibold">
+  1056→                        Past exams
+  1057→                      </p>
+  1058→                      <p className="text-xs text-muted-foreground">
+  1059→                        {past.length} completed exam{past.length === 1 ? "" : "s"}
+  1060→                      </p>
+  1061→                    </div>
+  1062→                  </div>
+  1063→                  <motion.div
+  1064→                    animate={{ rotate: pastOpen ? 180 : 0 }}
+  1065→                    transition={{ duration: reduceMotion ? 0 : 0.2 }}
+  1066→                    className="text-muted-foreground"
+  1067→                  >
+  1068→                    <ChevronDown className="h-4 w-4" />
+  1069→                  </motion.div>
+  1070→                </button>
+  1071→              </CollapsibleTrigger>
+  1072→              <CollapsibleContent>
+  1073→                <div className="space-y-2 border-t border-border/60 px-5 py-4">
+  1074→                  <AnimatePresence initial={false}>
+  1075→                    {past.map((exam) => (
+  1076→                      <PastExamRow key={exam.id} exam={exam} />
+  1077→                    ))}
+  1078→                  </AnimatePresence>
+  1079→                </div>
+  1080→              </CollapsibleContent>
+  1081→            </GlassCard>
+  1082→          </Collapsible>
+  1083→        </section>
+  1084→      )}
+  1085→
+  1086→      {/* Dialogs */}
+  1087→      <ExamDialog
+  1088→        open={dialogOpen}
+  1089→        onOpenChange={setDialogOpen}
+  1090→        initial={editing}
+  1091→        subjects={subjects}
+  1092→        onSubmit={handleSubmit}
+  1093→      />
+  1094→
+  1095→      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+  1096→        <AlertDialogContent className="rounded-2xl">
+  1097→          <AlertDialogHeader>
+  1098→            <AlertDialogTitle className="flex items-center gap-2">
+  1099→              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-500">
+  1100→                <AlertTriangle className="h-4 w-4" />
+  1101→              </span>
+  1102→              Delete exam?
+  1103→            </AlertDialogTitle>
+  1104→            <AlertDialogDescription>
+  1105→              This will permanently remove{" "}
+  1106→              <span className="font-medium text-foreground">
+  1107→                {deleting?.examName}
+  1108→              </span>
+  1109→              . This action cannot be undone.
+  1110→            </AlertDialogDescription>
+  1111→          </AlertDialogHeader>
+  1112→          <AlertDialogFooter>
+  1113→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+  1114→            <AlertDialogAction
+  1115→              onClick={confirmDelete}
+  1116→              className="bg-rose-500 text-white hover:bg-rose-600"
+  1117→            >
+  1118→              Delete
+  1119→            </AlertDialogAction>
+  1120→          </AlertDialogFooter>
+  1121→        </AlertDialogContent>
+  1122→      </AlertDialog>
+  1123→    </PageTransition>
+  1124→  );
+  1125→}
+  1126→
+  1127→export default ExamsPage;
+  1128→

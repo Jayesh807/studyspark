@@ -114,7 +114,7 @@ export function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-violet-500/10 pt-6 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            © 2025 StudySpark. Crafted with{" "}
+            © {new Date().getFullYear()} StudySpark. Crafted with{" "}
             <Heart className="inline size-3.5 fill-fuchsia-500 text-fuchsia-500" />
           </p>
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

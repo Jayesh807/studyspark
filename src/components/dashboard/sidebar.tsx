@@ -18,6 +18,7 @@ import {
   ChevronRight,
   X,
   Trophy,
+  CalendarRange,
 } from "lucide-react";
 import { useAppStore, type AppView } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
@@ -44,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "dashboard", label: "Dashboard", icon: LayoutDashboard, description: "Overview & stats" },
   { view: "todos", label: "Daily Tasks", icon: CheckSquare, description: "Manage your tasks", shortcut: "N" },
   { view: "calendar", label: "Calendar", icon: Calendar, description: "Events & schedule" },
+  { view: "planner", label: "Study Planner", icon: CalendarRange, description: "Weekly study plan" },
   { view: "subjects", label: "Subjects", icon: BookOpen, description: "Your courses" },
   { view: "exams", label: "Upcoming Exams", icon: GraduationCap, description: "Exam tracker" },
   { view: "focus", label: "Focus Timer", icon: Timer, description: "Pomodoro timer", shortcut: "F" },
@@ -138,7 +140,7 @@ function NavButton({
         <span className="relative z-10 truncate">{item.label}</span>
       )}
       {!collapsed && item.shortcut && !active && (
-        <kbd className="kbd-hint relative z-10 ml-auto">{item.shortcut}</kbd>
+        <kbd className="kbd-hint relative z-10 ml-auto" aria-hidden="true">{item.shortcut}</kbd>
       )}
       {!collapsed && active && (
         <motion.span

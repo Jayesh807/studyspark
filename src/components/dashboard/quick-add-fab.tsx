@@ -9,11 +9,12 @@ import {
   GraduationCap,
   Timer,
   X,
+  CalendarRange,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-type QuickAction = "task" | "event" | "exam" | "focus";
+type QuickAction = "task" | "event" | "exam" | "focus" | "planner";
 
 interface ActionConfig {
   id: QuickAction;
@@ -21,7 +22,7 @@ interface ActionConfig {
   description: string;
   icon: typeof Plus;
   gradient: string;
-  view: "todos" | "calendar" | "exams" | "focus";
+  view: "todos" | "calendar" | "exams" | "focus" | "planner";
 }
 
 const ACTIONS: ActionConfig[] = [
@@ -32,6 +33,14 @@ const ACTIONS: ActionConfig[] = [
     icon: CheckSquare,
     gradient: "from-violet-500 to-fuchsia-500",
     view: "todos",
+  },
+  {
+    id: "planner",
+    label: "Plan Study",
+    description: "Schedule study blocks",
+    icon: CalendarRange,
+    gradient: "from-cyan-500 to-blue-500",
+    view: "planner",
   },
   {
     id: "event",

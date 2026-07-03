@@ -23,6 +23,7 @@ import {
   Play,
   Sparkles,
   LogOut,
+  CalendarRange,
   type LucideIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -118,6 +119,7 @@ function PaletteInner({ onOpenChange }: { onOpenChange: (open: boolean) => void 
       { id: "nav-dashboard", label: "Dashboard", subtitle: "Overview & stats", icon: LayoutDashboard, group: "Navigate", keywords: "home overview", run: () => navigate("dashboard") },
       { id: "nav-todos", label: "Daily Tasks", subtitle: "Manage your tasks", icon: CheckSquare, group: "Navigate", keywords: "todo tasks kanban", run: () => navigate("todos") },
       { id: "nav-calendar", label: "Calendar", subtitle: "Events & schedule", icon: Calendar, group: "Navigate", keywords: "events schedule", run: () => navigate("calendar") },
+      { id: "nav-planner", label: "Study Planner", subtitle: "Weekly study plan", icon: CalendarRange, group: "Navigate", keywords: "planner schedule weekly plan", run: () => navigate("planner") },
       { id: "nav-subjects", label: "Subjects", subtitle: "Your courses", icon: BookOpen, group: "Navigate", keywords: "courses classes", run: () => navigate("subjects") },
       { id: "nav-exams", label: "Upcoming Exams", subtitle: "Exam tracker", icon: GraduationCap, group: "Navigate", keywords: "test quiz", run: () => navigate("exams") },
       { id: "nav-focus", label: "Focus Timer", subtitle: "Pomodoro timer", icon: Timer, group: "Navigate", keywords: "pomodoro study timer", run: () => navigate("focus") },
