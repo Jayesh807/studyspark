@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -109,17 +110,24 @@ export function Hero() {
           </motion.div>
 
           <motion.ul
-            variants={item}
+            variants={container}
             className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2"
           >
-            {TRUST_BADGES.map(({ label, icon: Icon }) => (
-              <li
+            {TRUST_BADGES.map(({ label, icon: Icon }, i) => (
+              <motion.li
                 key={label}
+                custom={i}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.6 + i * 0.12, ease: [0.22, 1, 0.36, 1] as const }}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground"
               >
                 <Icon className="size-4 text-violet-500" />
-                {label}
-              </li>
+                <span>{label}</span>
+                {label === "Free forever" && (
+                  <span className="glow-dot ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-violet-500" />
+                )}
+              </motion.li>
             ))}
           </motion.ul>
         </motion.div>
@@ -139,11 +147,31 @@ export function Hero() {
 }
 
 function FloatingDashboard() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const dx = (e.clientX - centerX) / rect.width;
+    const dy = (e.clientY - centerY) / rect.height;
+    setOffset({ x: dx * 12, y: dy * 8 });
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [handleMouseMove]);
+
   return (
     <motion.div
+      ref={containerRef}
       animate={{ y: [0, -14, 0] }}
       transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-      className="relative"
+      style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
+      className="relative transition-transform duration-200 ease-out"
     >
       {/* Glow behind */}
       <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-purple-500/20 blur-3xl" />

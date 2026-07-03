@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -89,13 +90,22 @@ function NavButton({
   onClick: () => void;
 }) {
   const Icon = item.icon;
+  const [sparkKey, setSparkKey] = useState(0);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const handleClick = useCallback(() => {
+    setSparkKey((k) => k + 1);
+    onClick();
+  }, [onClick]);
+
   const button = (
     <motion.button
-      onClick={onClick}
+      ref={btnRef}
+      onClick={handleClick}
       whileHover={{ x: collapsed ? 0 : 2 }}
       whileTap={{ scale: 0.97 }}
       className={cn(
-        "relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+        "relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors overflow-hidden",
         active
           ? "text-primary-foreground"
           : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
@@ -104,8 +114,15 @@ function NavButton({
       {active && (
         <motion.div
           layoutId="sidebar-active"
-          className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30"
+          className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500/95 to-fuchsia-500/95 shadow-lg shadow-violet-500/35"
           transition={{ type: "spring", stiffness: 400, damping: 32 }}
+        />
+      )}
+      {/* Mini spark flash on click */}
+      {sparkKey > 0 && (
+        <span
+          key={sparkKey}
+          className="mini-spark pointer-events-none absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-400/40"
         />
       )}
       <Icon
@@ -160,9 +177,11 @@ export function Sidebar() {
   const sidebarContent = (
     <div className="flex h-full flex-col">
       {/* Brand */}
-      <div className="flex h-16 items-center px-4 border-b border-sidebar-border/60">
+      <div className="flex h-16 items-center px-4">
         <BrandLogo collapsed={collapsed} />
       </div>
+      {/* Gradient separator line below brand */}
+      <div className="h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
 
       {/* Nav */}
       <ScrollArea className="flex-1 px-3 py-4">

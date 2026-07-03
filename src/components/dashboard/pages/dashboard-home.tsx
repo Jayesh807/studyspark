@@ -16,6 +16,7 @@ import {
 import {
   AlarmClock,
   ArrowRight,
+  BookOpen,
   CalendarDays,
   CheckCheck,
   CheckCircle2,
@@ -25,6 +26,8 @@ import {
   GraduationCap,
   ListTodo,
   MapPin,
+  Play,
+  Plus,
   Quote,
   RefreshCw,
   Sparkles,
@@ -36,7 +39,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/lib/store";
+import { useAppStore, type AppView } from "@/lib/store";
 import { apiFetch, handleError } from "@/lib/api";
 import {
   type Analytics,
@@ -305,25 +308,31 @@ function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics[
   const Icon = config.icon;
   const value = config.value(stats);
   const subtitle = config.subtitle(stats);
+  const isEmpty = value === 0;
 
   return (
     <StaggerItem className="h-full">
       <GlassCard
         hover
-        className="group relative h-full overflow-hidden p-5"
+        className={cn("group relative h-full overflow-hidden p-5", isEmpty && "icon-chip-shimmer")}
+        style={isEmpty ? {
+          backgroundImage: undefined,
+        } : undefined}
       >
         {/* glow blob */}
         <div
           className={cn(
-            "pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-25 blur-2xl transition-opacity duration-300 group-hover:opacity-40",
+            "pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl transition-opacity duration-300 group-hover:opacity-40",
+            isEmpty ? "opacity-15 empty-pulse-glow" : "opacity-25",
             config.glow
           )}
         />
         <div className="relative flex items-start justify-between">
           <div
             className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg shadow-black/5",
-              config.gradient
+              "flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg shadow-black/5 transition-all duration-300",
+              config.gradient,
+              isEmpty && "opacity-70 grayscale-[30%]"
             )}
           >
             <Icon className="h-6 w-6" />
@@ -333,7 +342,7 @@ function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics[
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {config.label}
           </p>
-          <div className="mt-1 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <div className={cn("mt-1 text-3xl font-bold tracking-tight sm:text-4xl", isEmpty ? "text-muted-foreground/60" : "text-foreground")}>
             <AnimatedCounter
               value={value}
               suffix={config.suffix}
@@ -686,12 +695,20 @@ function ExamsPreview({
       </div>
 
       {next.length === 0 ? (
-        <EmptyState
-          icon={GraduationCap}
-          title="No upcoming exams"
-          description="Enjoy the calm — schedule a new exam and we'll help you prepare."
-          className="py-10"
-        />
+        <div className="relative flex flex-col items-center justify-center text-center py-10 px-6">
+          {/* Pulsing glow behind */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-32 w-32 rounded-full bg-amber-500/10 empty-pulse-glow blur-2xl" />
+          </div>
+          <div className="relative">
+            <EmptyState
+              icon={GraduationCap}
+              title="No upcoming exams"
+              description="Enjoy the calm — schedule a new exam and we'll help you prepare."
+              className="py-0"
+            />
+          </div>
+        </div>
       ) : (
         <ul className="space-y-3">
           <AnimatePresence initial={false}>
@@ -825,12 +842,20 @@ function TodayTasksPreview({
       </div>
 
       {todays.length === 0 ? (
-        <EmptyState
-          icon={CheckCircle2}
-          title="Nothing due today"
-          description="You're all caught up. Add a task or take a well-deserved break."
-          className="py-10"
-        />
+        <div className="relative flex flex-col items-center justify-center text-center py-10 px-6">
+          {/* Pulsing glow behind */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-32 w-32 rounded-full bg-violet-500/10 empty-pulse-glow blur-2xl" />
+          </div>
+          <div className="relative">
+            <EmptyState
+              icon={CheckCircle2}
+              title="Nothing due today"
+              description="You're all caught up. Add a task or take a well-deserved break."
+              className="py-0"
+            />
+          </div>
+        </div>
       ) : (
         <ul className="space-y-2">
           <AnimatePresence initial={false}>
@@ -921,6 +946,78 @@ function DashboardSkeleton() {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Welcome Quick Start card (shows only when no data)                        */
+/* -------------------------------------------------------------------------- */
+
+function QuickStartCard({ onNavigate }: { onNavigate: (view: AppView) => void }) {
+  const actions = [
+    { label: "Add your first subject", icon: BookOpen, view: "subjects" as AppView, gradient: "from-violet-500 to-purple-600" },
+    { label: "Create a task", icon: Plus, view: "todos" as AppView, gradient: "from-emerald-500 to-teal-600" },
+    { label: "Start a focus session", icon: Play, view: "focus" as AppView, gradient: "from-rose-500 to-pink-600" },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="relative overflow-hidden rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] via-fuchsia-500/[0.06] to-purple-500/[0.08] p-6 backdrop-blur-xl"
+    >
+      {/* Sparkle decorations */}
+      <div className="pointer-events-none absolute left-[15%] top-[20%] sparkle-float" style={{ animationDelay: "0s" }}>
+        <Sparkles className="h-4 w-4 text-violet-400/60" />
+      </div>
+      <div className="pointer-events-none absolute right-[20%] top-[15%] sparkle-float" style={{ animationDelay: "0.8s" }}>
+        <Sparkles className="h-3 w-3 text-fuchsia-400/50" />
+      </div>
+      <div className="pointer-events-none absolute left-[60%] bottom-[20%] sparkle-float" style={{ animationDelay: "1.6s" }}>
+        <Sparkles className="h-3.5 w-3.5 text-purple-400/50" />
+      </div>
+      <div className="pointer-events-none absolute left-[8%] bottom-[25%] sparkle-float" style={{ animationDelay: "2.1s" }}>
+        <Sparkles className="h-3 w-3 text-violet-300/40" />
+      </div>
+
+      {/* Glow blob */}
+      <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/15 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-fuchsia-500/10 blur-3xl" />
+
+      <div className="relative">
+        <h2 className="text-xl font-bold sm:text-2xl">
+          Welcome to StudySpark! 🎉
+        </h2>
+        <p className="mt-1.5 text-sm text-muted-foreground max-w-lg">
+          Get started by adding some data — your dashboard will light up with insights in no time.
+        </p>
+
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+          {actions.map((action, i) => {
+            const ActionIcon = action.icon;
+            return (
+              <motion.button
+                key={action.label}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: 0.15 + i * 0.08 }}
+                whileHover={{ scale: 1.03, y: -2 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => onNavigate(action.view)}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl",
+                  `bg-gradient-to-br ${action.gradient}`
+                )}
+              >
+                <ActionIcon className="h-4 w-4" />
+                {action.label}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Main component                                                             */
 /* -------------------------------------------------------------------------- */
 
@@ -968,6 +1065,11 @@ export function DashboardHome() {
         <DashboardSkeleton />
       ) : (
         <>
+          {/* Quick Start card — only when user has zero tasks and zero subjects */}
+          {analytics.stats.totalTasks === 0 && analytics.subjectPerformance.length === 0 && (
+            <QuickStartCard onNavigate={setView} />
+          )}
+
           {/* Stat cards */}
           <StaggerContainer className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {STAT_CARDS.map((cfg) => (

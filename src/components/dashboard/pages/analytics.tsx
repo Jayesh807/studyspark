@@ -15,6 +15,7 @@ import {
   GraduationCap,
   Layers,
   Gauge,
+  Download,
 } from "lucide-react";
 import {
   Area,
@@ -46,6 +47,7 @@ import {
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type Period = "weekly" | "monthly";
 
@@ -173,6 +175,32 @@ export function AnalyticsPage() {
                 {p}
               </span>
             </button>
+          ))}
+        </div>
+
+        {/* Export buttons */}
+        <div className="flex items-center gap-2">
+          {[
+            { type: "todos", label: "Tasks" },
+            { type: "focus", label: "Focus" },
+            { type: "exams", label: "Exams" },
+          ].map((exp) => (
+            <motion.button
+              key={exp.type}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                const a = document.createElement("a");
+                a.href = `/api/export?type=${exp.type}`;
+                a.download = `studyspark-${exp.type}.csv`;
+                a.click();
+                toast.success(`${exp.label} CSV exported!`);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+            >
+              <Download className="h-3 w-3" />
+              {exp.label}
+            </motion.button>
           ))}
         </div>
       </div>

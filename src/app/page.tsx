@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { LandingPage } from "@/components/landing/landing-page";
 import { AuthScreen } from "@/components/auth/auth-screen";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { CommandPalette } from "@/components/shared/command-palette";
 import { PageLoader } from "@/components/shared/feedback";
 
 export default function Home() {
@@ -78,6 +79,7 @@ export default function Home() {
           transition={{ duration: 0.3 }}
         >
           <DashboardShell />
+          <CommandPalette />
         </motion.div>
       ) : isAuthView ? (
         <motion.div

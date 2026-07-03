@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { Check, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GlassCard } from "@/components/shared/motion";
 import { SectionHeading } from "./section-heading";
 import { useAppStore } from "@/lib/store";
 
@@ -42,7 +41,7 @@ export function Pricing() {
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
           className="mx-auto mt-14 flex max-w-md justify-center"
         >
-          <GlassCard hover className="relative w-full overflow-hidden p-8 sm:p-10">
+          <div className="shimmer-border relative w-full overflow-hidden rounded-3xl p-8 sm:p-10 glass">
             {/* Decorative gradient */}
             <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 blur-3xl" />
 
@@ -52,7 +51,8 @@ export function Pricing() {
                   <Sparkles className="size-3.5" />
                   Free
                 </span>
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <span className="glow-dot inline-block h-1.5 w-1.5 rounded-full bg-violet-500" />
                   Forever
                 </span>
               </div>
@@ -99,7 +99,7 @@ export function Pricing() {
                 Pro tier coming soon — AI study plans, sync & collaboration.
               </div>
             </div>
-          </GlassCard>
+          </div>
         </motion.div>
       </div>
     </section>

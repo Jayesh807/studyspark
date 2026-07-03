@@ -359,3 +359,107 @@ Stage Summary:
 - Architecture: SPA on `/` route, Zustand-driven navigation, lazy-loaded pages, JWT cookie auth, Prisma/SQLite.
 - Race condition in auth fixed; session persists across reloads.
 - The recurring webDevReview cron job (every 15 min) will continue QA + feature expansion.
+
+---
+Task ID: feat-2
+Agent: seed-data-builder
+Task: Add Seed Data / Demo Mode feature — POST /api/seed endpoint + Demo Data section in Settings page
+
+Work Log:
+- Created `/home/z/my-project/src/app/api/seed/route.ts` — POST endpoint that:
+  - Verifies authentication via `getCurrentUser()`
+  - Deletes ALL existing user data (focusSessions, exams, events, todos, subjects, profile) in correct order
+  - Seeds 5 subjects (Mathematics/violet/85%/72%, Computer Science/blue/92%/65%, Physics/green/78%/45%, English Literature/amber/95%/80%, Chemistry/rose/70%/35%)
+  - Seeds 10 todos (3 todo, 4 in-progress, 3 completed) with varied priorities/categories/subjects and spread due dates
+  - Seeds 5 events across current and next 2 weeks with colors and descriptions
+  - Seeds 4 exams over next 2-4 weeks with varying progress (30%, 55%, 75%, 90%)
+  - Seeds 14 focus sessions across last 7 days with varying durations (15-60 min), mostly "focus" type, tagged with subject names
+  - Creates profile with bio, goal, targetHours:6, college, course, semester:4, studyStreak:7
+  - Uses `date-fns` (addDays, subDays, setHours, setMinutes, startOfWeek) for realistic date calculations
+  - Returns `{ success: true, message: "Demo data seeded successfully" }` with 201 status
+- Updated `/home/z/my-project/src/components/dashboard/pages/settings.tsx`:
+  - Added `LoadDemoDataDialog` component with AlertDialog confirmation flow
+  - Added "Demo Data" SettingsSection between Account and About sections
+  - Gradient "Load Demo Data" button with Sparkles icon
+  - Confirmation dialog: "This will replace all your current data with demo data. Continue?"
+  - Loading spinner during request, success toast + navigate to dashboard on success
+  - Error handling via `handleError`
+  - Removed unused `type { Todo, Subject, Event, Exam }` import
+- Lint: ✓ clean (0 errors, 0 warnings)
+
+Stage Summary:
+- **Seed data feature complete.** Users can load rich demo data from Settings → Demo Data section.
+- Demo data makes the dashboard look impressive: 5 subjects, 10 todos, 5 events, 4 exams, 14 focus sessions, full profile.
+- Weekly/monthly charts will show real study data from the 14 focus sessions spread across the last 7 days.
+
+---
+Task ID: style-1+style-3
+Agent: styling-polisher
+Task: Dashboard empty state enhancement, dark mode contrast, landing page micro-animations, sidebar polish
+
+Work Log:
+- **globals.css — Dark mode contrast improvements:**
+  - Deepened dark background: `oklch(0.15 0.02 265)` → `oklch(0.13 0.015 265)` for richer dark feel
+  - Lightened dark card slightly: `oklch(0.21 0.025 265)` → `oklch(0.19 0.02 265)` for better card-to-background separation
+  - Increased muted-foreground brightness: `oklch(0.68 0.02 260)` → `oklch(0.72 0.02 260)` for better text readability
+  - Deepened sidebar background: `oklch(0.18 0.022 265)` → `oklch(0.16 0.018 265)`
+  - Updated primary-foreground in dark mode to match deeper background
+  - Added border-glow on `.glass` and `.glass-strong` in dark mode with subtle box-shadow (violet glow)
+- **globals.css — New keyframe animations:**
+  - `chipShimmer` + `.icon-chip-shimmer` — shimmer sweep on stat card icon chips when value is 0
+  - `emptyPulseGlow` + `.empty-pulse-glow` — pulsing glow behind empty state sections
+  - `borderShimmer` + `.shimmer-border` — animated gradient border sweep on pricing card (CSS mask technique)
+  - `glowDotPulse` + `.glow-dot` — pulsing glow dot next to "Free forever" badge
+  - `miniSpark` + `.mini-spark` — radial flash animation on sidebar nav click
+  - `sparkleFloat` + `.sparkle-float` — floating sparkle for welcome card decorations
+- **dashboard-home.tsx — Empty state + Quick Start:**
+  - StatCard: Added `isEmpty` detection, applies `icon-chip-shimmer` class when value=0, pulsing glow blob, dimmed icon (opacity-70 + grayscale), muted value text
+  - ExamsPreview empty state: Wrapped in container with `empty-pulse-glow` amber blur behind
+  - TodayTasksPreview empty state: Wrapped in container with `empty-pulse-glow` violet blur behind
+  - New `QuickStartCard` component: gradient glass card with sparkle decorations, shows only when `totalTasks === 0 && subjectPerformance.length === 0`, contains 3 action buttons (Add subject, Create task, Start focus)
+  - Added imports: `BookOpen`, `Play`, `Plus`, `type AppView`
+- **hero.tsx — Parallax + stagger + glow dot:**
+  - FloatingDashboard now tracks mouse position via `mousemove` listener, applies subtle `translate()` offset (parallax effect)
+  - Trust badges: Changed from single `variants={item}` stagger to individual `motion.li` with incremental delays (0.6 + i*0.12) for fade-in-stagger effect
+  - "Free forever" badge now has a pulsing `.glow-dot` next to it
+- **testimonials.tsx — 3D tilt hover:**
+  - Replaced `GlassCard` with custom `TiltCard` component
+  - TiltCard tracks mouse position within card, applies `rotateX/rotateY` transforms with `perspective: 800` and `transformStyle: preserve-3d`
+  - Maintains hover lift (`y: -4`) alongside tilt
+  - Removed unused `GlassCard` import
+- **pricing.tsx — Shimmer border + glow dot:**
+  - Replaced `GlassCard` with `div` using `.shimmer-border .glass` classes for animated gradient border
+  - "Forever" label now has `.glow-dot` pulsing indicator
+  - Removed unused `GlassCard` import
+- **sidebar.tsx — Polish:**
+  - Brand area: Replaced `border-b border-sidebar-border/60` with gradient separator `bg-gradient-to-r from-transparent via-violet-500/30 to-transparent`
+  - Active nav gradient: Made slightly more vivid (`from-violet-500/95 to-fuchsia-500/95` + `shadow-violet-500/35`)
+  - NavButton: Added `sparkKey` state + `handleClick` callback to trigger mini spark animation on click
+  - Added `overflow-hidden` to button className for spark containment
+  - Added `useCallback`, `useRef`, `useState` imports
+
+Stage Summary:
+- **Dark mode significantly improved** with deeper backgrounds, brighter text, and glass glow effects
+- **Dashboard feels alive even with no data** — pulsing glows on empty states, shimmer on 0-value stat cards, Quick Start card for new users
+- **Landing page micro-animations elevate premium feel** — parallax mockup, staggered trust badges, shimmer border on pricing, 3D tilt testimonials, pulsing glow dots
+- **Sidebar polished** — gradient separator, vivid active state, mini spark click feedback
+- All changes pass lint with zero errors, dev server compiles cleanly
+
+---
+Task ID: qa-round-2
+Agent: web-dev-reviewer
+Task: QA + bug fixes + feature enhancements (Cmd+K palette, seed data, CSV export, dark mode polish, landing micro-animations)
+
+Work Log:
+- QA via agent-browser: landing ✅, signup ✅, login ✅, dashboard ✅, subjects ✅, todos ✅, focus timer ✅, analytics ✅, dark mode ✅, mobile ✅
+- Found: no critical bugs. All API routes return 200. Lint clean. No JS errors in console.
+- Noted: agent-browser `fill` doesn't trigger React onChange on controlled inputs — forms must be tested via curl or native events. This is a testing limitation, not an app bug.
+- Fixed: auth race condition was already fixed in prior round.
+- Verified: seed data API works (curl tested), CSV export works (curl tested).
+
+Stage Summary:
+- App is stable and functional end-to-end with no errors.
+- New features added: Cmd+K command palette, demo data seeder, CSV export.
+- Styling polished: dark mode deeper contrast, glass glow in dark, landing page micro-animations (parallax, typing, shimmer, 3D tilt), dashboard Quick Start card, sidebar gradient separator + click spark, stat card shimmer on zero values.
+- All features lint-clean and compile-clean.
+- Next round focus: deeper feature testing, potential mobile layout issues, accessibility improvements, more landing page polish.
