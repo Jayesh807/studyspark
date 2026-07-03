@@ -25,6 +25,10 @@ import {
   AlertTriangle,
   GraduationCap,
   RotateCcw,
+  Download,
+  FileJson,
+  FileSpreadsheet,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -714,6 +718,50 @@ export function SettingsPage() {
     }
   };
 
+  const handleExport = useCallback(async (type: string) => {
+    const labels: Record<string, string> = {
+      "all-json": "JSON backup",
+      todos: "Tasks CSV",
+      subjects: "Subjects CSV",
+      exams: "Exams CSV",
+      focus: "Focus sessions CSV",
+    };
+    const label = labels[type] ?? "Export";
+    const toastId = toast.loading(`Preparing ${label}…`);
+    try {
+      const res = await fetch(`/api/export?type=${encodeURIComponent(type)}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Export failed");
+      }
+      const blob = await res.blob();
+      // Extract filename from Content-Disposition header, fallback to generated name
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const match = cd.match(/filename="?([^"]+)"?/);
+      const filename =
+        match?.[1] ??
+        `studyspark-${type}-${new Date().toISOString().slice(0, 10)}.${type === "all-json" ? "json" : "csv"}`;
+      // Trigger download via a temporary anchor
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`${label} downloaded`, {
+        id: toastId,
+        description: filename,
+      });
+    } catch (err) {
+      toast.error(`Failed to export ${label}`, {
+        id: toastId,
+        description: err instanceof Error ? err.message : undefined,
+      });
+    }
+  }, []);
+
   return (
     <PageTransition>
       <div className="space-y-6 sm:space-y-8">
@@ -879,6 +927,81 @@ export function SettingsPage() {
                   {loggingOut ? "Logging out..." : "Log Out"}
                 </Button>
                 <ResetDataDialog />
+              </div>
+            </div>
+          </SettingsSection>
+
+          {/* Data Export */}
+          <SettingsSection
+            icon={Download}
+            title="Data Export"
+            description="Download your data for backup, analysis, or transfer. Available as CSV or a complete JSON backup."
+            delay={0.11}
+          >
+            <div className="py-2 space-y-5">
+              {/* Full JSON backup — featured */}
+              <div className="relative overflow-hidden rounded-2xl border-2 border-violet-500/30 bg-gradient-to-br from-violet-500/5 via-fuchsia-500/5 to-transparent p-4">
+                <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl pointer-events-none" />
+                <div className="relative flex flex-col sm:flex-row sm:items-center gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25">
+                    <FileJson className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm font-semibold">Complete Backup (JSON)</h4>
+                      <Badge className="bg-violet-500/15 text-violet-600 dark:text-violet-300 text-[10px]">
+                        Recommended
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Everything in one file — profile, tasks, subjects, exams, events & focus sessions.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="gap-1.5 shrink-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white hover:from-violet-700 hover:to-fuchsia-700"
+                    onClick={() => handleExport("all-json")}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+
+              {/* CSV exports grid */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2.5 flex items-center gap-1.5">
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                  Individual CSV Exports
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { type: "todos", label: "Tasks", emoji: "📋" },
+                    { type: "subjects", label: "Subjects", emoji: "📚" },
+                    { type: "exams", label: "Exams", emoji: "📝" },
+                    { type: "focus", label: "Focus", emoji: "🎯" },
+                  ].map((item) => (
+                    <button
+                      key={item.type}
+                      type="button"
+                      onClick={() => handleExport(item.type)}
+                      className="group relative flex flex-col items-center gap-1.5 rounded-xl border border-border bg-background/40 p-3 text-center transition-all hover:border-violet-500/40 hover:bg-violet-500/5 hover:shadow-md focus-ring-accent"
+                      aria-label={`Export ${item.label} as CSV`}
+                    >
+                      <span className="text-xl transition-transform group-hover:scale-110">{item.emoji}</span>
+                      <span className="text-xs font-medium">{item.label}</span>
+                      <span className="text-[10px] text-muted-foreground">CSV</span>
+                      <Download className="absolute top-1.5 right-1.5 h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 rounded-lg bg-muted/40 p-2.5 text-xs text-muted-foreground">
+                <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <p>
+                  Exports are generated on-demand from your live data. The JSON backup includes metadata and stats for easy restoration or migration.
+                </p>
               </div>
             </div>
           </SettingsSection>

@@ -114,9 +114,59 @@ export async function GET(req: NextRequest) {
         break;
       }
 
+      case "all-json": {
+        // Full data backup as a single JSON file
+        const [profile, todos, subjects, exams, events, focusSessions] = await Promise.all([
+          db.profile.findUnique({ where: { userId: user.id } }),
+          db.todo.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } }),
+          db.subject.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } }),
+          db.exam.findMany({ where: { userId: user.id }, orderBy: { date: "asc" } }),
+          db.event.findMany({ where: { userId: user.id }, orderBy: { date: "asc" } }),
+          db.focusSession.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } }),
+        ]);
+
+        const backup = {
+          meta: {
+            app: "StudySpark",
+            version: "1.0",
+            exportedAt: new Date().toISOString(),
+            username: user.username,
+          },
+          user: {
+            id: user.id,
+            username: user.username,
+            createdAt: user.createdAt,
+          },
+          profile,
+          todos,
+          subjects,
+          exams,
+          events,
+          focusSessions,
+          stats: {
+            todoCount: todos.length,
+            subjectCount: subjects.length,
+            examCount: exams.length,
+            eventCount: events.length,
+            focusSessionCount: focusSessions.length,
+            totalFocusMinutes: focusSessions.reduce((sum, s) => sum + s.duration, 0),
+          },
+        };
+
+        const json = JSON.stringify(backup, null, 2);
+        const jsonFilename = `studyspark-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        return new NextResponse(json, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Disposition": `attachment; filename="${jsonFilename}"`,
+          },
+        });
+      }
+
       default:
         return NextResponse.json(
-          { error: "Invalid export type. Use: todos, subjects, exams, focus" },
+          { error: "Invalid export type. Use: todos, subjects, exams, focus, all-json" },
           { status: 400 }
         );
     }

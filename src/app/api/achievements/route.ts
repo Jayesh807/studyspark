@@ -139,9 +139,39 @@ export async function GET() {
     "well-rounded": allCategoriesUsed,
   };
 
+  // Persist newly-earned badges to DB so earnedAt survives across devices/sessions.
+  // Fetch existing records, then create any that are newly earned but not yet recorded.
+  const existingBadges = await db.badgeEarned.findMany({
+    where: { userId: user.id },
+  });
+  const existingMap = new Map(existingBadges.map((b) => [b.badgeId, b.earnedAt]));
+  const newlyEarnedIds = BADGES
+    .map((b) => b.id)
+    .filter((id) => earnedMap[id] && !existingMap.has(id));
+
+  if (newlyEarnedIds.length > 0) {
+    try {
+      await db.badgeEarned.createMany({
+        data: newlyEarnedIds.map((badgeId) => ({
+          userId: user.id,
+          badgeId,
+        })),
+      });
+      // Merge the newly created (earnedAt = now) into existingMap for the response
+      const now = new Date();
+      for (const id of newlyEarnedIds) {
+        existingMap.set(id, now);
+      }
+    } catch (error) {
+      console.error("Failed to persist badge earned timestamps:", error);
+      // Non-fatal — the badges are still computed correctly, just without persisted timestamps
+    }
+  }
+
   const badges = BADGES.map((def) => ({
     ...def,
     earned: !!earnedMap[def.id],
+    earnedAt: existingMap.get(def.id) ?? null,
   }));
 
   const earnedCount = badges.filter((b) => b.earned).length;
@@ -160,11 +190,16 @@ export async function GET() {
     }
   );
 
-  // Recently earned — approximate by order, earned badges first
+  // Recently earned — sorted by earnedAt desc (most recent first)
   const recentBadges = badges
-    .filter((b) => b.earned)
-    .slice(0, 4)
-    .map((b) => b.id);
+    .filter((b) => b.earned && b.earnedAt)
+    .sort((a, b) => {
+      const aTime = a.earnedAt ? new Date(a.earnedAt).getTime() : 0;
+      const bTime = b.earnedAt ? new Date(b.earnedAt).getTime() : 0;
+      return bTime - aTime;
+    })
+    .slice(0, 6)
+    .map((b) => ({ id: b.id, earnedAt: b.earnedAt }));
 
   // Progress toward next badges (for a few key ones)
   const progress: { id: string; current: number; target: number }[] = [
