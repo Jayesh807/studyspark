@@ -72,12 +72,48 @@ export function EmptyState({
 
 export function PageLoader() {
   return (
-    <div className="flex items-center justify-center py-20">
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-        className="h-10 w-10 rounded-full border-[3px] border-violet-500/20 border-t-violet-500"
-      />
+    <div className="flex flex-col items-center justify-center py-20 gap-6">
+      {/* Pulsing star icon + rotating ring */}
+      <div className="relative flex items-center justify-center">
+        {/* Outer rotating ring */}
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+          className="absolute h-16 w-16 rounded-full border-[2px] border-violet-500/20 border-t-violet-500/60"
+        />
+        <motion.div
+          animate={{ rotate: -360 }}
+          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+          className="absolute h-20 w-20 rounded-full border-[1.5px] border-fuchsia-500/10 border-b-fuchsia-500/40"
+        />
+        {/* Pulsing star */}
+        <motion.div
+          animate={{ scale: [1, 1.15, 1] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="flex h-10 w-10 items-center justify-center"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            className="h-8 w-8 text-violet-500"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M12 2L14.09 8.26L20.18 8.63L15.54 12.74L16.91 19.02L12 15.77L7.09 19.02L8.46 12.74L3.82 8.63L9.91 8.26L12 2Z"
+              fill="currentColor"
+            />
+          </svg>
+        </motion.div>
+      </div>
+      {/* Fade-in text */}
+      <motion.p
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1, duration: 0.6, ease: "easeOut" }}
+        className="text-sm font-medium text-muted-foreground"
+      >
+        Loading…
+      </motion.p>
     </div>
   );
 }

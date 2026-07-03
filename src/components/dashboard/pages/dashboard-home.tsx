@@ -44,6 +44,7 @@ import { apiFetch, handleError } from "@/lib/api";
 import {
   type Analytics,
   type Exam,
+  type FocusSession,
   type Priority,
   type Todo,
   colorOf,
@@ -119,16 +120,7 @@ const STAT_CARDS: StatCardConfig[] = [
     subtitle: () => "today",
     value: (s) => s.focusTodayMinutes,
   },
-  {
-    key: "studyStreak",
-    icon: Flame,
-    label: "Study Streak",
-    gradient: "from-cyan-500 to-teal-500",
-    glow: "bg-cyan-500",
-    suffix: " days",
-    subtitle: () => "keep it up!",
-    value: (s) => s.studyStreak,
-  },
+  // NOTE: studyStreak removed from generic cards — rendered as enhanced StreakCard below
 ];
 
 interface QuoteItem {
@@ -301,6 +293,267 @@ function GreetingHeader({ username }: { username: string }) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Enhanced Streak Card with 7-day circles                                    */
+/* -------------------------------------------------------------------------- */
+
+function StreakCard({
+  streak,
+  focusSessions,
+}: {
+  streak: number;
+  focusSessions: FocusSession[];
+}) {
+  const [circlesReady, setCirclesReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setCirclesReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Compute which of the last 7 days had focus sessions
+  const last7Days = useMemo(() => {
+    const days: { date: Date; label: string; hadSession: boolean }[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const next = new Date(d);
+      next.setDate(next.getDate() + 1);
+      const had = focusSessions.some((s) => {
+        const sd = new Date(s.date);
+        return sd >= d && sd < next && s.type === "focus" && s.completed;
+      });
+      days.push({
+        date: d,
+        label: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()],
+        hadSession: had,
+      });
+    }
+    return days;
+  }, [focusSessions]);
+
+  return (
+    <StaggerItem className="h-full">
+      <GlassCard
+        hover
+        className="group relative h-full overflow-hidden p-5"
+      >
+        {/* glow blob */}
+        <div
+          className={cn(
+            "pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl transition-opacity duration-300 group-hover:opacity-40",
+            streak > 0 ? "opacity-25" : "opacity-15",
+            "bg-cyan-500"
+          )}
+        />
+
+        <div className="relative flex items-start justify-between">
+          <div
+            className={cn(
+              "flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg shadow-black/5 transition-all duration-300",
+              "from-cyan-500 to-teal-500",
+              streak === 0 && "opacity-70 grayscale-[30%]"
+            )}
+          >
+            <Flame className="h-6 w-6" />
+          </div>
+          {/* Animated fire emoji */}
+          {streak > 0 && (
+            <motion.span
+              className="text-2xl"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            >
+              🔥
+            </motion.span>
+          )}
+        </div>
+
+        <div className="relative mt-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Study Streak
+          </p>
+          {streak > 0 ? (
+            <>
+              <div className={cn("mt-1 text-3xl font-bold tracking-tight sm:text-4xl", "text-foreground")}>
+                <AnimatedCounter value={streak} />
+                <span className="ml-1 text-base font-medium text-muted-foreground">
+                  day{streak === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">keep it up!</p>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                Start your streak!
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Study today to begin 🔥
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* 7-day circles */}
+        <div className="relative mt-4 flex items-center justify-between gap-1.5">
+          {last7Days.map((day, i) => (
+            <div key={i} className="flex flex-col items-center gap-1">
+              <motion.div
+                initial={false}
+                animate={
+                  circlesReady && day.hadSession
+                    ? { scale: [0, 1.2, 1], opacity: 1 }
+                    : { scale: 1, opacity: 1 }
+                }
+                transition={{
+                  duration: 0.4,
+                  delay: circlesReady && day.hadSession ? i * 0.08 : 0,
+                  ease: [0.22, 1, 0.36, 1],
+                }}
+                className={cn(
+                  "h-5 w-5 rounded-full transition-all duration-300",
+                  day.hadSession
+                    ? "bg-gradient-to-br from-cyan-400 to-teal-500 shadow-sm shadow-cyan-500/30"
+                    : "bg-muted border border-border/60"
+                )}
+              />
+              <span
+                className={cn(
+                  "text-[9px] font-medium",
+                  day.hadSession
+                    ? "text-cyan-600 dark:text-cyan-400"
+                    : "text-muted-foreground"
+                )}
+              >
+                {day.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    </StaggerItem>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Today's Goal — circular progress ring                                      */
+/* -------------------------------------------------------------------------- */
+
+function TodaysGoalRing({
+  focusMinutes,
+  targetHours,
+}: {
+  focusMinutes: number;
+  targetHours: number;
+}) {
+  const targetMinutes = targetHours * 60;
+  const rawPct = targetMinutes > 0 ? (focusMinutes / targetMinutes) * 100 : 0;
+  const pct = Math.min(rawPct, 100);
+  const displayPct = Math.round(rawPct);
+  const exceeded = rawPct > 100;
+
+  // SVG ring params
+  const radius = 52;
+  const stroke = 8;
+  const normalizedRadius = radius - stroke / 2;
+  const circumference = 2 * Math.PI * normalizedRadius;
+  const strokeDashoffset = circumference - (pct / 100) * circumference;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <GlassCard className="flex items-center gap-6 p-5 sm:p-6">
+        <div className="relative shrink-0">
+          <svg
+            width={(radius + 4) * 2}
+            height={(radius + 4) * 2}
+            viewBox={`0 0 ${(radius + 4) * 2} ${(radius + 4) * 2}`}
+            className="-rotate-90"
+          >
+            <defs>
+              <linearGradient id="goalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#8b5cf6" />
+                <stop offset="100%" stopColor="#d946ef" />
+              </linearGradient>
+            </defs>
+            {/* Background track */}
+            <circle
+              cx={radius + 4}
+              cy={radius + 4}
+              r={normalizedRadius}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={stroke}
+              className="text-muted/40"
+            />
+            {/* Filled arc */}
+            <motion.circle
+              cx={radius + 4}
+              cy={radius + 4}
+              r={normalizedRadius}
+              fill="none"
+              stroke="url(#goalGrad)"
+              strokeWidth={stroke}
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              initial={{ strokeDashoffset: circumference }}
+              animate={{ strokeDashoffset }}
+              transition={{ duration: 1.2, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            />
+          </svg>
+          {/* Center text */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-xl font-bold tabular-nums">
+              {displayPct}%
+            </span>
+            <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">
+              of goal
+            </span>
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold">Today&apos;s Goal</h3>
+            {exceeded && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400"
+              >
+                ✨ Goal exceeded!
+              </motion.span>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {focusMinutes} min of {targetMinutes} min target
+          </p>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(rawPct, 100)}%` }}
+              transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+            />
+          </div>
+        </div>
+      </GlassCard>
+    </motion.div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Stat card                                                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -312,6 +565,7 @@ function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics[
 
   return (
     <StaggerItem className="h-full">
+      <div className="gradient-border-hover h-full">
       <GlassCard
         hover
         className={cn("group relative h-full overflow-hidden p-5", isEmpty && "icon-chip-shimmer")}
@@ -353,6 +607,7 @@ function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics[
           <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
         </div>
       </GlassCard>
+      </div>
     </StaggerItem>
   );
 }
@@ -1027,6 +1282,7 @@ export function DashboardHome() {
 
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -1034,15 +1290,19 @@ export function DashboardHome() {
     (async () => {
       setLoading(true);
       try {
-        const [a, t] = await Promise.all([
+        const [a, t, fs] = await Promise.all([
           apiFetch<Analytics>("/api/analytics"),
           apiFetch<{ todos: Todo[] }>("/api/todos")
             .then((r) => r.todos ?? [])
             .catch(() => [] as Todo[]),
+          apiFetch<{ sessions: FocusSession[] }>("/api/focus-session")
+            .then((r) => r.sessions ?? [])
+            .catch(() => [] as FocusSession[]),
         ]);
         if (!active) return;
         setAnalytics(a);
         setTodos(t);
+        setFocusSessions(fs);
       } catch (err) {
         handleError(err, "Failed to load dashboard");
         toast.error("Could not load your dashboard. Please try again.");
@@ -1070,7 +1330,7 @@ export function DashboardHome() {
             <QuickStartCard onNavigate={setView} />
           )}
 
-          {/* Stat cards */}
+          {/* Stat cards + enhanced streak */}
           <StaggerContainer className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {STAT_CARDS.map((cfg) => (
               <StatCard
@@ -1079,7 +1339,17 @@ export function DashboardHome() {
                 stats={analytics.stats}
               />
             ))}
+            <StreakCard
+              streak={analytics.stats.studyStreak}
+              focusSessions={focusSessions}
+            />
           </StaggerContainer>
+
+          {/* Today's Goal progress ring */}
+          <TodaysGoalRing
+            focusMinutes={analytics.stats.focusTodayMinutes}
+            targetHours={analytics.stats.targetHours}
+          />
 
           {/* Two-column section */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

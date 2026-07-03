@@ -7,6 +7,69 @@ import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { AnimatedBlobs } from "@/components/shared/animated-blobs";
 import { PageLoader } from "@/components/shared/feedback";
+import { Button } from "@/components/ui/button";
+import { Home, Sparkles } from "lucide-react";
+
+function NotFoundPage() {
+  const setView = useAppStore((s) => s.setView);
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center text-center px-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="relative"
+      >
+        <motion.div
+          animate={{ rotate: [0, 5, -5, 0] }}
+          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          className="text-[120px] sm:text-[160px] font-black leading-none text-gradient select-none"
+        >
+          404
+        </motion.div>
+        <motion.div
+          animate={{ y: [0, -8, 0], rotate: [0, 10, 0] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-4 -right-4 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30"
+        >
+          <Sparkles className="h-5 w-5" />
+        </motion.div>
+      </motion.div>
+
+      <motion.h2
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.4 }}
+        className="mt-6 text-2xl font-bold tracking-tight"
+      >
+        Page not found
+      </motion.h2>
+      <motion.p
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.4 }}
+        className="mt-2 max-w-md text-muted-foreground"
+      >
+        The page you&apos;re looking for doesn&apos;t exist or has been moved.
+        Let&apos;s get you back on track.
+      </motion.p>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.4 }}
+        className="mt-8"
+      >
+        <Button
+          onClick={() => setView("dashboard")}
+          className="gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-3 text-white shadow-lg shadow-violet-600/25 hover:shadow-xl hover:shadow-violet-600/30"
+        >
+          <Home className="h-4 w-4" />
+          Back to Dashboard
+        </Button>
+      </motion.div>
+    </div>
+  );
+}
 
 // Lazy-load dashboard pages so the initial bundle stays light
 const DashboardHome = lazy(() =>
@@ -62,7 +125,7 @@ function PageRouter() {
       case "settings":
         return <SettingsPage />;
       default:
-        return <DashboardHome />;
+        return <NotFoundPage />;
     }
   };
 
