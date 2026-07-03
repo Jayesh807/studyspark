@@ -1035,8 +1035,8 @@ function TaskCardInner({
   return (
     <div
       className={cn(
-        "group relative rounded-2xl border bg-card/80 backdrop-blur-sm p-3.5 transition-all",
-        "hover:shadow-md hover:border-violet-500/30",
+        "group relative rounded-2xl border bg-card/80 backdrop-blur-sm p-3.5 transition-all duration-200",
+        "hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/10 hover:border-violet-500/40",
         dragging && !overlay && "opacity-40",
         overlay && "shadow-xl shadow-violet-500/20 rotate-2 cursor-grabbing",
         completed && "opacity-75",

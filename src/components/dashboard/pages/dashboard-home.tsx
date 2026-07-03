@@ -472,80 +472,106 @@ function TodaysGoalRing({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
     >
-      <GlassCard className="flex items-center gap-6 p-5 sm:p-6">
-        <div className="relative shrink-0">
-          <svg
-            width={(radius + 4) * 2}
-            height={(radius + 4) * 2}
-            viewBox={`0 0 ${(radius + 4) * 2} ${(radius + 4) * 2}`}
-            className="-rotate-90"
-          >
-            <defs>
-              <linearGradient id="goalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#8b5cf6" />
-                <stop offset="100%" stopColor="#d946ef" />
-              </linearGradient>
-            </defs>
-            {/* Background track */}
-            <circle
-              cx={radius + 4}
-              cy={radius + 4}
-              r={normalizedRadius}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={stroke}
-              className="text-muted/40"
-            />
-            {/* Filled arc */}
-            <motion.circle
-              cx={radius + 4}
-              cy={radius + 4}
-              r={normalizedRadius}
-              fill="none"
-              stroke="url(#goalGrad)"
-              strokeWidth={stroke}
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              initial={{ strokeDashoffset: circumference }}
-              animate={{ strokeDashoffset }}
-              transition={{ duration: 1.2, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            />
-          </svg>
-          {/* Center text */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xl font-bold tabular-nums">
-              {displayPct}%
-            </span>
-            <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">
-              of goal
-            </span>
+      <GlassCard className="relative overflow-hidden p-5 sm:p-6">
+        {/* Subtle pulsing glow when behind goal */}
+        {!exceeded && rawPct < 100 && (
+          <motion.div
+            animate={{ opacity: [0.15, 0.35, 0.15] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-500/30 blur-3xl"
+          />
+        )}
+        <div className="relative flex items-center gap-5 sm:gap-6">
+          <div className="relative shrink-0">
+            <svg
+              width={(radius + 4) * 2}
+              height={(radius + 4) * 2}
+              viewBox={`0 0 ${(radius + 4) * 2} ${(radius + 4) * 2}`}
+              className="-rotate-90"
+            >
+              <defs>
+                <linearGradient id="goalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#8b5cf6" />
+                  <stop offset="100%" stopColor="#d946ef" />
+                </linearGradient>
+              </defs>
+              {/* Background track */}
+              <circle
+                cx={radius + 4}
+                cy={radius + 4}
+                r={normalizedRadius}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={stroke}
+                className="text-muted/40"
+              />
+              {/* Filled arc */}
+              <motion.circle
+                cx={radius + 4}
+                cy={radius + 4}
+                r={normalizedRadius}
+                fill="none"
+                stroke="url(#goalGrad)"
+                strokeWidth={stroke}
+                strokeLinecap="round"
+                strokeDasharray={circumference}
+                initial={{ strokeDashoffset: circumference }}
+                animate={{ strokeDashoffset }}
+                transition={{ duration: 1.2, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              />
+            </svg>
+            {/* Center text */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-xl font-bold tabular-nums">
+                {displayPct}%
+              </span>
+              <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">
+                of goal
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold">Today&apos;s Goal</h3>
-            {exceeded && (
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400"
-              >
-                ✨ Goal exceeded!
-              </motion.span>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {focusMinutes} min of {targetMinutes} min target
-          </p>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(rawPct, 100)}%` }}
-              transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
-            />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold">Today&apos;s Goal</h3>
+              {exceeded ? (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                  className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-400"
+                >
+                  ✨ Goal exceeded!
+                </motion.span>
+              ) : rawPct < 50 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                  Keep going
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  Almost there
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground tabular-nums">
+                {focusMinutes}
+              </span>{" "}
+              / <span className="tabular-nums">{targetMinutes}</span> min target
+              {!exceeded && rawPct < 100 && (
+                <span className="ml-1 text-muted-foreground/70">
+                  · {Math.max(0, targetMinutes - focusMinutes)} min to go
+                </span>
+              )}
+            </p>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(rawPct, 100)}%` }}
+                transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+              />
+            </div>
           </div>
         </div>
       </GlassCard>

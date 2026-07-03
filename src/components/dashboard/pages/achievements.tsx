@@ -28,6 +28,7 @@ import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { useAchievementCelebration } from "@/hooks/use-achievement-celebration";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                      */
@@ -88,6 +89,10 @@ const TIER_CONFIG: Record<
     chipText: string;
     border: string;
     shadow: string;
+    /** Subtle tinted background for earned badge cards */
+    tintBg: string;
+    /** Decorative top stripe gradient */
+    stripe: string;
   }
 > = {
   bronze: {
@@ -99,6 +104,8 @@ const TIER_CONFIG: Record<
     chipText: "text-amber-600 dark:text-amber-400",
     border: "border-amber-500/30",
     shadow: "shadow-amber-500/20",
+    tintBg: "bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-transparent",
+    stripe: "from-amber-500 to-orange-600",
   },
   silver: {
     label: "Silver",
@@ -109,6 +116,8 @@ const TIER_CONFIG: Record<
     chipText: "text-slate-600 dark:text-slate-300",
     border: "border-slate-400/30",
     shadow: "shadow-slate-400/20",
+    tintBg: "bg-gradient-to-br from-slate-400/10 via-slate-300/5 to-transparent",
+    stripe: "from-slate-300 to-slate-500",
   },
   gold: {
     label: "Gold",
@@ -119,6 +128,8 @@ const TIER_CONFIG: Record<
     chipText: "text-yellow-600 dark:text-yellow-400",
     border: "border-yellow-400/30",
     shadow: "shadow-yellow-400/20",
+    tintBg: "bg-gradient-to-br from-yellow-400/10 via-amber-500/5 to-transparent",
+    stripe: "from-yellow-400 to-amber-500",
   },
   platinum: {
     label: "Platinum",
@@ -129,6 +140,8 @@ const TIER_CONFIG: Record<
     chipText: "text-cyan-600 dark:text-cyan-300",
     border: "border-cyan-300/30",
     shadow: "shadow-cyan-300/20",
+    tintBg: "bg-gradient-to-br from-cyan-300/10 via-fuchsia-400/5 to-transparent",
+    stripe: "from-cyan-300 via-violet-400 to-fuchsia-400",
   },
 };
 
@@ -177,10 +190,21 @@ function BadgeCard({ badge, index }: { badge: Badge; index: number }) {
       className={cn(
         "group relative flex flex-col items-center overflow-hidden rounded-3xl border p-5 text-center transition-colors",
         badge.earned
-          ? cn("bg-background/60 backdrop-blur-xl", tier.border)
+          ? cn("backdrop-blur-xl", tier.border, tier.tintBg)
           : "border-border/40 bg-muted/30"
       )}
     >
+      {/* Decorative tier stripe at the top of earned badges */}
+      {badge.earned && (
+        <div
+          className={cn(
+            "pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r",
+            tier.stripe
+          )}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Glow background when earned */}
       {badge.earned && (
         <div
@@ -360,6 +384,12 @@ export function AchievementsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Confetti celebration when new badges are earned in-session
+  useAchievementCelebration({
+    badges: data?.badges,
+    enabled: !loading,
+  });
 
   const filteredBadges = useMemo(() => {
     if (!data) return [];

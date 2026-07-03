@@ -472,17 +472,29 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
 
       {/* User chip (mobile shows avatar only) */}
       {user && (
-        <button
-          onClick={() => useAppStore.getState().setView("profile")}
-          className="flex items-center gap-2 rounded-xl px-1 py-1 hover:bg-accent/60 transition-colors"
-        >
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-semibold text-white shadow-sm">
-            {user.username.charAt(0).toUpperCase()}
-          </div>
-          <span className="hidden text-sm font-medium sm:block max-w-[100px] truncate">
-            {user.username}
-          </span>
-        </button>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => useAppStore.getState().setView("profile")}
+                className="group flex items-center gap-2 rounded-xl px-1 py-1 transition-colors hover:bg-accent/60"
+              >
+                <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-semibold text-white shadow-sm ring-2 ring-transparent transition-all group-hover:ring-violet-500/30">
+                  {user.username.charAt(0).toUpperCase()}
+                  {/* Online indicator dot */}
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+                </div>
+                <span className="hidden text-sm font-medium sm:block max-w-[120px] truncate">
+                  {user.username}
+                </span>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="end" className="max-w-[220px]">
+              <p className="font-medium">{user.username}</p>
+              <p className="text-[10px] text-muted-foreground">Click to view profile</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
     </header>
   );
