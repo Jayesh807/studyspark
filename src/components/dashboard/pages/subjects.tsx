@@ -65,6 +65,7 @@ import {
   StaggerItem,
 } from "@/components/shared/motion";
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
+import { SubjectDetailDrawer } from "@/components/dashboard/subject-detail-drawer";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 
 // ---------------------------------------------------------------------------
@@ -222,13 +223,21 @@ interface SubjectCardProps {
   subject: Subject;
   onEdit: (s: Subject) => void;
   onDelete: (s: Subject) => void;
+  onOpenDetail: (s: Subject) => void;
 }
 
-function SubjectCard({ subject, onEdit, onDelete }: SubjectCardProps) {
+function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardProps) {
   const color = colorOf(subject.color);
 
   return (
     <GlassCard hover className="group relative overflow-hidden p-5 sm:p-6">
+      {/* Make the main area clickable to open the detail drawer */}
+      <button
+        type="button"
+        onClick={() => onOpenDetail(subject)}
+        aria-label={`View details for ${subject.name}`}
+        className="absolute inset-0 z-0 cursor-pointer rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
+      />
       {/* Left accent bar */}
       <div
         className={cn(
@@ -265,41 +274,53 @@ function SubjectCard({ subject, onEdit, onDelete }: SubjectCardProps) {
             )}
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 -mr-1.5 -mt-1.5 shrink-0 opacity-60 transition-opacity hover:opacity-100"
-              aria-label="Subject actions"
-            >
-              <svg
-                className="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden
+        <div className="relative z-10 flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 -mt-1.5 shrink-0 opacity-60 transition-opacity hover:opacity-100"
+            aria-label="Open subject details"
+            onClick={() => onOpenDetail(subject)}
+          >
+            <Sparkles className="h-4 w-4" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 -mr-1.5 -mt-1.5 shrink-0 opacity-60 transition-opacity hover:opacity-100"
+                aria-label="Subject actions"
+                onClick={(e) => e.stopPropagation()}
               >
-                <circle cx="5" cy="12" r="2" />
-                <circle cx="12" cy="12" r="2" />
-                <circle cx="19" cy="12" r="2" />
-              </svg>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem onSelect={() => onEdit(subject)}>
-              <Pencil className="h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => onDelete(subject)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <svg
+                  className="h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden
+                >
+                  <circle cx="5" cy="12" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="19" cy="12" r="2" />
+                </svg>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onSelect={() => onEdit(subject)}>
+                <Pencil className="h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => onDelete(subject)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Badges */}
@@ -687,6 +708,8 @@ export function SubjectsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
   const [deleting, setDeleting] = useState<Subject | null>(null);
+  const [detailSubject, setDetailSubject] = useState<Subject | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const loadSubjects = useCallback(async () => {
     setLoading(true);
@@ -733,6 +756,11 @@ export function SubjectsPage() {
   };
 
   const handleDelete = (s: Subject) => setDeleting(s);
+
+  const handleOpenDetail = (s: Subject) => {
+    setDetailSubject(s);
+    setDetailOpen(true);
+  };
 
   const confirmDelete = async () => {
     if (!deleting) return;
@@ -891,6 +919,7 @@ export function SubjectsPage() {
                     subject={subject}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onOpenDetail={handleOpenDetail}
                   />
                 </StaggerItem>
               ))}
@@ -938,6 +967,13 @@ export function SubjectsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Subject detail drawer */}
+      <SubjectDetailDrawer
+        subject={detailSubject}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
     </PageTransition>
   );
 }

@@ -733,3 +733,141 @@ One clear **gap** was identified: the topbar search box displayed a `⌘K` keybo
   4. **Calendar event drag-and-drop**: allow dragging events between days in the month view
   5. **Subject detail drawer**: click a subject to open a detail drawer showing all its tasks, exams, and focus sessions
   6. **Accessibility audit**: ARIA labels on icon-only buttons, focus trap in command palette, keyboard nav for badge grid
+
+---
+Task ID: r5 (round 5)
+Agent: orchestrator (main)
+Task: QA assessment + implement 4 new features (confetti celebration, subject detail drawer, onboarding tour, quick-add FAB) + targeted styling polish
+
+## Current Project Status
+
+The StudySpark app entered this round **stable and feature-complete** (per round 4 handover). Pre-implementation QA via agent-browser confirmed all 10 dashboard pages (Dashboard, Tasks, Calendar, Subjects, Exams, Focus, Analytics, Achievements, Profile, Settings), auth, command palette, notifications, dark mode, and mobile responsiveness worked with no JS console errors and clean lint. VLM analysis of dashboard home, achievements page, and todos page surfaced several concrete polish opportunities: disconnected Today's Goal progress indicators, topbar username truncation, inconsistent achievement tier visuals, and missing hover lift on task cards. This round closes those gaps and adds four net-new feature surfaces recommended in the r4 next-steps list.
+
+## Current Goals / Completed Modifications / Verification Results
+
+### QA findings (pre-implementation, agent-browser + VLM)
+- ✅ All 10 dashboard pages render, auth persists, command palette opens (17 items), notifications popover works
+- ✅ Achievements API returns 22 badges, 9 earned for seeded QA user (verified tier stats: Bronze 4/6, Silver 4/8, Gold 1/6, Platinum 0/2)
+- ✅ Lint clean (0 errors), dev server compiles cleanly, no JS console errors
+- Identified polish opportunities via VLM: Today's Goal ring + linear bar felt visually disconnected; topbar avatar username truncated at 100px; achievement badge tiers lacked distinct background tints; task cards missing hover lift
+
+### New Features Added This Round
+
+#### 1. Confetti Celebration System — `src/lib/confetti.ts` (NEW) + `src/hooks/use-achievement-celebration.ts` (NEW)
+- **`src/lib/confetti.ts`**: Three exported confetti utilities backed by `canvas-confetti` (newly installed dependency, ~6KB gzipped):
+  - `celebrateBurst()` — dual side-cannon burst + center sparkle (200ms delay), brand colors (violet/fuchsia/amber/emerald/cyan)
+  - `celebrateMini()` — smaller 35-particle burst for minor milestones
+  - `celebrateTrophy()` — star-shaped particle burst + dual side cannons for gold/platinum tier unlocks
+- **`src/hooks/use-achievement-celebration.ts`**: Side-effect hook that watches the badges array; on first transition from not-seen-earned → earned, fires confetti. Persists seen-badge IDs in `localStorage["studyspark:seen-badges"]` so a page refresh doesn't re-fire. Uses a `firstRunRef` to skip celebration on initial mount (only celebrates *new* unlocks in-session). Auto-selects `celebrateTrophy()` if any newly-earned badge is gold/platinum, else `celebrateBurst()`.
+- **Wired into `achievements.tsx`**: `useAchievementCelebration({ badges: data?.badges, enabled: !loading })`
+
+#### 2. Subject Detail Drawer — `src/components/dashboard/subject-detail-drawer.tsx` (NEW, 460 lines)
+- **Trigger**: Click anywhere on a subject card (full-card clickable button), OR click the new sparkle icon button in the card header
+- **Layout** (right-side Sheet, 100% on mobile, max-w-md on desktop):
+  - **Hero header**: color accent strip + decorative blob + subject icon medallion + name + teacher + credits + prep %
+  - **Stat pills** (2×2 grid): Tasks (completed/total), Exams, Focus hours, Sessions — each with gradient icon chip
+  - **Attendance ring + progress bar**: SVG ring with subject color, animated stroke, attendance status (Good/At risk), course progress bar
+  - **Tab bar** with `layoutId` underline: Tasks / Exams / Focus / Notes — each tab shows count badge
+  - **Tab panels** with `AnimatePresence` crossfade:
+    - **Tasks**: list with status icon, title, category, due date, priority chip
+    - **Exams**: list with name, date/time/location, progress bar, countdown badge (Today/in N days/Past)
+    - **Focus**: total focus time hero card + session list with duration, date, "time ago", completion check
+    - **Notes**: amber-tinted panel with sticky-note icon and whitespace-preserved notes
+- **Data fetching**: parallel `Promise.all` of `/api/todos`, `/api/exams`, `/api/focus-session` filtered client-side by `subject === subject.name`
+- **Empty states**: per-tab EmptyTab component with icon + message
+
+#### 3. Onboarding Tour — `src/components/dashboard/onboarding-tour.tsx` (NEW, 310 lines)
+- **Trigger**: Auto-opens 800ms after first-ever dashboard mount (gated by `localStorage["studyspark:onboarding-completed-v1"]`)
+- **5 steps**:
+  1. **Welcome** (center) — "Welcome to StudySpark ✨" with overview
+  2. **Sidebar** (right of sidebar) — navigation overview
+  3. **Command Palette** (below search button) — ⌘K hint
+  4. **Quick-add FAB** (left of FAB) — global create button
+  5. **Achievements** (center) — badges teaser with "See badges" CTA that navigates to achievements page
+- **Highlight system**: `requestAnimationFrame` loop tracks target element's bounding rect (handles scroll/resize), renders a `motion.div` cutout with `box-shadow: 0 0 0 9999px rgba(0,0,0,0.55)` + violet/fuchsia glow ring. Smoothly animates between steps.
+- **Popover positioning**: anchors to side (right/left/bottom/top/center) of target, clamped to viewport (16px margin)
+- **Controls**: Back, Next, "Skip tour" (top-right), "Got it" (final step), progress dots, step counter (e.g. "3 / 5")
+- **A11y**: `role="dialog"`, `aria-modal="true"`, `aria-labelledby="onboarding-title"`, Escape closes
+
+#### 4. Quick-Add FAB — `src/components/dashboard/quick-add-fab.tsx` (NEW, 200 lines)
+- **Position**: `fixed bottom-6 right-6` (bottom-8 right-8 on sm+), z-40
+- **Main button**: 56px circle, gradient (violet→fuchsia→purple) with `fab-gradient` class for animated gradient sweep (6s loop), white + / X icon with rotate transition, ring-1 ring-white/20
+- **Idle pulse**: `motion.span` halo that scales 1→1.5 and fades 0.6→0 (1.8s loop) — only when closed
+- **Action menu** (4 items): New Task (violet→fuchsia), New Event (emerald→teal), New Exam (amber→orange), Start Focus (rose→pink) — each with staggered entrance (40ms delay), gradient icon chip, label, description
+- **Behavior**: clicking an action navigates to the corresponding view via `setView()`, closes the menu
+- **Dismiss**: outside click (mousedown listener), Escape key
+- **A11y**: `aria-label`, `aria-expanded`
+
+### Styling Polish This Round
+
+#### 5. Today's Goal ring visual integration (`dashboard-home.tsx`)
+- Added subtle pulsing violet glow blob (top-right) when goal is behind target — gentle 2.4s opacity pulse
+- Added contextual status badge: "Keep going" (amber, <50%) / "Almost there" (emerald, 50-99%) / "✨ Goal exceeded!" (violet, ≥100%)
+- Added "min to go" countdown text next to focus/target minutes (e.g. "70 / 360 min target · 290 min to go")
+- Restructured layout: ring + content now share a relative wrapper inside a single GlassCard with `overflow-hidden` for the glow
+
+#### 6. Topbar avatar polish (`topbar.tsx`)
+- Added emerald online indicator dot (bottom-right of avatar, 10px, ring-2 ring-background)
+- Added ring-2 ring-transparent → ring-violet-500/30 hover state on avatar
+- Wrapped user chip in `TooltipProvider`/`Tooltip` showing full username + "Click to view profile" (200ms delay, bottom-end alignment)
+- Increased username truncation from `max-w-[100px]` to `max-w-[120px]` for slightly more visible text
+
+#### 7. Task card hover lift (`todos.tsx`)
+- Upgraded hover from `hover:shadow-md` to `hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/10 hover:border-violet-500/40`
+- Added `duration-200` for smooth transition
+
+#### 8. Achievement tier-tinted backgrounds + stripes (`achievements.tsx`)
+- Extended `TIER_CONFIG` with two new fields:
+  - `tintBg`: subtle tier-colored gradient background (e.g. bronze = `from-amber-500/10 via-orange-500/5 to-transparent`)
+  - `stripe`: top-edge gradient stripe color (matches tier)
+- Earned badge cards now render with `tier.tintBg` instead of generic `bg-background/60`
+- Added 1px-tall gradient stripe at the top of every earned badge card (`tier.stripe`)
+- Result: bronze badges glow amber, silver badges glow slate, gold badges glow yellow, platinum badges glow cyan/violet/fuchsia — tiers are now immediately visually distinguishable
+
+#### 9. New CSS animations (`globals.css`, 6 new utilities)
+- `sheetSlideIn` keyframes (sheet-style drawer entrance, ready for future use)
+- `.onboarding-target-glow` utility class (fallback box-shadow for tour highlight)
+- `fabHalo` keyframes + `.fab-gradient` (FAB idle halo + gradient sweep, applied to FAB)
+- `statPillIn` keyframes + `.stat-pill-in` (subject drawer stat pill entrance, ready for future use)
+- `tierStripeShimmer` keyframes + `.tier-stripe-shimmer` (lateral shimmer sweep on tier stripes, ready for future use)
+- **`@media (prefers-reduced-motion: reduce)`** block — kills ALL infinite animations (live-pulse, float-y, twinkle, earned-glow, badge-shine, fab-gradient, tier-stripe-shimmer) for users who prefer reduced motion
+
+### Verification Results (agent-browser + VLM)
+
+#### Functional verification (agent-browser)
+- ✅ **Onboarding tour**: Auto-opens on first visit; navigated through all 5 steps (Welcome → Sidebar → Command Palette → FAB → Achievements); "Got it" closes tour; "See badges" CTA navigates to achievements; `localStorage["studyspark:onboarding-completed-v1"]` set so tour doesn't re-open on reload
+- ✅ **Quick-add FAB**: Visible at bottom-right; clicking opens 4-action menu (New Task, New Event, New Exam, Start Focus); clicking "Start Focus" navigates to Focus Timer page; closing via X button or outside-click works; pulsing halo visible when closed
+- ✅ **Subject detail drawer**: Clicking Mathematics subject card opens drawer; shows "Dr. Smith", "4 credits", "72% prepared"; stat pills show "Tasks 1/2", "Exams 1", "Focus hours 2.1", "Sessions 3"; 85% attendance ring + 72% progress bar render correctly; all 4 tabs (Tasks/Exams/Focus/Notes) switch and show correct content; Close button works
+- ✅ **Confetti celebration**: Seeded `localStorage["studyspark:seen-badges"]` with 6 of 9 earned IDs; reloaded page; navigated to achievements; `localStorage` was updated from 6 → 9 IDs (proving the hook ran and detected 3 newly-earned badges — focus-pro, on-fire, exam-ready); confetti fired via canvas-confetti (verified module loads correctly)
+- ✅ **Topbar avatar tooltip**: Hovering user chip shows "qauser_1783074942 / Click to view profile"; emerald online indicator dot visible
+- ✅ **Today's Goal**: Status badge shows "Keep going" (amber) since focus < 50% of target; "min to go" countdown visible; subtle violet glow pulse animating
+- ✅ **Achievement tier tints**: 9 earned badge cards now have tier-colored backgrounds; 14 tier stripe elements detected; VLM confirms "tier-tinted backgrounds (amber/slate/yellow)" + "tier gradient stripes visible at top of earned badge cards"
+- ✅ **Task card hover lift**: Cards now translate -2px on hover with violet shadow
+- ✅ **Mobile (390×844)**: FAB visible and clickable; sidebar drawer opens; dashboard renders correctly
+- ✅ **Dark mode**: All new components (FAB, tour, drawer, tier tints) render correctly in dark mode
+
+#### VLM verification (z-ai vision)
+- ✅ **Onboarding tour**: "Tour popover is visible and well-positioned (centered, prominent). Clear title, description, progress dots (1/5), and Next button. No visual issues — all elements are clear and aligned."
+- ✅ **Subject drawer (Tasks tab)**: "Drawer visible on right. Shows subject name (Mathematics), teacher (Dr. Smith), stats (credits, prepared %, focus hours, sessions), tabs (Tasks/Exams/etc.), and task list. Layout is clean and premium. No visual issues."
+- ✅ **Subject drawer (desktop)**: "All required elements present. Visual hierarchy: subject name largest, then teacher, then stat pills (color-coded), attendance ring, tabbed content. Whitespace & spacing consistent. No major visual bugs or alignment issues."
+- ✅ **Dashboard with FAB**: "FAB visible with + icon and purple gradient background. Today's Goal card visible with circular progress ring (19%), 'Keep going' status badge, and 'min to go' indicator. User chip in topbar shows avatar with green online indicator. No visual issues."
+- ✅ **Achievements dark mode**: "Earned badge cards show tier-tinted backgrounds (amber/slate/yellow). Tier gradient stripes visible at top of earned badge cards. Trophy medallion with rotating sparkle ring visible. Tier progress bars clearly differentiated by color."
+
+#### Build / lint / runtime
+- ✅ `bun run lint` clean (0 errors, 0 warnings)
+- ✅ Dev server compiles cleanly, no JS console errors
+- ✅ All API routes return 200 (`/api/achievements`, `/api/todos`, `/api/exams`, `/api/focus-session`)
+- ✅ 35 QA screenshots saved to `/home/z/my-project/download/qa-r5/`
+
+## Unresolved Issues or Risks
+
+- **No critical bugs** — all 4 new features and 5 styling polishes verified working end-to-end
+- **Confetti timing note**: The confetti fires ~250ms after the achievements data loads. If the user navigates away immediately, the confetti may render briefly before being unmounted — this is acceptable behavior. The hook correctly updates `studyspark:seen-badges` localStorage so confetti won't re-fire for the same badge.
+- **Onboarding tour selector robustness**: The tour uses CSS selectors to highlight targets (`button[aria-label*="Search"]`, `[aria-label="Open quick actions"]`, etc.). If future refactors rename these aria-labels, the tour will gracefully fall back to centered popover (no crash) — but the highlight won't anchor. Worth keeping aria-labels stable.
+- **Next focus areas** (recommendations for next round):
+  1. **Calendar event drag-and-drop**: allow dragging events between days in month view (r4 next-step #4)
+  2. **Recently-earned badge timestamps**: persist `earnedAt` per badge (new DB table or profile field) to enable a "Recent achievements" feed and "New!" pulse on recently-earned badges
+  3. **Pomodoro sound effects**: add optional bell/whitelight-noise on focus session start/end + break suggestions in the focus timer
+  4. **Accessibility audit**: ARIA labels on all icon-only buttons, focus trap in command palette + drawer, keyboard navigation for badge grid
+  5. **Performance**: React.memo the chart components (WeeklyChart, MonthlyChart) — currently re-render on every parent state change
+  6. **Re-triggerable onboarding**: add a "Replay tour" button in Settings → Appearance for users who want to see the tour again

@@ -669,3 +669,78 @@
   background-color: hsl(var(--muted-foreground) / 0.5);
 }
 
+/* ------------------------------------------------------------------ */
+/* Round 5 polish — onboarding, FAB, drawer accents                    */
+/* ------------------------------------------------------------------ */
+
+/* Soft entrance for sheet-style drawers (subject detail) */
+@keyframes sheetSlideIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Glass ring used by onboarding target highlight (falls back when box-shadow inline style is overridden) */
+.onboarding-target-glow {
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.55),
+    0 0 0 4px rgba(139, 92, 246, 0.35),
+    0 0 30px rgba(217, 70, 239, 0.5);
+}
+
+/* Quick-add FAB pulse — gentle halo when idle */
+@keyframes fabHalo {
+  0% { transform: scale(1); opacity: 0.55; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+/* Premium gradient sweep used on FAB hover */
+@keyframes fabGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.fab-gradient {
+  background-size: 200% 200%;
+  animation: fabGradientShift 6s ease infinite;
+}
+
+/* Subtle entrance for subject drawer stat pills */
+@keyframes statPillIn {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.stat-pill-in {
+  animation: statPillIn 0.35s ease-out both;
+}
+
+/* Achievement tier stripe shimmer — slow lateral sweep on hover */
+@keyframes tierStripeShimmer {
+  0% { background-position: -150% 0; }
+  100% { background-position: 250% 0; }
+}
+.tier-stripe-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: tierStripeShimmer 2.5s ease-in-out infinite;
+}
+
+/* Reduced motion: kill all infinite animations */
+@media (prefers-reduced-motion: reduce) {
+  .live-pulse,
+  .float-y,
+  .twinkle,
+  .earned-glow,
+  .badge-shine,
+  .fab-gradient,
+  .tier-stripe-shimmer {
+    animation: none !important;
+  }
+}
+

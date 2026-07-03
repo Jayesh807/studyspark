@@ -1,0 +1,946 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import { toast } from "sonner";
+     6→import {
+     7→  BookOpen,
+     8→  Plus,
+     9→  Pencil,
+    10→  Trash2,
+    11→  User,
+    12→  Sparkles,
+    13→  GraduationCap,
+    14→  TrendingUp,
+    15→  AlertTriangle,
+    16→  CheckCircle2,
+    17→  StickyNote,
+    18→} from "lucide-react";
+    19→
+    20→import { apiFetch, handleError } from "@/lib/api";
+    21→import {
+    22→  Subject,
+    23→  EventColor,
+    24→  COLOR_MAP,
+    25→  colorOf,
+    26→} from "@/lib/types";
+    27→import { cn } from "@/lib/utils";
+    28→
+    29→import { Button } from "@/components/ui/button";
+    30→import { Badge } from "@/components/ui/badge";
+    31→import { Input } from "@/components/ui/input";
+    32→import { Label } from "@/components/ui/label";
+    33→import { Textarea } from "@/components/ui/textarea";
+    34→import { Slider } from "@/components/ui/slider";
+    35→import {
+    36→  Dialog,
+    37→  DialogContent,
+    38→  DialogDescription,
+    39→  DialogFooter,
+    40→  DialogHeader,
+    41→  DialogTitle,
+    42→} from "@/components/ui/dialog";
+    43→import {
+    44→  AlertDialog,
+    45→  AlertDialogAction,
+    46→  AlertDialogCancel,
+    47→  AlertDialogContent,
+    48→  AlertDialogDescription,
+    49→  AlertDialogFooter,
+    50→  AlertDialogHeader,
+    51→  AlertDialogTitle,
+    52→} from "@/components/ui/alert-dialog";
+    53→import {
+    54→  DropdownMenu,
+    55→  DropdownMenuContent,
+    56→  DropdownMenuItem,
+    57→  DropdownMenuSeparator,
+    58→  DropdownMenuTrigger,
+    59→} from "@/components/ui/dropdown-menu";
+    60→
+    61→import {
+    62→  PageTransition,
+    63→  GlassCard,
+    64→  StaggerContainer,
+    65→  StaggerItem,
+    66→} from "@/components/shared/motion";
+    67→import { Skeleton, EmptyState } from "@/components/shared/feedback";
+    68→import { AnimatedCounter } from "@/components/shared/animated-counter";
+    69→
+    70→// ---------------------------------------------------------------------------
+    71→// Constants
+    72→// ---------------------------------------------------------------------------
+    73→
+    74→const COLOR_SWATCHES: EventColor[] = [
+    75→  "violet",
+    76→  "blue",
+    77→  "green",
+    78→  "amber",
+    79→  "rose",
+    80→  "cyan",
+    81→];
+    82→
+    83→// ---------------------------------------------------------------------------
+    84→// Stat card
+    85→// ---------------------------------------------------------------------------
+    86→
+    87→interface StatCardProps {
+    88→  icon: React.ElementType;
+    89→  label: string;
+    90→  value: number;
+    91→  decimals?: number;
+    92→  suffix?: string;
+    93→  gradient: string;
+    94→}
+    95→
+    96→function StatCard({
+    97→  icon: Icon,
+    98→  label,
+    99→  value,
+   100→  decimals = 0,
+   101→  suffix,
+   102→  gradient,
+   103→}: StatCardProps) {
+   104→  return (
+   105→    <GlassCard className="relative overflow-hidden p-4 sm:p-5">
+   106→      <div
+   107→        className={cn(
+   108→          "absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-30 blur-2xl",
+   109→          gradient
+   110→        )}
+   111→      />
+   112→      <div className="relative flex items-start justify-between gap-3">
+   113→        <div>
+   114→          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+   115→          <p className="mt-1.5 text-2xl font-bold tracking-tight sm:text-3xl">
+   116→            <AnimatedCounter value={value} decimals={decimals} suffix={suffix} />
+   117→          </p>
+   118→        </div>
+   119→        <div
+   120→          className={cn(
+   121→            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-white/20 dark:ring-white/10",
+   122→            gradient
+   123→          )}
+   124→        >
+   125→          <Icon className="h-4.5 w-4.5 text-white" />
+   126→        </div>
+   127→      </div>
+   128→    </GlassCard>
+   129→  );
+   130→}
+   131→
+   132→// ---------------------------------------------------------------------------
+   133→// Circular progress ring (attendance)
+   134→// ---------------------------------------------------------------------------
+   135→
+   136→function attendanceColor(pct: number): {
+   137→  stroke: string;
+   138→  text: string;
+   139→  soft: string;
+   140→} {
+   141→  if (pct >= 75)
+   142→    return {
+   143→      stroke: "#10b981",
+   144→      text: "text-emerald-600 dark:text-emerald-400",
+   145→      soft: "bg-emerald-500/15",
+   146→    };
+   147→  if (pct >= 60)
+   148→    return {
+   149→      stroke: "#f59e0b",
+   150→      text: "text-amber-600 dark:text-amber-400",
+   151→      soft: "bg-amber-500/15",
+   152→    };
+   153→  return {
+   154→    stroke: "#f43f5e",
+   155→    text: "text-rose-600 dark:text-rose-400",
+   156→    soft: "bg-rose-500/15",
+   157→  };
+   158→}
+   159→
+   160→interface RingProps {
+   161→  value: number;
+   162→  size?: number;
+   163→  stroke?: number;
+   164→}
+   165→
+   166→function AttendanceRing({ value, size = 64, stroke = 6 }: RingProps) {
+   167→  const radius = (size - stroke) / 2;
+   168→  const circumference = 2 * Math.PI * radius;
+   169→  const offset = circumference - (value / 100) * circumference;
+   170→  const colors = attendanceColor(value);
+   171→
+   172→  return (
+   173→    <div
+   174→      className="relative shrink-0"
+   175→      style={{ width: size, height: size }}
+   176→      role="img"
+   177→      aria-label={`Attendance ${value}%`}
+   178→    >
+   179→      <svg
+   180→        width={size}
+   181→        height={size}
+   182→        viewBox={`0 0 ${size} ${size}`}
+   183→        className="-rotate-90"
+   184→      >
+   185→        <circle
+   186→          cx={size / 2}
+   187→          cy={size / 2}
+   188→          r={radius}
+   189→          fill="none"
+   190→          stroke="currentColor"
+   191→          strokeWidth={stroke}
+   192→          className="text-muted/60"
+   193→        />
+   194→        <motion.circle
+   195→          cx={size / 2}
+   196→          cy={size / 2}
+   197→          r={radius}
+   198→          fill="none"
+   199→          stroke={colors.stroke}
+   200→          strokeWidth={stroke}
+   201→          strokeLinecap="round"
+   202→          strokeDasharray={circumference}
+   203→          initial={{ strokeDashoffset: circumference }}
+   204→          animate={{ strokeDashoffset: offset }}
+   205→          transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+   206→        />
+   207→      </svg>
+   208→      <div className="absolute inset-0 flex flex-col items-center justify-center">
+   209→        <span className={cn("text-sm font-bold tabular-nums", colors.text)}>
+   210→          {value}%
+   211→        </span>
+   212→      </div>
+   213→    </div>
+   214→  );
+   215→}
+   216→
+   217→// ---------------------------------------------------------------------------
+   218→// Subject card
+   219→// ---------------------------------------------------------------------------
+   220→
+   221→interface SubjectCardProps {
+   222→  subject: Subject;
+   223→  onEdit: (s: Subject) => void;
+   224→  onDelete: (s: Subject) => void;
+   225→}
+   226→
+   227→function SubjectCard({ subject, onEdit, onDelete }: SubjectCardProps) {
+   228→  const color = colorOf(subject.color);
+   229→
+   230→  return (
+   231→    <GlassCard hover className="group relative overflow-hidden p-5 sm:p-6">
+   232→      {/* Left accent bar */}
+   233→      <div
+   234→        className={cn(
+   235→          "absolute left-0 top-0 h-full w-1.5",
+   236→          color.bg
+   237→        )}
+   238→      />
+   239→      {/* Decorative glow */}
+   240→      <div
+   241→        className={cn(
+   242→          "pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-25 blur-2xl",
+   243→          color.bg
+   244→        )}
+   245→      />
+   246→
+   247→      <div className="relative flex items-start justify-between gap-3">
+   248→        <div className="flex min-w-0 items-start gap-3">
+   249→          <div
+   250→            className={cn(
+   251→              "mt-1 h-2.5 w-2.5 shrink-0 rounded-full ring-4 ring-offset-0",
+   252→              color.bg,
+   253→              color.ring
+   254→            )}
+   255→          />
+   256→          <div className="min-w-0">
+   257→            <h3 className="truncate text-lg font-bold leading-tight tracking-tight sm:text-xl">
+   258→              {subject.name}
+   259→            </h3>
+   260→            {subject.teacher && (
+   261→              <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+   262→                <User className="h-3.5 w-3.5" />
+   263→                {subject.teacher}
+   264→              </p>
+   265→            )}
+   266→          </div>
+   267→        </div>
+   268→        <DropdownMenu>
+   269→          <DropdownMenuTrigger asChild>
+   270→            <Button
+   271→              variant="ghost"
+   272→              size="icon"
+   273→              className="h-8 w-8 -mr-1.5 -mt-1.5 shrink-0 opacity-60 transition-opacity hover:opacity-100"
+   274→              aria-label="Subject actions"
+   275→            >
+   276→              <svg
+   277→                className="h-4 w-4"
+   278→                viewBox="0 0 24 24"
+   279→                fill="currentColor"
+   280→                aria-hidden
+   281→              >
+   282→                <circle cx="5" cy="12" r="2" />
+   283→                <circle cx="12" cy="12" r="2" />
+   284→                <circle cx="19" cy="12" r="2" />
+   285→              </svg>
+   286→            </Button>
+   287→          </DropdownMenuTrigger>
+   288→          <DropdownMenuContent align="end" className="w-40">
+   289→            <DropdownMenuItem onSelect={() => onEdit(subject)}>
+   290→              <Pencil className="h-4 w-4" />
+   291→              Edit
+   292→            </DropdownMenuItem>
+   293→            <DropdownMenuSeparator />
+   294→            <DropdownMenuItem
+   295→              variant="destructive"
+   296→              onSelect={() => onDelete(subject)}
+   297→            >
+   298→              <Trash2 className="h-4 w-4" />
+   299→              Delete
+   300→            </DropdownMenuItem>
+   301→          </DropdownMenuContent>
+   302→        </DropdownMenu>
+   303→      </div>
+   304→
+   305→      {/* Badges */}
+   306→      <div className="relative mt-4 flex flex-wrap items-center gap-2">
+   307→        <Badge
+   308→          className={cn("border-transparent text-white", color.bg)}
+   309→          variant="default"
+   310→        >
+   311→          <GraduationCap className="h-3 w-3" />
+   312→          {subject.credits} credit{subject.credits === 1 ? "" : "s"}
+   313→        </Badge>
+   314→        <Badge
+   315→          className="border-border/60 bg-card/60 text-foreground"
+   316→          variant="outline"
+   317→        >
+   318→          <TrendingUp className="h-3 w-3" />
+   319→          {subject.progress}% prep
+   320→        </Badge>
+   321→      </div>
+   322→
+   323→      {/* Attendance + Progress row */}
+   324→      <div className="relative mt-4 flex items-center gap-4 rounded-2xl bg-muted/30 p-3 ring-1 ring-border/40">
+   325→        <AttendanceRing value={subject.attendance} />
+   326→        <div className="min-w-0 flex-1 space-y-2">
+   327→          <div className="flex items-center justify-between">
+   328→            <span className="text-xs font-medium text-muted-foreground">
+   329→              Attendance
+   330→            </span>
+   331→            {subject.attendance >= 75 ? (
+   332→              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+   333→                <CheckCircle2 className="h-3 w-3" /> Good
+   334→              </span>
+   335→            ) : subject.attendance >= 60 ? (
+   336→              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+   337→                <AlertTriangle className="h-3 w-3" /> At risk
+   338→              </span>
+   339→            ) : (
+   340→              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 dark:text-rose-400">
+   341→                <AlertTriangle className="h-3 w-3" /> Low
+   342→              </span>
+   343→            )}
+   344→          </div>
+   345→          <div>
+   346→            <div className="mb-1 flex items-center justify-between">
+   347→              <span className="text-xs font-medium text-muted-foreground">
+   348→                Course progress
+   349→              </span>
+   350→              <span className="text-xs font-semibold tabular-nums">
+   351→                {subject.progress}%
+   352→              </span>
+   353→            </div>
+   354→            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+   355→              <motion.div
+   356→                className="h-full rounded-full"
+   357→                style={{ backgroundColor: color.chart }}
+   358→                initial={{ width: 0 }}
+   359→                animate={{ width: `${subject.progress}%` }}
+   360→                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+   361→              />
+   362→            </div>
+   363→          </div>
+   364→        </div>
+   365→      </div>
+   366→
+   367→      {/* Notes preview */}
+   368→      {subject.notes && (
+   369→        <div className="relative mt-3 flex items-start gap-2 rounded-xl bg-muted/20 px-3 py-2">
+   370→          <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+   371→          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+   372→            {subject.notes}
+   373→          </p>
+   374→        </div>
+   375→      )}
+   376→    </GlassCard>
+   377→  );
+   378→}
+   379→
+   380→// ---------------------------------------------------------------------------
+   381→// Subject card skeleton
+   382→// ---------------------------------------------------------------------------
+   383→
+   384→function SubjectCardSkeleton() {
+   385→  return (
+   386→    <div className="glass relative overflow-hidden rounded-3xl p-5 sm:p-6">
+   387→      <div className="absolute left-0 top-0 h-full w-1.5 bg-muted" />
+   388→      <div className="flex items-center gap-3">
+   389→        <Skeleton className="h-2.5 w-2.5 rounded-full" />
+   390→        <Skeleton className="h-5 w-32" />
+   391→      </div>
+   392→      <Skeleton className="mt-3 h-3 w-24" />
+   393→      <div className="mt-4 flex gap-2">
+   394→        <Skeleton className="h-5 w-20 rounded-full" />
+   395→        <Skeleton className="h-5 w-20 rounded-full" />
+   396→      </div>
+   397→      <div className="mt-4 flex items-center gap-4 rounded-2xl bg-muted/30 p-3">
+   398→        <Skeleton className="h-16 w-16 rounded-full" />
+   399→        <div className="flex-1 space-y-2">
+   400→          <Skeleton className="h-3 w-24" />
+   401→          <Skeleton className="h-2 w-full rounded-full" />
+   402→        </div>
+   403→      </div>
+   404→    </div>
+   405→  );
+   406→}
+   407→
+   408→// ---------------------------------------------------------------------------
+   409→// Form dialog
+   410→// ---------------------------------------------------------------------------
+   411→
+   412→interface SubjectFormData {
+   413→  name: string;
+   414→  teacher: string;
+   415→  credits: number;
+   416→  attendance: number;
+   417→  color: EventColor;
+   418→  progress: number;
+   419→  notes: string;
+   420→}
+   421→
+   422→const EMPTY_FORM: SubjectFormData = {
+   423→  name: "",
+   424→  teacher: "",
+   425→  credits: 3,
+   426→  attendance: 80,
+   427→  color: "violet",
+   428→  progress: 0,
+   429→  notes: "",
+   430→};
+   431→
+   432→interface SubjectDialogProps {
+   433→  open: boolean;
+   434→  onOpenChange: (open: boolean) => void;
+   435→  initial?: Subject | null;
+   436→  onSubmit: (data: SubjectFormData) => Promise<void>;
+   437→}
+   438→
+   439→function SubjectDialog({
+   440→  open,
+   441→  onOpenChange,
+   442→  initial,
+   443→  onSubmit,
+   444→}: SubjectDialogProps) {
+   445→  const [form, setForm] = useState<SubjectFormData>(EMPTY_FORM);
+   446→  const [errors, setErrors] = useState<Partial<Record<keyof SubjectFormData, string>>>({});
+   447→  const [submitting, setSubmitting] = useState(false);
+   448→
+   449→  useEffect(() => {
+   450→    if (open) {
+   451→      if (initial) {
+   452→        setForm({
+   453→          name: initial.name ?? "",
+   454→          teacher: initial.teacher ?? "",
+   455→          credits: initial.credits ?? 3,
+   456→          attendance: initial.attendance ?? 80,
+   457→          color: (initial.color as EventColor) ?? "violet",
+   458→          progress: initial.progress ?? 0,
+   459→          notes: initial.notes ?? "",
+   460→        });
+   461→      } else {
+   462→        setForm(EMPTY_FORM);
+   463→      }
+   464→      setErrors({});
+   465→    }
+   466→  }, [open, initial]);
+   467→
+   468→  const update = <K extends keyof SubjectFormData>(
+   469→    key: K,
+   470→    value: SubjectFormData[K]
+   471→  ) => {
+   472→    setForm((f) => ({ ...f, [key]: value }));
+   473→    setErrors((e) => ({ ...e, [key]: undefined }));
+   474→  };
+   475→
+   476→  const validate = (): boolean => {
+   477→    const next: Partial<Record<keyof SubjectFormData, string>> = {};
+   478→    if (!form.name.trim()) next.name = "Subject name is required";
+   479→    if (form.credits < 1 || form.credits > 10)
+   480→      next.credits = "Credits must be between 1 and 10";
+   481→    setErrors(next);
+   482→    return Object.keys(next).length === 0;
+   483→  };
+   484→
+   485→  const handleSubmit = async (e: React.FormEvent) => {
+   486→    e.preventDefault();
+   487→    if (!validate()) return;
+   488→    setSubmitting(true);
+   489→    try {
+   490→      await onSubmit(form);
+   491→      onOpenChange(false);
+   492→    } catch (err) {
+   493→      handleError(err, "Failed to save subject");
+   494→    } finally {
+   495→      setSubmitting(false);
+   496→    }
+   497→  };
+   498→
+   499→  return (
+   500→    <Dialog open={open} onOpenChange={onOpenChange}>
+   501→      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg">
+   502→        <DialogHeader>
+   503→          <DialogTitle className="flex items-center gap-2 text-xl">
+   504→            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+   505→              <BookOpen className="h-4 w-4" />
+   506→            </span>
+   507→            {initial ? "Edit Subject" : "Add New Subject"}
+   508→          </DialogTitle>
+   509→          <DialogDescription>
+   510→            {initial
+   511→              ? "Update the details for this subject."
+   512→              : "Organize your courses with attendance, progress, and notes."}
+   513→          </DialogDescription>
+   514→        </DialogHeader>
+   515→
+   516→        <form onSubmit={handleSubmit} className="space-y-4">
+   517→          {/* Name */}
+   518→          <div className="space-y-1.5">
+   519→            <Label htmlFor="subject-name">
+   520→              Subject Name <span className="text-rose-500">*</span>
+   521→            </Label>
+   522→            <Input
+   523→              id="subject-name"
+   524→              placeholder="e.g. Linear Algebra"
+   525→              value={form.name}
+   526→              onChange={(e) => update("name", e.target.value)}
+   527→              aria-invalid={!!errors.name}
+   528→            />
+   529→            {errors.name && (
+   530→              <p className="text-xs text-rose-500">{errors.name}</p>
+   531→            )}
+   532→          </div>
+   533→
+   534→          {/* Teacher + Credits */}
+   535→          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+   536→            <div className="space-y-1.5">
+   537→              <Label htmlFor="subject-teacher">Teacher</Label>
+   538→              <Input
+   539→                id="subject-teacher"
+   540→                placeholder="e.g. Dr. Smith"
+   541→                value={form.teacher}
+   542→                onChange={(e) => update("teacher", e.target.value)}
+   543→              />
+   544→            </div>
+   545→            <div className="space-y-1.5">
+   546→              <Label htmlFor="subject-credits">Credits (1–10)</Label>
+   547→              <Input
+   548→                id="subject-credits"
+   549→                type="number"
+   550→                min={1}
+   551→                max={10}
+   552→                value={form.credits}
+   553→                onChange={(e) =>
+   554→                  update("credits", Number(e.target.value) || 0)
+   555→                }
+   556→                aria-invalid={!!errors.credits}
+   557→              />
+   558→              {errors.credits && (
+   559→                <p className="text-xs text-rose-500">{errors.credits}</p>
+   560→              )}
+   561→            </div>
+   562→          </div>
+   563→
+   564→          {/* Color picker */}
+   565→          <div className="space-y-2">
+   566→            <Label>Color</Label>
+   567→            <div className="flex flex-wrap items-center gap-2">
+   568→              {COLOR_SWATCHES.map((c) => {
+   569→                const isActive = form.color === c;
+   570→                const cm = COLOR_MAP[c];
+   571→                return (
+   572→                  <button
+   573→                    key={c}
+   574→                    type="button"
+   575→                    onClick={() => update("color", c)}
+   576→                    aria-label={`Color ${c}`}
+   577→                    aria-pressed={isActive}
+   578→                    className={cn(
+   579→                      "relative h-9 w-9 rounded-xl ring-2 ring-offset-2 ring-offset-background transition-all",
+   580→                      cm.bg,
+   581→                      isActive
+   582→                        ? "scale-110 ring-foreground/40"
+   583→                        : "ring-transparent hover:scale-105"
+   584→                    )}
+   585→                  >
+   586→                    {isActive && (
+   587→                      <motion.span
+   588→                        initial={{ scale: 0 }}
+   589→                        animate={{ scale: 1 }}
+   590→                        className="absolute inset-0 flex items-center justify-center"
+   591→                      >
+   592→                        <CheckCircle2 className="h-4 w-4 text-white" />
+   593→                      </motion.span>
+   594→                    )}
+   595→                  </button>
+   596→                );
+   597→              })}
+   598→            </div>
+   599→          </div>
+   600→
+   601→          {/* Attendance */}
+   602→          <div className="space-y-2">
+   603→            <div className="flex items-center justify-between">
+   604→              <Label>Attendance</Label>
+   605→              <span className="text-sm font-semibold tabular-nums">
+   606→                {form.attendance}%
+   607→              </span>
+   608→            </div>
+   609→            <Slider
+   610→              value={[form.attendance]}
+   611→              onValueChange={(v) => update("attendance", v[0] ?? 0)}
+   612→              min={0}
+   613→              max={100}
+   614→              step={1}
+   615→            />
+   616→          </div>
+   617→
+   618→          {/* Progress */}
+   619→          <div className="space-y-2">
+   620→            <div className="flex items-center justify-between">
+   621→              <Label>Course progress</Label>
+   622→              <span className="text-sm font-semibold tabular-nums">
+   623→                {form.progress}%
+   624→              </span>
+   625→            </div>
+   626→            <Slider
+   627→              value={[form.progress]}
+   628→              onValueChange={(v) => update("progress", v[0] ?? 0)}
+   629→              min={0}
+   630→              max={100}
+   631→              step={1}
+   632→            />
+   633→          </div>
+   634→
+   635→          {/* Notes */}
+   636→          <div className="space-y-1.5">
+   637→            <Label htmlFor="subject-notes">Notes</Label>
+   638→            <Textarea
+   639→              id="subject-notes"
+   640→              placeholder="Syllabus, key topics, anything important…"
+   641→              value={form.notes}
+   642→              onChange={(e) => update("notes", e.target.value)}
+   643→              rows={3}
+   644→            />
+   645→          </div>
+   646→
+   647→          <DialogFooter className="pt-2">
+   648→            <Button
+   649→              type="button"
+   650→              variant="outline"
+   651→              onClick={() => onOpenChange(false)}
+   652→              disabled={submitting}
+   653→            >
+   654→              Cancel
+   655→            </Button>
+   656→            <Button
+   657→              type="submit"
+   658→              disabled={submitting}
+   659→              className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+   660→            >
+   661→              {submitting ? (
+   662→                <>
+   663→                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+   664→                  Saving…
+   665→                </>
+   666→              ) : (
+   667→                <>
+   668→                  <Sparkles className="h-4 w-4" />
+   669→                  {initial ? "Save changes" : "Add subject"}
+   670→                </>
+   671→              )}
+   672→            </Button>
+   673→          </DialogFooter>
+   674→        </form>
+   675→      </DialogContent>
+   676→    </Dialog>
+   677→  );
+   678→}
+   679→
+   680→// ---------------------------------------------------------------------------
+   681→// Main page
+   682→// ---------------------------------------------------------------------------
+   683→
+   684→export function SubjectsPage() {
+   685→  const [subjects, setSubjects] = useState<Subject[]>([]);
+   686→  const [loading, setLoading] = useState(true);
+   687→  const [dialogOpen, setDialogOpen] = useState(false);
+   688→  const [editing, setEditing] = useState<Subject | null>(null);
+   689→  const [deleting, setDeleting] = useState<Subject | null>(null);
+   690→
+   691→  const loadSubjects = useCallback(async () => {
+   692→    setLoading(true);
+   693→    try {
+   694→      const res = await apiFetch<{ subjects: Subject[] }>("/api/subjects");
+   695→      setSubjects(res.subjects ?? []);
+   696→    } catch (err) {
+   697→      handleError(err, "Failed to load subjects");
+   698→    } finally {
+   699→      setLoading(false);
+   700→    }
+   701→  }, []);
+   702→
+   703→  useEffect(() => {
+   704→    void loadSubjects();
+   705→  }, [loadSubjects]);
+   706→
+   707→  const stats = useMemo(() => {
+   708→    const total = subjects.length;
+   709→    const credits = subjects.reduce((sum, s) => sum + (s.credits ?? 0), 0);
+   710→    const avgAttendance =
+   711→      total === 0
+   712→        ? 0
+   713→        : Math.round(
+   714→            subjects.reduce((sum, s) => sum + (s.attendance ?? 0), 0) / total
+   715→          );
+   716→    const avgProgress =
+   717→      total === 0
+   718→        ? 0
+   719→        : Math.round(
+   720→            subjects.reduce((sum, s) => sum + (s.progress ?? 0), 0) / total
+   721→          );
+   722→    return { total, credits, avgAttendance, avgProgress };
+   723→  }, [subjects]);
+   724→
+   725→  const handleAdd = () => {
+   726→    setEditing(null);
+   727→    setDialogOpen(true);
+   728→  };
+   729→
+   730→  const handleEdit = (s: Subject) => {
+   731→    setEditing(s);
+   732→    setDialogOpen(true);
+   733→  };
+   734→
+   735→  const handleDelete = (s: Subject) => setDeleting(s);
+   736→
+   737→  const confirmDelete = async () => {
+   738→    if (!deleting) return;
+   739→    const target = deleting;
+   740→    setDeleting(null);
+   741→    setSubjects((prev) => prev.filter((s) => s.id !== target.id));
+   742→    try {
+   743→      await apiFetch(`/api/subjects/${target.id}`, { method: "DELETE" });
+   744→      toast.success("Subject deleted");
+   745→    } catch (err) {
+   746→      handleError(err, "Failed to delete subject");
+   747→      setSubjects((prev) => [...prev, target]);
+   748→    }
+   749→  };
+   750→
+   751→  const handleSubmit = async (data: SubjectFormData) => {
+   752→    const payload = {
+   753→      name: data.name.trim(),
+   754→      teacher: data.teacher.trim(),
+   755→      credits: data.credits,
+   756→      attendance: data.attendance,
+   757→      color: data.color,
+   758→      progress: data.progress,
+   759→      notes: data.notes.trim(),
+   760→    };
+   761→
+   762→    if (editing) {
+   763→      const prev = subjects;
+   764→      setSubjects((list) =>
+   765→        list.map((s) => (s.id === editing.id ? { ...s, ...payload } : s))
+   766→      );
+   767→      try {
+   768→        const res = await apiFetch<{ subject: Subject }>(
+   769→          `/api/subjects/${editing.id}`,
+   770→          {
+   771→            method: "PUT",
+   772→            body: JSON.stringify(payload),
+   773→          }
+   774→        );
+   775→        setSubjects((list) =>
+   776→          list.map((s) => (s.id === editing.id ? res.subject : s))
+   777→        );
+   778→        toast.success("Subject updated");
+   779→      } catch (err) {
+   780→        handleError(err, "Failed to update subject");
+   781→        setSubjects(prev);
+   782→      }
+   783→    } else {
+   784→      try {
+   785→        const res = await apiFetch<{ subject: Subject }>("/api/subjects", {
+   786→          method: "POST",
+   787→          body: JSON.stringify(payload),
+   788→        });
+   789→        setSubjects((list) => [...list, res.subject]);
+   790→        toast.success("Subject added 🎉");
+   791→      } catch (err) {
+   792→        handleError(err, "Failed to add subject");
+   793→      }
+   794→    }
+   795→  };
+   796→
+   797→  return (
+   798→    <PageTransition className="space-y-6 sm:space-y-8">
+   799→      {/* Header */}
+   800→      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+   801→        <div className="space-y-1">
+   802→          <div className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-600 ring-1 ring-violet-500/20 dark:text-violet-300">
+   803→            <BookOpen className="h-3.5 w-3.5" />
+   804→            Subjects
+   805→          </div>
+   806→          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+   807→            My Subjects
+   808→          </h1>
+   809→          <p className="text-sm text-muted-foreground">
+   810→            Keep every course organized — attendance, progress, and notes in one
+   811→            place.
+   812→          </p>
+   813→        </div>
+   814→        <Button
+   815→          onClick={handleAdd}
+   816→          className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+   817→        >
+   818→          <Plus className="h-4 w-4" />
+   819→          Add Subject
+   820→        </Button>
+   821→      </header>
+   822→
+   823→      {/* Overview stats */}
+   824→      <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+   825→        {loading ? (
+   826→          Array.from({ length: 4 }).map((_, i) => (
+   827→            <Skeleton key={i} className="h-24 rounded-3xl" />
+   828→          ))
+   829→        ) : (
+   830→          <>
+   831→            <StatCard
+   832→              icon={BookOpen}
+   833→              label="Total subjects"
+   834→              value={stats.total}
+   835→              gradient="bg-gradient-to-br from-violet-500 to-fuchsia-500"
+   836→            />
+   837→            <StatCard
+   838→              icon={GraduationCap}
+   839→              label="Total credits"
+   840→              value={stats.credits}
+   841→              gradient="bg-gradient-to-br from-fuchsia-500 to-pink-500"
+   842→            />
+   843→            <StatCard
+   844→              icon={CheckCircle2}
+   845→              label="Avg. attendance"
+   846→              value={stats.avgAttendance}
+   847→              suffix="%"
+   848→              gradient="bg-gradient-to-br from-emerald-500 to-teal-500"
+   849→            />
+   850→            <StatCard
+   851→              icon={TrendingUp}
+   852→              label="Avg. progress"
+   853→              value={stats.avgProgress}
+   854→              suffix="%"
+   855→              gradient="bg-gradient-to-br from-amber-500 to-orange-500"
+   856→            />
+   857→          </>
+   858→        )}
+   859→      </section>
+   860→
+   861→      {/* Subjects grid */}
+   862→      <section>
+   863→        {loading ? (
+   864→          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+   865→            {Array.from({ length: 3 }).map((_, i) => (
+   866→              <SubjectCardSkeleton key={i} />
+   867→            ))}
+   868→          </div>
+   869→        ) : subjects.length === 0 ? (
+   870→          <EmptyState
+   871→            icon={BookOpen}
+   872→            title="No subjects yet"
+   873→            description="Add your first subject to start tracking attendance, progress, and notes."
+   874→            action={
+   875→              <Button
+   876→                onClick={handleAdd}
+   877→                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+   878→              >
+   879→                <Plus className="h-4 w-4" />
+   880→                Add your first subject
+   881→              </Button>
+   882→            }
+   883→            className="glass rounded-3xl"
+   884→          />
+   885→        ) : (
+   886→          <StaggerContainer className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+   887→            <AnimatePresence>
+   888→              {subjects.map((subject) => (
+   889→                <StaggerItem key={subject.id}>
+   890→                  <SubjectCard
+   891→                    subject={subject}
+   892→                    onEdit={handleEdit}
+   893→                    onDelete={handleDelete}
+   894→                  />
+   895→                </StaggerItem>
+   896→              ))}
+   897→            </AnimatePresence>
+   898→          </StaggerContainer>
+   899→        )}
+   900→      </section>
+   901→
+   902→      {/* Dialogs */}
+   903→      <SubjectDialog
+   904→        open={dialogOpen}
+   905→        onOpenChange={setDialogOpen}
+   906→        initial={editing}
+   907→        onSubmit={handleSubmit}
+   908→      />
+   909→
+   910→      <AlertDialog
+   911→        open={!!deleting}
+   912→        onOpenChange={(o) => !o && setDeleting(null)}
+   913→      >
+   914→        <AlertDialogContent className="rounded-2xl">
+   915→          <AlertDialogHeader>
+   916→            <AlertDialogTitle className="flex items-center gap-2">
+   917→              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-500">
+   918→                <AlertTriangle className="h-4 w-4" />
+   919→              </span>
+   920→              Delete subject?
+   921→            </AlertDialogTitle>
+   922→            <AlertDialogDescription>
+   923→              This will permanently remove{" "}
+   924→              <span className="font-medium text-foreground">
+   925→                {deleting?.name}
+   926→              </span>
+   927→              . This action cannot be undone.
+   928→            </AlertDialogDescription>
+   929→          </AlertDialogHeader>
+   930→          <AlertDialogFooter>
+   931→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   932→            <AlertDialogAction
+   933→              onClick={confirmDelete}
+   934→              className="bg-rose-500 text-white hover:bg-rose-600"
+   935→            >
+   936→              Delete
+   937→            </AlertDialogAction>
+   938→          </AlertDialogFooter>
+   939→        </AlertDialogContent>
+   940→      </AlertDialog>
+   941→    </PageTransition>
+   942→  );
+   943→}
+   944→
+   945→export default SubjectsPage;
+   946→

@@ -6,6 +6,8 @@ import { useAppStore } from "@/lib/store";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { CommandPalette } from "./command-palette";
+import { QuickAddFAB } from "./quick-add-fab";
+import { OnboardingTour } from "./onboarding-tour";
 import { AnimatedBlobs } from "@/components/shared/animated-blobs";
 import { PageLoader } from "@/components/shared/feedback";
 import { Button } from "@/components/ui/button";
@@ -207,6 +209,8 @@ export function DashboardShell() {
         onOpenChange={setPaletteOpen}
         sessionId={paletteSession}
       />
+      <QuickAddFAB />
+      <OnboardingTour />
     </div>
   );
 }
