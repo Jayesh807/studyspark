@@ -23,12 +23,15 @@ import {
   Globe,
   Mail,
   AlertTriangle,
+  GraduationCap,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useAppStore, type AccentColor } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch, handleError } from "@/lib/api";
+import { replayTour } from "@/components/dashboard/onboarding-tour";
 
 import {
   PageTransition,
@@ -320,6 +323,33 @@ function SwitchRow({
   return (
     <SettingsRow title={title} description={description} icon={Icon}>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </SettingsRow>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              Action Row                                    */
+/* -------------------------------------------------------------------------- */
+//
+// Like SwitchRow but the right-side control is an arbitrary React node (used
+// for the "Replay onboarding tour" button). Keeps the same left-aligned
+// icon + title + description layout so rows stay visually consistent.
+interface ActionRowProps {
+  title: string;
+  description?: string;
+  icon?: React.ElementType;
+  children: React.ReactNode;
+}
+
+function ActionRow({
+  title,
+  description,
+  icon: Icon,
+  children,
+}: ActionRowProps) {
+  return (
+    <SettingsRow title={title} description={description} icon={Icon}>
+      {children}
     </SettingsRow>
   );
 }
@@ -772,6 +802,25 @@ export function SettingsPage() {
               checked={!sidebarOpen}
               onCheckedChange={(v) => setSidebarOpen(!v)}
             />
+            <Separator />
+            <ActionRow
+              title="Replay onboarding tour"
+              description="See the 5-step tour again to rediscover key features."
+              icon={GraduationCap}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  replayTour();
+                  toast.success("Replaying tour...");
+                }}
+                className="gap-1.5 transition-all hover:border-violet-500/40 hover:bg-violet-500/5 hover:text-violet-600 dark:hover:text-violet-300"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Replay tour
+              </Button>
+            </ActionRow>
           </SettingsSection>
 
           {/* Account */}
