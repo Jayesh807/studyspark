@@ -105,6 +105,9 @@ const SettingsPage = lazy(() =>
 const AchievementsPage = lazy(() =>
   import("./pages/achievements").then((m) => ({ default: m.AchievementsPage }))
 );
+const PlannerPage = lazy(() =>
+  import("./pages/planner").then((m) => ({ default: m.PlannerPage }))
+);
 
 function PageRouter() {
   const currentView = useAppStore((s) => s.currentView);
@@ -128,6 +131,8 @@ function PageRouter() {
         return <AnalyticsPage />;
       case "achievements":
         return <AchievementsPage />;
+      case "planner":
+        return <PlannerPage />;
       case "profile":
         return <ProfilePage />;
       case "settings":

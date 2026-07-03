@@ -1119,3 +1119,47 @@ The StudySpark app entered this round **stable and feature-complete** (per round
   4. **Analytics page heatmap**: add a GitHub-style contribution heatmap of daily focus hours over the last 90 days
   5. **Subject detail drawer enhancements**: add a "Log focus session" button inside the drawer that pre-fills the subject
   6. **Accessibility audit**: ARIA labels on all icon-only buttons, focus trap in command palette + drawer + tour, keyboard navigation for badge grid
+
+---
+Task ID: 8
+Agent: orchestrator (main)
+Task: QA testing, bug fixes, new Study Planner feature, styling enhancements
+
+Work Log:
+- Performed comprehensive QA testing with agent-browser across all 12+ views
+- **Bug #1 FIXED (Critical)**: Date picker in Exam dialog was closing the entire dialog when clicking on native `<input type="date">`. Fixed by replacing with shadcn `Calendar` + `Popover` component combo. Also added `onPointerDownOutside` and `onInteractOutside` prevention on DialogContent.
+- **Bug #2 FIXED**: AnimatedCounter showed "0+" on landing page when IntersectionObserver didn't fire. Added 2-second fallback timer to trigger animation even if IO fails.
+- **Bug #3 FIXED (Critical)**: Ctrl+K command palette caused hard crash. Root cause: duplicate broken `CommandPalette` in `page.tsx` (from `shared/command-palette.tsx`) used `Command.Input` syntax which is not exported by cmdk. Removed broken import; dashboard shell already has working command palette.
+- **Bug #4 FIXED**: Footer copyright year was hardcoded to 2025. Changed to `new Date().getFullYear()`.
+- **Bug #5 FIXED**: Sidebar keyboard shortcut badges were read by screen readers. Added `aria-hidden="true"` to kbd elements.
+- **New Feature: Study Planner page** — Complete weekly study planner with:
+  - Weekly grid view with day-by-day layout
+  - Time slot system (Morning/Afternoon/Evening/Night) with icons
+  - Study block types (Study/Revision/Assignment/Exam Prep/Break) with emoji and color coding
+  - Calendar+Popover date picker in add/edit dialog
+  - Block completion toggle with animated checkmarks
+  - Weekly statistics (planned minutes, completed, progress %, block count)
+  - Animated progress bar with shimmer effect
+  - Week navigation with Today shortcut
+  - localStorage persistence
+  - Integration with subjects from API
+- **Styling Enhancements**:
+  - Added Round 7 CSS animations: planner-slot-glow, hover-lift, card-shimmer-border, stat-icon-pulse, progress-shimmer, focus-ring, premium-toast
+  - GlassCard component now includes card-shimmer-border and hover-lift classes
+  - Study Planner uses planner-slot-glow for today's column and card-shimmer-border + hover-lift for day cards
+  - Progress bars use progress-shimmer animation
+  - All new animations respect prefers-reduced-motion
+- Updated AppView union type to include "planner"
+- Added "Study Planner" to sidebar navigation with CalendarRange icon
+- Added "Study Planner" to topbar view titles
+- Added "Study Planner" to command palette actions
+- Added "Plan Study" to Quick Add FAB
+- Removed broken `shared/command-palette.tsx` file
+
+Stage Summary:
+- All QA bugs fixed (5 bugs, 2 critical)
+- New Study Planner feature fully implemented and tested
+- Premium styling enhancements added
+- 0 lint errors, clean compilation
+- App now has 13 views (was 12): dashboard, todos, calendar, planner, subjects, exams, focus, analytics, achievements, profile, settings
+- Key risk: Study Planner uses localStorage instead of database (by design for simplicity, but data won't sync across devices)
