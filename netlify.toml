@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Netlify deployment configuration for StudySpark (Next.js 16)
+# ─────────────────────────────────────────────────────────────────────────────
+
+[build]
+  # Build command — generates Prisma client (Postgres schema), then builds Next.js
+  command = "npm run build:netlify"
+
+  # Publish directory — Next.js output (the plugin handles the rest)
+  publish = ".next"
+
+# This env var tells next.config.ts to skip `output: "standalone"` on Netlify
+[build.environment]
+  NETLIFY = "true"
+  NODE_VERSION = "20"
+
+# Essential: the Next.js plugin converts API routes + SSR into Netlify Functions
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Environment variables
+# Set these in the Netlify dashboard (Site settings → Environment variables)
+# DO NOT put secrets here — this file is committed to git.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Required for production:
+# DATABASE_URL        = "postgresql://user:pass@host/db?sslmode=require"  (Neon/Supabase)
+# JWT_SECRET          = "<64-char random string>"
+# NEXTAUTH_URL        = "https://your-site.netlify.app"
+# NODE_ENV            = "production"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Headers — security + caching
+# ─────────────────────────────────────────────────────────────────────────────
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Cache static assets aggressively
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
