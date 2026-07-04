@@ -1394,3 +1394,30 @@ Stage Summary:
   3. Accessibility audit: ARIA labels on all icon-only buttons, focus trap in dialogs/drawer
   4. Apply `.num-pop` animation to AnimatedCounter when its value changes (delightful number bounce)
   5. Add a "weekly study goal" feature (global target hours/week with progress ring on dashboard)
+
+---
+Task ID: netlify-1
+Agent: orchestrator (main)
+Task: Prepare StudySpark for Netlify deployment (user reported "Page Not Found" when deploying).
+
+Work Log:
+- Diagnosed root cause of 404 on Netlify: (1) `next.config.ts` had `output: "standalone"` which is for Docker/VPS and breaks Netlify's plugin, (2) `package.json` build script ran `cp` commands into `.next/standalone/` which Netlify doesn't use, (3) missing `@netlify/plugin-nextjs` which is REQUIRED for Next.js API routes + SSR on Netlify, (4) missing `netlify.toml`.
+- Identified a SECOND critical issue: SQLite (`db/custom.db`) is fundamentally incompatible with Netlify's serverless platform — the filesystem is ephemeral/read-only, so the DB gets wiped between requests. Must migrate to PostgreSQL.
+- Created `netlify.toml` with: build command `npm run build:netlify`, publish dir `.next`, `@netlify/plugin-nextjs` plugin, `NETLIFY=true` env var (so next.config skips standalone), security headers, static asset caching.
+- Modified `next.config.ts` to make `output: "standalone"` conditional — only active when `NETLIFY` env var is NOT set. This keeps Docker/VPS deployment working while fixing Netlify.
+- Added `build:netlify` script to `package.json`: `prisma generate --schema=prisma/schema.netlify.prisma && next build`.
+- Installed `@netlify/plugin-nextjs@5.15.12` as a dev dependency.
+- Created `prisma/schema.netlify.prisma` — identical to the SQLite schema but with `provider = "postgresql"` and added `@@index([userId])` on all user-owned tables for Postgres performance. Added explicit `output` path for the generated client.
+- Attempted multi-provider array syntax `provider = ["sqlite", "postgresql"]` first but Prisma 6.19 rejected it ("provider must be a string literal"), so reverted to the two-file approach (SQLite schema for local, Postgres schema for Netlify).
+- Created `DEPLOY-NETLIFY.md` — comprehensive step-by-step guide covering: Neon Postgres setup, GitHub push, creating tables via `prisma db push --schema=prisma/schema.netlify.prisma`, Netlify site import + env vars, troubleshooting, cost expectations.
+- Updated `.gitignore` to exclude `/db/*.db` and `/db/*.db-journal` (prevent committing the local SQLite DB to GitHub).
+- Verified: `bun run lint` passes clean, `prisma generate` (SQLite) still works locally, dev server healthy.
+
+Stage Summary:
+- Netlify "Page Not Found" root cause fixed: added `@netlify/plugin-nextjs` + `netlify.toml` + conditional `output: "standalone"`.
+- SQLite → PostgreSQL migration path prepared: `prisma/schema.netlify.prisma` ready, `build:netlify` script wired up, Neon setup guide written.
+- Files created/modified:
+  - NEW: `netlify.toml`, `prisma/schema.netlify.prisma`, `DEPLOY-NETLIFY.md`
+  - MODIFIED: `next.config.ts` (conditional standalone), `package.json` (build:netlify script + plugin dep), `.gitignore` (db files)
+- User needs to follow `DEPLOY-NETLIFY.md` — the critical steps are: (1) create Neon Postgres DB, (2) run `prisma db push --schema=prisma/schema.netlify.prisma` with the Neon URL to create tables, (3) set 4 env vars on Netlify (DATABASE_URL, JWT_SECRET, NEXTAUTH_URL, NODE_ENV), (4) deploy.
+- Local development is completely unaffected — still uses SQLite, same `bun run dev` workflow.

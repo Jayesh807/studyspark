@@ -1,15 +1,22 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// PostgreSQL schema for Netlify / production deployment.
 //
-// LOCAL DEVELOPMENT: uses SQLite (file:./db/custom.db)
-// For Netlify/production (PostgreSQL), use prisma/schema.netlify.prisma instead.
+// This is identical to schema.prisma but uses PostgreSQL instead of SQLite.
+// SQLite cannot work on Netlify because serverless functions have an ephemeral,
+// read-only filesystem — every request would start with an empty/wiped database.
+//
+// USAGE (on Netlify):
+//   - Set DATABASE_URL to your Neon/Supabase PostgreSQL connection string
+//   - The build:netlify script runs: prisma generate --schema=prisma/schema.netlify.prisma
+//   - To create tables on your Neon DB (run once locally):
+//       DATABASE_URL="postgresql://..." npx prisma db push --schema=prisma/schema.netlify.prisma
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -73,6 +80,8 @@ model Todo {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Event {
@@ -87,6 +96,8 @@ model Event {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Subject {
@@ -103,6 +114,8 @@ model Subject {
   updatedAt  DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Exam {
@@ -120,6 +133,8 @@ model Exam {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model FocusSession {
@@ -133,4 +148,6 @@ model FocusSession {
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
