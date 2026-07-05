@@ -569,7 +569,7 @@ function TodaysGoalRing({
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(rawPct, 100)}%` }}
                 transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                className="h-full rounded-full bg-linear-to-r from-violet-500 to-fuchsia-500"
               />
             </div>
           </div>
@@ -610,9 +610,9 @@ function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics[
         <div className="relative flex items-start justify-between">
           <div
             className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg shadow-black/5 transition-all duration-300",
+              "flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br text-white shadow-lg shadow-black/5 transition-all duration-300",
               config.gradient,
-              isEmpty && "opacity-70 grayscale-[30%]"
+              isEmpty && "opacity-70 grayscale-30"
             )}
           >
             <Icon className="h-6 w-6" />
@@ -656,7 +656,7 @@ function WeeklyChart({ data }: { data: Analytics["weeklyData"] }) {
           </p>
         </div>
       </div>
-      <div className="h-[220px] w-full">
+      <div className="h-55 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
@@ -738,7 +738,7 @@ function MonthlyChart({ data }: { data: Analytics["monthlyData"] }) {
           </p>
         </div>
       </div>
-      <div className="h-[200px] w-full">
+      <div className="h-50 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
@@ -810,7 +810,7 @@ function QuoteCard() {
       <div className="pointer-events-none absolute -bottom-10 -right-6 h-32 w-32 rounded-full bg-fuchsia-500/15 blur-3xl" />
 
       <div className="relative flex items-start justify-between">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/20">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/20">
           <Quote className="h-5 w-5" />
         </div>
         <Button
@@ -1005,12 +1005,12 @@ function ExamsPreview({
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: i * 0.06 }}
-                  className="group flex items-center gap-3 rounded-2xl border border-violet-500/10 bg-violet-500/[0.03] p-3 transition-colors hover:border-violet-500/25 hover:bg-violet-500/[0.06]"
+                  className="group flex items-center gap-3 rounded-2xl border border-violet-500/10 bg-violet-500/3 p-3 transition-colors hover:border-violet-500/25 hover:bg-violet-500/[0.06]"
                 >
                   <div
                     className={cn(
                       "flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl text-white shadow-md",
-                      "bg-gradient-to-br from-amber-500 to-orange-600"
+                      "bg-linear-to-br from-amber-500 to-orange-600"
                     )}
                   >
                     <span className="text-sm font-bold leading-none">
@@ -1242,7 +1242,7 @@ function QuickStartCard({ onNavigate }: { onNavigate: (view: AppView) => void })
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative overflow-hidden rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/[0.08] via-fuchsia-500/[0.06] to-purple-500/[0.08] p-6 backdrop-blur-xl"
+      className="relative overflow-hidden rounded-3xl border border-violet-500/20 bg-linear-to-br from-violet-500/8 via-fuchsia-500/6 to-purple-500/8 p-6 backdrop-blur-xl"
     >
       {/* Sparkle decorations */}
       <div className="pointer-events-none absolute left-[15%] top-[20%] sparkle-float" style={{ animationDelay: "0s" }}>
@@ -1284,7 +1284,7 @@ function QuickStartCard({ onNavigate }: { onNavigate: (view: AppView) => void })
                 onClick={() => onNavigate(action.view)}
                 className={cn(
                   "flex items-center gap-2.5 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl",
-                  `bg-gradient-to-br ${action.gradient}`
+                  `bg-linear-to-br ${action.gradient}`
                 )}
               >
                 <ActionIcon className="h-4 w-4" />
