@@ -2,11 +2,11 @@
 
 import { Navbar } from "./navbar";
 import { Hero } from "./hero";
-import { StatsBar } from "./stats-bar";
+// import { StatsBar } from "./stats-bar";
 import { Features } from "./features";
 import { Screenshots } from "./screenshots";
 import { Pricing } from "./pricing";
-import { Testimonials } from "./testimonials";
+// import { Testimonials } from "./testimonials";
 import { CTASection } from "./cta-section";
 import { Footer } from "./footer";
 
@@ -29,11 +29,11 @@ export function LandingPage() {
       <Navbar />
       <main>
         <Hero />
-        <StatsBar />
+        {/* <StatsBar /> */}
         <Features />
         <Screenshots />
         <Pricing />
-        <Testimonials />
+        {/* <Testimonials /> */}
         <CTASection />
       </main>
       <Footer />
