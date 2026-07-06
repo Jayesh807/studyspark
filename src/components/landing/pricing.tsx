@@ -36,11 +36,11 @@ export function Pricing() {
 
           <div className="shimmer-border relative w-full overflow-hidden rounded-3xl p-8 sm:p-10 glass">
             {/* Decorative gradient */}
-            <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-linear-to-br from-violet-500/20 to-fuchsia-500/10 blur-3xl" />
 
             <div className="relative">
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
+                <span className="inline-flex items-center gap-2 rounded-full bg-linear-to-br from-violet-500 to-fuchsia-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
                   <Sparkles className="size-3.5" />
                   Free
                 </span>
@@ -63,7 +63,7 @@ export function Pricing() {
               <Button
                 size="lg"
                 onClick={() => setView("signup")}
-                className="mt-6 h-12 w-full rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:shadow-xl hover:shadow-violet-500/45 hover:brightness-110"
+                className="mt-6 h-12 w-full rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:shadow-xl hover:shadow-violet-500/45 hover:brightness-110"
               >
                 Get started free
                 <ArrowRight className="size-4" />
@@ -79,7 +79,7 @@ export function Pricing() {
                     transition={{ duration: 0.4, delay: i * 0.04 }}
                     className="flex items-start gap-3"
                   >
-                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-violet-500 to-fuchsia-500 text-white">
                       <Check className="size-3.5" strokeWidth={3} />
                     </span>
                     <span className="text-sm text-foreground/90">{feat}</span>
