@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AccentColorApplier } from "@/components/accent-color-applier";
@@ -17,18 +18,96 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StudySpark — Premium Student Analytics Dashboard",
+  metadataBase: new URL("https://studysparks.cloud"),
+
+  title: {
+    default: "StudySpark – Student Productivity Platform",
+    template: "%s | StudySpark",
+  },
+
   description:
-    "A premium student analytics dashboard to track tasks, exams, focus time, and study progress. Beautiful, fast, and built for students.",
+    "StudySpark helps students stay organized with task management, focus timer, calendar, events, and productivity analytics. Plan smarter and achieve your study goals.",
+
+  applicationName: "StudySpark",
+
   keywords: [
-    "student dashboard",
-    "study analytics",
-    "productivity",
-    "pomodoro",
+    "StudySpark",
+    "student planner",
+    "student productivity",
+    "study planner",
+    "study tracker",
     "task manager",
-    "exam tracker",
+    "focus timer",
+    "pomodoro timer",
+    "calendar",
+    "exam planner",
+    "assignment tracker",
+    "study analytics",
+    "student dashboard",
+    "online planner",
   ],
-  authors: [{ name: "StudySpark" }],
+
+  authors: [
+    {
+      name: "StudySpark",
+      url: "https://studysparks.cloud",
+    },
+  ],
+
+  creator: "StudySpark",
+
+  publisher: "StudySpark",
+
+  alternates: {
+    canonical: "/",
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+
+  openGraph: {
+    type: "website",
+    url: "https://studysparks.cloud",
+    title: "StudySpark – Student Productivity Platform",
+    description:
+      "Manage tasks, events, focus sessions and study analytics in one beautiful dashboard.",
+    siteName: "StudySpark",
+    locale: "en_US",
+
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "StudySpark",
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "StudySpark – Student Productivity Platform",
+    description:
+      "Organize tasks, focus better and track study progress with StudySpark.",
+    images: ["/og-image.png"],
+  },
+
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
+
+  category: "education",
 };
 
 export default function RootLayout({
@@ -41,12 +120,31 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {/* Google AdSense Verification */}
+        {/* Google AdSense */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7098669863322522"
           crossOrigin="anonymous"
           strategy="afterInteractive"
+        />
+
+        {/* Structured Data for Google */}
+        <Script
+          id="structured-data"
+          type="application/ld+json"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: "StudySpark",
+              url: "https://studysparks.cloud",
+              applicationCategory: "EducationalApplication",
+              operatingSystem: "Web",
+              description:
+                "StudySpark is a student productivity platform that helps students manage tasks, events, focus sessions and analytics.",
+            }),
+          }}
         />
 
         <ThemeProvider
