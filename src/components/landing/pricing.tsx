@@ -34,13 +34,6 @@ export function Pricing() {
           description="StudySpark is built by students, for students. The full experience is — and will remain — free. A premium Pro tier is on the way for power users."
         />
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto mt-14 flex max-w-md justify-center"
-        >
           <div className="shimmer-border relative w-full overflow-hidden rounded-3xl p-8 sm:p-10 glass">
             {/* Decorative gradient */}
             <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 blur-3xl" />
@@ -100,7 +93,6 @@ export function Pricing() {
               </div>
             </div>
           </div>
-        </motion.div>
       </div>
     </section>
   );
