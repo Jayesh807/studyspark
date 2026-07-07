@@ -6,7 +6,7 @@ import { scrollToSection } from "./scroll-helpers";
 
 interface FooterColumn {
   title: string;
-  links: { label: string; id?: string }[];
+  links: { label: string; id?: string; href?: string }[];
 }
 
 const COLUMNS: FooterColumn[] = [
@@ -16,13 +16,12 @@ const COLUMNS: FooterColumn[] = [
       { label: "Features", id: "features" },
       { label: "Preview", id: "screenshots" },
       { label: "Pricing", id: "pricing" },
-      { label: "Testimonials", id: "testimonials" },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About" },
+      { label: "About", href: "/about" },
       { label: "Blog" },
       { label: "Careers" },
       { label: "Contact" },
@@ -99,7 +98,7 @@ export function Footer() {
                       </button>
                     ) : (
                       <a
-                        href="#"
+                        href={link.href ?? "#"}
                         className="text-sm text-muted-foreground transition-colors hover:text-violet-600 dark:hover:text-violet-300"
                       >
                         {link.label}
