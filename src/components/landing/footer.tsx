@@ -1,8 +1,16 @@
-"use client";
+/**
+ * Footer — Server Component (no "use client").
+ *
+ * Why removed "use client"?
+ * The footer previously had "use client" only to call scrollToSection() on
+ * anchor links. We now use plain <a href="#section-id"> anchors instead —
+ * the browser handles smooth scrolling natively via `scroll-behavior: smooth`
+ * set globally in globals.css. This allows the footer to server-render,
+ * reducing the JavaScript shipped to the client.
+ */
 
 import { Github, Twitter, Linkedin, Heart } from "lucide-react";
 import { Logo } from "./logo";
-import { scrollToSection } from "./scroll-helpers";
 
 interface FooterColumn {
   title: string;
@@ -88,22 +96,16 @@ export function Footer() {
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    {link.id ? (
-                      <button
-                        type="button"
-                        onClick={() => scrollToSection(link.id!)}
-                        className="text-sm text-muted-foreground transition-colors hover:text-violet-600 dark:hover:text-violet-300"
-                      >
-                        {link.label}
-                      </button>
-                    ) : (
-                      <a
-                        href={link.href ?? "#"}
-                        className="text-sm text-muted-foreground transition-colors hover:text-violet-600 dark:hover:text-violet-300"
-                      >
-                        {link.label}
-                      </a>
-                    )}
+                    {/*
+                     * Smooth-scroll anchor links — no JS needed.
+                     * `scroll-behavior: smooth` is set on html in globals.css.
+                     */}
+                    <a
+                      href={link.id ? `#${link.id}` : (link.href ?? "#")}
+                      className="text-sm text-muted-foreground transition-colors hover:text-violet-600 dark:hover:text-violet-300"
+                    >
+                      {link.label}
+                    </a>
                   </li>
                 ))}
               </ul>

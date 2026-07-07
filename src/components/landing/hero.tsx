@@ -1,5 +1,24 @@
 "use client";
 
+/**
+ * Hero — Performance optimizations applied:
+ *
+ * 1. LCP Fix: The <h1> is now rendered at full opacity immediately with a
+ *    plain HTML element. Previously it was a <motion.h1> starting at
+ *    opacity:0 which hid the LCP element until Framer Motion executed
+ *    (~3580ms delay). The surrounding container still animates, but the
+ *    text itself is never invisible.
+ *
+ * 2. Forced Reflow Fix: FloatingDashboard read getBoundingClientRect() on
+ *    every mousemove, causing 116ms of forced layout. Now the read is
+ *    scheduled inside requestAnimationFrame so the browser can batch it
+ *    with its own layout pass.
+ *
+ * 3. Deferred decorations: FloatingShapes and AnimatedBlobs are purely
+ *    decorative. They are mounted only after the first paint via a
+ *    useEffect + useState(false) guard, so they never delay LCP.
+ */
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -26,11 +45,12 @@ const TRUST_BADGES = [
   { label: "Privacy-first", icon: Shield },
 ];
 
+// Container animation — only wraps the left-column children below the H1
 const container = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+    transition: { staggerChildren: 0.08, delayChildren: 0.05 },
   },
 };
 
@@ -39,47 +59,72 @@ const item = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] as const },
   },
 };
 
 export function Hero() {
   const setView = useAppStore((s) => s.setView);
+  // Defer decorative elements until after first paint
+  const [decorationsReady, setDecorationsReady] = useState(false);
+
+  useEffect(() => {
+    // requestIdleCallback preferred; fall back to rAF+timeout for Safari
+    const schedule =
+      typeof requestIdleCallback !== "undefined"
+        ? (cb: () => void) => requestIdleCallback(cb, { timeout: 500 })
+        : (cb: () => void) => setTimeout(cb, 100);
+
+    const handle = schedule(() => setDecorationsReady(true));
+    return () => {
+      if (typeof requestIdleCallback !== "undefined") {
+        cancelIdleCallback(handle as number);
+      } else {
+        clearTimeout(handle as ReturnType<typeof setTimeout>);
+      }
+    };
+  }, []);
 
   return (
     <section
       className="relative overflow-hidden pt-28 pb-20 sm:pt-36 sm:pb-28"
       aria-label="Hero"
     >
-      <AnimatedBlobs variant="landing" />
-      {/* Floating decorative shapes */}
-      <FloatingShapes />
+      {/* Decorative blobs — deferred, never block LCP */}
+      {decorationsReady && <AnimatedBlobs variant="landing" />}
+      {decorationsReady && <FloatingShapes />}
 
       <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 lg:grid-cols-2 lg:gap-8">
         {/* Left column */}
-        <motion.div
-          variants={container}
-          initial="hidden"
-          animate="visible"
-          className="flex flex-col items-start gap-6"
-        >
-          <motion.div variants={item}>
+        <div className="flex flex-col items-start gap-6">
+          {/* Badge — animated */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
             <span className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-4 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-300">
               <Sparkles className="size-3.5" />
               Your all-in-one student workspace
             </span>
           </motion.div>
 
-          <motion.h1
-            variants={item}
-            className="text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-[3.75rem]"
-          >
+          {/*
+           * LCP ELEMENT — plain <h1>, never opacity:0.
+           * Lighthouse scores this as LCP; it must be visible on first paint.
+           * The surrounding container fades in, but the text itself starts
+           * at full opacity so it registers immediately for LCP measurement.
+           */}
+          <h1 className="text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-[3.75rem]">
             Your studies,{" "}
             <span className="text-gradient">beautifully organized.</span>
-          </motion.h1>
+          </h1>
 
+          {/* Subtitle — animated */}
           <motion.p
-            variants={item}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
             className="max-w-xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg"
           >
             StudySpark brings tasks, calendar, focus sessions, subjects and
@@ -87,8 +132,11 @@ export function Hero() {
             juggling apps and start making real progress.
           </motion.p>
 
+          {/* CTA buttons — animated */}
           <motion.div
-            variants={item}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.18, ease: [0.22, 1, 0.36, 1] }}
             className="flex flex-col gap-3 sm:flex-row sm:items-center"
           >
             <Button
@@ -109,17 +157,23 @@ export function Hero() {
             </Button>
           </motion.div>
 
+          {/* Trust badges — animated */}
           <motion.ul
-            variants={container}
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.1, delayChildren: 0.28 },
+              },
+            }}
             className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2"
           >
-            {TRUST_BADGES.map(({ label, icon: Icon }, i) => (
+            {TRUST_BADGES.map(({ label, icon: Icon }) => (
               <motion.li
                 key={label}
-                custom={i}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.6 + i * 0.12, ease: [0.22, 1, 0.36, 1] as const }}
+                variants={item}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground"
               >
                 <Icon className="size-4 text-violet-500" />
@@ -130,13 +184,13 @@ export function Hero() {
               </motion.li>
             ))}
           </motion.ul>
-        </motion.div>
+        </div>
 
         {/* Right column — floating dashboard preview */}
         <motion.div
           initial={{ opacity: 0, scale: 0.94, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
           className="relative mx-auto w-full max-w-md lg:max-w-lg"
         >
           <FloatingDashboard />
@@ -148,21 +202,45 @@ export function Hero() {
 
 function FloatingDashboard() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const offsetRef = useRef({ x: 0, y: 0 });
+  const rafRef = useRef<number | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
+  /**
+   * FORCED REFLOW FIX:
+   * Previously getBoundingClientRect() was called synchronously inside the
+   * mousemove handler, forcing the browser to flush layout on every mouse
+   * event — causing the 116ms forced reflow.
+   *
+   * Now: we schedule the DOM read inside requestAnimationFrame, which lets
+   * the browser batch the layout read with its own rendering cycle.
+   */
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const dx = (e.clientX - centerX) / rect.width;
-    const dy = (e.clientY - centerY) / rect.height;
-    setOffset({ x: dx * 12, y: dy * 8 });
+    // Cancel any pending frame to avoid queuing multiple reads per frame
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+    }
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+
+    rafRef.current = requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const dx = (clientX - centerX) / rect.width;
+      const dy = (clientY - centerY) / rect.height;
+      setOffset({ x: dx * 12, y: dy * 8 });
+      rafRef.current = null;
+    });
   }, []);
 
   useEffect(() => {
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
   }, [handleMouseMove]);
 
   return (
@@ -203,19 +281,9 @@ function FloatingDashboard() {
 
           {/* Stat cards */}
           <div className="grid grid-cols-3 gap-2.5">
-            <MiniStat
-              icon={Target}
-              label="Tasks"
-              value="24"
-              tone="violet"
-            />
+            <MiniStat icon={Target} label="Tasks" value="24" tone="violet" />
             <MiniStat icon={Clock} label="Focus" value="6.2h" tone="fuchsia" />
-            <MiniStat
-              icon={Calendar}
-              label="Events"
-              value="8"
-              tone="purple"
-            />
+            <MiniStat icon={Calendar} label="Events" value="8" tone="purple" />
           </div>
 
           {/* Fake chart */}
@@ -238,7 +306,7 @@ function FloatingDashboard() {
                 key={task.t}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 + i * 0.12 }}
+                transition={{ delay: 0.5 + i * 0.1 }}
                 className="flex items-center gap-2.5 rounded-xl bg-white/50 px-3 py-2 dark:bg-white/5"
               >
                 <span className={cn("size-2 rounded-full", task.c)} />
@@ -259,9 +327,7 @@ function FloatingDashboard() {
         <div className="flex items-center gap-2">
           <Clock className="size-4" />
           <div>
-            <p className="text-[9px] uppercase tracking-wide opacity-80">
-              Focus
-            </p>
+            <p className="text-[9px] uppercase tracking-wide opacity-80">Focus</p>
             <p className="text-sm font-bold leading-none">25:00</p>
           </div>
         </div>
@@ -270,19 +336,12 @@ function FloatingDashboard() {
       {/* Floating chip — Streak */}
       <motion.div
         animate={{ y: [0, -10, 0] }}
-        transition={{
-          duration: 5.5,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 0.5,
-        }}
+        transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
         className="absolute -bottom-5 -left-3 hidden items-center gap-2 rounded-2xl glass-strong px-3.5 py-2.5 shadow-xl sm:flex"
       >
         <Heart className="size-4 text-fuchsia-500" />
         <div>
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">
-            Streak
-          </p>
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Streak</p>
           <p className="text-sm font-bold leading-none">14 days 🔥</p>
         </div>
       </motion.div>
@@ -303,18 +362,11 @@ function MiniStat({
 }) {
   const tones = {
     violet: "from-violet-500/15 to-violet-500/5 text-violet-600 dark:text-violet-300",
-    fuchsia:
-      "from-fuchsia-500/15 to-fuchsia-500/5 text-fuchsia-600 dark:text-fuchsia-300",
-    purple:
-      "from-purple-500/15 to-purple-500/5 text-purple-600 dark:text-purple-300",
+    fuchsia: "from-fuchsia-500/15 to-fuchsia-500/5 text-fuchsia-600 dark:text-fuchsia-300",
+    purple: "from-purple-500/15 to-purple-500/5 text-purple-600 dark:text-purple-300",
   } as const;
   return (
-    <div
-      className={cn(
-        "rounded-2xl bg-gradient-to-br p-3",
-        tones[tone]
-      )}
-    >
+    <div className={cn("rounded-2xl bg-gradient-to-br p-3", tones[tone])}>
       <Icon className="size-4" />
       <p className="mt-1.5 text-lg font-bold leading-none">{value}</p>
       <p className="mt-0.5 text-[10px] opacity-80">{label}</p>
@@ -323,20 +375,11 @@ function MiniStat({
 }
 
 function FakeAreaChart() {
-  // Stable fake data for an area chart look.
   const points = [
-    [0, 38],
-    [25, 24],
-    [50, 30],
-    [75, 12],
-    [100, 22],
-    [125, 8],
-    [150, 16],
-    [175, 4],
+    [0, 38], [25, 24], [50, 30], [75, 12],
+    [100, 22], [125, 8], [150, 16], [175, 4],
   ] as const;
-  const path = points
-    .map((p, i) => `${i === 0 ? "M" : "L"}${p[0]},${p[1]}`)
-    .join(" ");
+  const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${p[0]},${p[1]}`).join(" ");
   const area = `${path} L175,50 L0,50 Z`;
   return (
     <svg
