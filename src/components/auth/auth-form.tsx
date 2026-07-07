@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -160,7 +161,11 @@ function PasswordField({
 /* Login form                                                          */
 /* ------------------------------------------------------------------ */
 
-function LoginForm() {
+interface AuthModeFormProps {
+  onAuthenticated: () => void;
+}
+
+function LoginForm({ onAuthenticated }: AuthModeFormProps) {
   const { login } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [remember, setRemember] = useState(true);
@@ -192,6 +197,7 @@ function LoginForm() {
         }
       }
       toast.success("Welcome back!");
+      onAuthenticated();
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message);
@@ -279,7 +285,7 @@ function LoginForm() {
 /* Signup form                                                         */
 /* ------------------------------------------------------------------ */
 
-function SignupForm() {
+function SignupForm({ onAuthenticated }: AuthModeFormProps) {
   const { signup } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
@@ -297,6 +303,7 @@ function SignupForm() {
     try {
       await signup(values.username, values.password);
       toast.success("Account created! Welcome to StudySpark.");
+      onAuthenticated();
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message);
@@ -408,14 +415,45 @@ function SubmitButton({
 /* Main form card                                                      */
 /* ------------------------------------------------------------------ */
 
-export function AuthForm() {
+interface AuthFormProps {
+  initialMode?: "login" | "signup";
+}
+
+export function AuthForm({ initialMode = "login" }: AuthFormProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const currentView = useAppStore((s) => s.currentView);
   const setView = useAppStore((s) => s.setView);
 
-  const mode: "login" | "signup" =
-    currentView === "signup" ? "signup" : "login";
+  const routeMode =
+    pathname === "/signup" ? "signup" : pathname === "/login" ? "login" : null;
 
-  const go = (v: AppView) => setView(v);
+  const mode: "login" | "signup" =
+    routeMode ??
+    (currentView === "signup"
+      ? "signup"
+      : currentView === "login"
+        ? "login"
+        : initialMode);
+
+  const go = (v: AppView) => {
+    setView(v);
+    if (v === "login" || v === "signup") {
+      if (pathname !== "/" && pathname !== `/${v}`) {
+        router.push(`/${v}`);
+      }
+      return;
+    }
+    if (v === "landing" && pathname !== "/") {
+      router.push("/");
+    }
+  };
+
+  const handleAuthenticated = () => {
+    if (pathname !== "/") {
+      router.push("/");
+    }
+  };
 
   return (
     <div className="w-full max-w-md">
@@ -468,7 +506,11 @@ export function AuthForm() {
 
         {/* Form with crossfade */}
         <AnimatePresence mode="wait" initial={false}>
-          {mode === "login" ? <LoginForm key="login" /> : <SignupForm key="signup" />}
+          {mode === "login" ? (
+            <LoginForm key="login" onAuthenticated={handleAuthenticated} />
+          ) : (
+            <SignupForm key="signup" onAuthenticated={handleAuthenticated} />
+          )}
         </AnimatePresence>
 
         {/* Switch-mode link */}

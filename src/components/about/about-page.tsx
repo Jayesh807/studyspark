@@ -137,7 +137,7 @@ export function AboutPage() {
 
   const startSignup = () => {
     setView("signup");
-    router.push("/");
+    router.push("/signup");
   };
 
   return (
