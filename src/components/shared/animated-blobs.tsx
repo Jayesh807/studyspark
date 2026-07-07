@@ -1,19 +1,6 @@
-/**
- * AnimatedBlobs — pure CSS animation, no Framer Motion.
- *
- * Why the change?
- * ───────────────
- * Previously each blob used framer-motion `animate` with `repeat: Infinity`,
- * which registers a JavaScript animation loop (via requestAnimationFrame) for
- * every blob — 3–4 perpetually running RAF callbacks.
- *
- * Now: blobs use the existing `blob` CSS class (`@keyframes blobFloat` already
- * defined in globals.css) plus `animation-delay` for variation. The browser
- * handles this entirely on the compositor thread — zero JS overhead.
- *
- * This eliminates continuous main-thread work during scrolling and reduces
- * Total Blocking Time (TBT) on the Lighthouse performance audit.
- */
+"use client";
+
+import { motion } from "framer-motion";
 
 interface AnimatedBlobsProps {
   variant?: "landing" | "dashboard";
@@ -36,26 +23,42 @@ export function AnimatedBlobs({ variant = "landing" }: AnimatedBlobsProps) {
 
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      {/* Blob 1 — default blob animation, no delay */}
-      <div
+      <motion.div
         className={`absolute -top-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-gradient-to-br ${colors[0]} blur-3xl blob`}
-        style={{ animationDuration: "22s" }}
+        animate={{
+          x: [0, 60, -30, 0],
+          y: [0, 40, -20, 0],
+          scale: [1, 1.1, 0.95, 1],
+        }}
+        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
       />
-      {/* Blob 2 — offset delay for natural variation */}
-      <div
+      <motion.div
         className={`absolute top-1/3 -right-40 h-[32rem] w-[32rem] rounded-full bg-gradient-to-br ${colors[1]} blur-3xl blob`}
-        style={{ animationDuration: "26s", animationDelay: "-8s" }}
+        animate={{
+          x: [0, -50, 30, 0],
+          y: [0, 30, -40, 0],
+          scale: [1, 0.9, 1.15, 1],
+        }}
+        transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
       />
-      {/* Blob 3 */}
-      <div
+      <motion.div
         className={`absolute -bottom-40 left-1/4 h-[26rem] w-[26rem] rounded-full bg-gradient-to-br ${colors[2]} blur-3xl blob`}
-        style={{ animationDuration: "24s", animationDelay: "-14s" }}
+        animate={{
+          x: [0, 40, -50, 0],
+          y: [0, -30, 20, 0],
+          scale: [1, 1.08, 0.92, 1],
+        }}
+        transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
       />
-      {/* Blob 4 — landing only */}
       {variant === "landing" && (
-        <div
+        <motion.div
           className={`absolute top-1/2 left-1/2 h-[24rem] w-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${colors[3]} blur-3xl blob`}
-          style={{ animationDuration: "30s", animationDelay: "-5s" }}
+          animate={{
+            x: [-100, 80, -50, -100],
+            y: [-60, 40, 80, -60],
+            scale: [1, 1.12, 0.9, 1],
+          }}
+          transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
         />
       )}
     </div>
