@@ -191,7 +191,6 @@ const VIEW_TITLES: Record<AppView, { title: string; subtitle: string }> = {
   subjects: { title: "Subjects", subtitle: "Manage your courses" },
   exams: { title: "Upcoming Exams", subtitle: "Stay ahead of your exams" },
   focus: { title: "Focus Timer", subtitle: "Pomodoro focus sessions" },
-  achievements: { title: "Achievements", subtitle: "Your badges and milestones" },
   planner: { title: "Study Planner", subtitle: "Plan your weekly study sessions" },
   settings: { title: "Settings", subtitle: "Customize your experience" },
 };

@@ -102,9 +102,6 @@ const ProfilePage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./pages/settings").then((m) => ({ default: m.SettingsPage }))
 );
-const AchievementsPage = lazy(() =>
-  import("./pages/achievements").then((m) => ({ default: m.AchievementsPage }))
-);
 const PlannerPage = lazy(() =>
   import("./pages/planner").then((m) => ({ default: m.PlannerPage }))
 );
@@ -129,8 +126,6 @@ function PageRouter() {
         return <FocusTimerPage />;
       case "analytics":
         return <AnalyticsPage />;
-      case "achievements":
-        return <AchievementsPage />;
       case "planner":
         return <PlannerPage />;
       case "profile":

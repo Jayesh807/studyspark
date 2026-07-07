@@ -124,7 +124,6 @@ function PaletteInner({ onOpenChange }: { onOpenChange: (open: boolean) => void 
       { id: "nav-exams", label: "Upcoming Exams", subtitle: "Exam tracker", icon: GraduationCap, group: "Navigate", keywords: "test quiz", run: () => navigate("exams") },
       { id: "nav-focus", label: "Focus Timer", subtitle: "Pomodoro timer", icon: Timer, group: "Navigate", keywords: "pomodoro study timer", run: () => navigate("focus") },
       { id: "nav-analytics", label: "Analytics", subtitle: "Study insights", icon: BarChart3, group: "Navigate", keywords: "charts stats insights", run: () => navigate("analytics") },
-      { id: "nav-achievements", label: "Achievements", subtitle: "Badges & milestones", icon: Trophy, group: "Navigate", keywords: "badges rewards milestones", run: () => navigate("achievements") },
       { id: "nav-profile", label: "Profile", subtitle: "Your profile", icon: User, group: "Navigate", keywords: "account me", run: () => navigate("profile") },
       { id: "nav-settings", label: "Settings", subtitle: "Preferences", icon: Settings, group: "Navigate", keywords: "preferences config", run: () => navigate("settings") },
       // Actions
