@@ -90,6 +90,15 @@ export function Navbar() {
               About
             </button>
           </li>
+          <li>
+            <button
+              type="button"
+              onClick={() => router.push("/contact")}
+              className="rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-violet-500/10 hover:text-foreground"
+            >
+              Contact
+            </button>
+          </li>
           {NAV_LINKS.map((link) => (
             <li key={link.id}>
               <button
@@ -156,6 +165,20 @@ export function Navbar() {
                 About
                 <ArrowRight className="size-4 text-muted-foreground" />
               </motion.button>
+              <motion.button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  router.push("/contact");
+                }}
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-violet-500/10"
+              >
+                Contact
+                <ArrowRight className="size-4 text-muted-foreground" />
+              </motion.button>
               {NAV_LINKS.map((link, i) => (
                 <motion.button
                   key={link.id}
@@ -163,7 +186,7 @@ export function Navbar() {
                   onClick={() => go(link.id)}
                   initial={{ opacity: 0, x: 16 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 + i * 0.05 }}
+                  transition={{ delay: 0.15 + i * 0.05 }}
                   className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-violet-500/10"
                 >
                   {link.label}
