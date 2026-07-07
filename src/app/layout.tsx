@@ -7,14 +7,28 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AccentColorApplier } from "@/components/accent-color-applier";
 
+/**
+ * Font optimization:
+ * - `display: "swap"` prevents invisible text (FOIT) while the font loads.
+ *   Lighthouse penalizes FOIT as it blocks LCP text rendering.
+ * - `preload: true` on the primary font (Geist Sans) ensures it's fetched
+ *   early via a <link rel="preload"> in the document head.
+ * - `preload: false` on Geist Mono — this is a monospace font used only in
+ *   code blocks inside the dashboard, never above the fold. Not preloading it
+ *   saves a network round trip on the landing page.
+ */
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -127,19 +141,22 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {/* Google AdSense */}
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7098669863322522"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
-
-        {/* Structured Data for Google */}
+        {/*
+         * Structured Data (JSON-LD) — strategy="beforeInteractive"
+         *
+         * JSON-LD is parsed by Google's crawler during the initial HTML parse,
+         * not during JavaScript execution. Using "beforeInteractive" ensures it
+         * is inlined in the page HTML immediately — visible to crawlers without
+         * any JavaScript execution delay. This guarantees SEO structured data
+         * is always present regardless of JS status.
+         *
+         * Previously "afterInteractive" meant crawlers might not see it if they
+         * don't execute JS fully.
+         */}
         <Script
           id="structured-data"
           type="application/ld+json"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
@@ -152,6 +169,27 @@ export default function RootLayout({
                 "StudySpark is a student productivity platform that helps students manage tasks, events, focus sessions and analytics.",
             }),
           }}
+        />
+
+        {/*
+         * Google AdSense — strategy="lazyOnload"
+         *
+         * Previously "afterInteractive" loaded AdSense as soon as the page
+         * became interactive, which competed with LCP and TBT metrics.
+         *
+         * "lazyOnload" defers AdSense until the browser is fully idle after
+         * all other page content has loaded. This prevents ads from blocking
+         * or delaying the Largest Contentful Paint and Time to Interactive.
+         *
+         * Trade-off: Ads may appear slightly later on first load (~1-2s).
+         * Ad revenue impact on a landing page is minimal since non-users
+         * are unlikely to interact with ads before signing up.
+         */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7098669863322522"
+          crossOrigin="anonymous"
+          strategy="lazyOnload"
         />
 
         <ThemeProvider
