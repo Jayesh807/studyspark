@@ -62,7 +62,7 @@ const STEPS: TourStep[] = [
     id: "sidebar",
     title: "Navigate from the sidebar",
     description:
-      "Use the sidebar to switch between your Dashboard, Tasks, Calendar, Subjects, Exams, Focus Timer, Analytics, Achievements, and Settings.",
+      "Use the sidebar to switch between your Dashboard, Tasks, Calendar, Subjects, Exams, Focus Timer, Analytics, and Settings.",
     selector: 'nav, [data-sidebar="true"], aside',
     side: "right",
     icon: ChevronRight,
@@ -87,15 +87,6 @@ const STEPS: TourStep[] = [
     side: "left",
     icon: ChevronRight,
     accent: "from-amber-500 to-orange-500",
-  },
-  {
-    id: "achievements",
-    title: "Earn badges as you study",
-    description:
-      "Complete tasks, hit focus milestones, and maintain streaks to unlock 22 unique badges across Bronze, Silver, Gold, and Platinum tiers. Confetti included! 🎉",
-    side: "center",
-    icon: CheckCircle2,
-    accent: "from-rose-500 to-pink-500",
   },
 ];
 
@@ -198,11 +189,6 @@ export function OnboardingTour() {
 
   const prev = () => {
     if (stepIdx > 0) setStepIdx((i) => i - 1);
-  };
-
-  const skipToAchievements = () => {
-    setView("achievements");
-    close();
   };
 
   // Compute popover position
@@ -362,23 +348,9 @@ export function OnboardingTour() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {step.id === "achievements" && (
-                    <button
-                      onClick={skipToAchievements}
-                      className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-violet-600/25 transition-transform hover:scale-105"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      See badges
-                    </button>
-                  )}
                   <button
                     onClick={next}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-semibold text-white shadow-md transition-transform hover:scale-105",
-                      step.id === "achievements"
-                        ? "bg-foreground/80 hover:bg-foreground"
-                        : "bg-gradient-to-r from-violet-600 to-fuchsia-600 shadow-violet-600/25"
-                    )}
+                    className="inline-flex items-center gap-1 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-violet-600/25 transition-transform hover:scale-105"
                   >
                     {stepIdx === STEPS.length - 1 ? (
                       <>

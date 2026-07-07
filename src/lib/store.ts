@@ -15,7 +15,6 @@ export type AppView =
   | "subjects"
   | "exams"
   | "focus"
-  | "achievements"
   | "planner"
   | "settings";
 
@@ -71,7 +70,7 @@ export const useAppStore = create<AppState>()(
 
       accentColor: "277",
       notifications: true,
-      reduceMotion: false,
+      reduceMotion: true,
       soundEnabled: true,
       notifEnabled: false,
 
@@ -101,9 +100,7 @@ export const useAppStore = create<AppState>()(
       name: "studyspark-storage",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        accentColor: state.accentColor,
         notifications: state.notifications,
-        reduceMotion: state.reduceMotion,
         soundEnabled: state.soundEnabled,
         notifEnabled: state.notifEnabled,
         sidebarOpen: state.sidebarOpen,

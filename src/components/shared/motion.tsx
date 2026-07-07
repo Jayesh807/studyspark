@@ -95,9 +95,11 @@ export function StaggerContainer({
 export function StaggerItem({
   children,
   className,
+  delay,
 }: {
   children: React.ReactNode;
   className?: string;
+  delay?: number;
 }) {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
 
@@ -112,7 +114,7 @@ export function StaggerItem({
         visible: {
           opacity: 1,
           y: 0,
-          transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+          transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1], delay },
         },
       }}
       className={className}

@@ -1,15 +1,14 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 //
-// LOCAL DEVELOPMENT: uses SQLite (file:./db/custom.db)
-// For Netlify/production (PostgreSQL), use prisma/schema.netlify.prisma instead.
+// Connects to Neon PostgreSQL database.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

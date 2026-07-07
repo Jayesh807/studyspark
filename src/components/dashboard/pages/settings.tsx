@@ -41,6 +41,7 @@ import { useAppStore, type AccentColor } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch, handleError } from "@/lib/api";
 import { replayTour } from "@/components/dashboard/onboarding-tour";
+import type { Todo, Subject, Event, Exam } from "@/lib/types";
 
 import {
   PageTransition,
@@ -873,28 +874,6 @@ export function SettingsPage() {
             >
               <ThemeToggle />
             </SettingsRow>
-            <Separator />
-            <div className="py-3">
-              <div className="flex items-start gap-3 mb-3">
-                <Sparkles className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                <div>
-                  <div className="text-sm font-medium">Accent Color</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    Highlights, buttons, and charts use this hue.
-                  </div>
-                </div>
-              </div>
-              <div className="pl-7">
-                <AccentPicker />
-              </div>
-              <div className="pl-7 mt-2 text-[11px] text-muted-foreground">
-                Current accent:{" "}
-                <span className="font-medium text-foreground">
-                  {ACCENT_OPTIONS.find((o) => o.hue === accentColor)?.label ??
-                    "Violet"}
-                </span>
-              </div>
-            </div>
           </SettingsSection>
 
           {/* Preferences */}

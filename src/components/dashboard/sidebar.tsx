@@ -50,7 +50,6 @@ const NAV_ITEMS: NavItem[] = [
   { view: "exams", label: "Upcoming Exams", icon: GraduationCap, description: "Exam tracker" },
   { view: "focus", label: "Focus Timer", icon: Timer, description: "Pomodoro timer", shortcut: "F" },
   { view: "analytics", label: "Analytics", icon: BarChart3, description: "Study insights" },
-  { view: "achievements", label: "Achievements", icon: Trophy, description: "Badges & milestones" },
   { view: "profile", label: "Profile", icon: User, description: "Your profile" },
   { view: "settings", label: "Settings", icon: Settings, description: "Preferences" },
 ];
