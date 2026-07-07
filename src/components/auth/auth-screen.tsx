@@ -11,11 +11,15 @@ import { AuthForm } from "@/components/auth/auth-form";
  * Right: a centered glass card with a segmented Login / Sign Up toggle and the
  * corresponding form.
  *
- * Mode is driven by `useAppStore.currentView` ("login" | "signup"); navigation
- * happens via `setView`. The `useAuth` hook auto-navigates to dashboard on
- * success.
+ * Mode can be supplied by route pages (`/login`, `/signup`) while the root
+ * landing flow can still use the Zustand view state. The `useAuth` hook
+ * auto-navigates to dashboard on success.
  */
-export function AuthScreen() {
+interface AuthScreenProps {
+  initialMode?: "login" | "signup";
+}
+
+export function AuthScreen({ initialMode = "login" }: AuthScreenProps) {
   return (
     <PageTransition className="min-h-screen w-full">
       <div className="grid min-h-screen w-full lg:grid-cols-2">
@@ -29,7 +33,7 @@ export function AuthScreen() {
             aria-hidden
             className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_50%_30%,rgba(167,139,250,0.12),transparent_55%)]"
           />
-          <AuthForm />
+          <AuthForm initialMode={initialMode} />
         </div>
       </div>
     </PageTransition>

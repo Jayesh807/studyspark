@@ -57,8 +57,8 @@ export function Navbar() {
   const openAuth = (view: "login" | "signup") => {
     setOpen(false);
     setView(view);
-    if (pathname !== "/") {
-      router.push("/");
+    if (pathname !== `/${view}`) {
+      router.push(`/${view}`);
     }
   };
 
