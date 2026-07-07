@@ -56,7 +56,7 @@ export default function Home() {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
-            className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30"
+            className="flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/30"
           >
             <svg
               className="h-7 w-7 text-white"
