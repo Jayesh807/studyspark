@@ -34,6 +34,7 @@ interface GlassCardProps {
   className?: string;
   hover?: boolean;
   onClick?: () => void;
+  style?: React.CSSProperties;
 }
 
 export function GlassCard({
@@ -41,6 +42,7 @@ export function GlassCard({
   className,
   hover = false,
   onClick,
+  style,
 }: GlassCardProps) {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
   return (
@@ -50,6 +52,7 @@ export function GlassCard({
       }
       transition={{ duration: 0.2, ease: "easeOut" }}
       onClick={onClick}
+      style={style}
       className={cn("glass card-shimmer-border glass-shimmer rounded-3xl", hover && "hover-lift cursor-pointer", className)}
     >
       {children}
