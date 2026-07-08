@@ -73,8 +73,8 @@ interface StatCardConfig {
   key: string;
   icon: LucideIcon;
   label: string;
-  gradient: string; // tailwind gradient classes
-  glow: string; // tailwind bg for blob
+  iconColorClass: string;
+  progressBarBg: string;
   suffix?: string;
   prefix?: string;
   decimals?: number;
@@ -87,8 +87,8 @@ const STAT_CARDS: StatCardConfig[] = [
     key: "todayTasks",
     icon: CheckCircle2,
     label: "Today's Tasks",
-    gradient: "from-violet-500 to-purple-600",
-    glow: "bg-violet-500",
+    iconColorClass: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+    progressBarBg: "bg-violet-500",
     subtitle: () => "scheduled today",
     value: (s) => s.todayTasks,
   },
@@ -96,8 +96,8 @@ const STAT_CARDS: StatCardConfig[] = [
     key: "completedTasks",
     icon: CheckCheck,
     label: "Completed Tasks",
-    gradient: "from-emerald-500 to-teal-600",
-    glow: "bg-emerald-500",
+    iconColorClass: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    progressBarBg: "bg-emerald-500",
     subtitle: (s) => `of ${s.totalTasks} total`,
     value: (s) => s.completedTasks,
   },
@@ -105,8 +105,8 @@ const STAT_CARDS: StatCardConfig[] = [
     key: "upcomingExams",
     icon: GraduationCap,
     label: "Upcoming Exams",
-    gradient: "from-amber-500 to-orange-600",
-    glow: "bg-amber-500",
+    iconColorClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    progressBarBg: "bg-amber-500",
     subtitle: () => "on the horizon",
     value: (s) => s.upcomingExams,
   },
@@ -114,13 +114,12 @@ const STAT_CARDS: StatCardConfig[] = [
     key: "focusToday",
     icon: Timer,
     label: "Focus Time Today",
-    gradient: "from-rose-500 to-pink-600",
-    glow: "bg-rose-500",
+    iconColorClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+    progressBarBg: "bg-rose-500",
     suffix: " min",
     subtitle: () => "today",
     value: (s) => s.focusTodayMinutes,
   },
-  // NOTE: studyStreak removed from generic cards — rendered as enhanced StreakCard below
 ];
 
 interface QuoteItem {
@@ -340,20 +339,11 @@ function StreakCard({
         hover
         className="group relative h-full overflow-hidden p-5"
       >
-        {/* glow blob */}
-        <div
-          className={cn(
-            "pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl transition-opacity duration-300 group-hover:opacity-40",
-            streak > 0 ? "opacity-25" : "opacity-15",
-            "bg-cyan-500"
-          )}
-        />
-
         <div className="relative flex items-start justify-between">
           <div
             className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg shadow-black/5 transition-all duration-300",
-              "from-cyan-500 to-teal-500",
+              "flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300",
+              "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
               streak === 0 && "opacity-70 grayscale-[30%]"
             )}
           >
@@ -583,11 +573,44 @@ function TodaysGoalRing({
 /*  Stat card                                                                  */
 /* -------------------------------------------------------------------------- */
 
-function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics["stats"] }) {
+function StatCard({
+  config,
+  stats,
+  analytics,
+}: {
+  config: StatCardConfig;
+  stats: Analytics["stats"];
+  analytics: Analytics;
+}) {
   const Icon = config.icon;
   const value = config.value(stats);
   const subtitle = config.subtitle(stats);
   const isEmpty = value === 0;
+
+  // Compute progress bar details
+  let progressPct = 0;
+  let progressLabel = "";
+
+  if (config.key === "todayTasks") {
+    progressPct = stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0;
+    progressLabel = `${stats.completedTasks}/${stats.totalTasks} all-time done`;
+  } else if (config.key === "completedTasks") {
+    progressPct = stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0;
+    progressLabel = stats.totalTasks === 0 ? "No tasks yet" : `${stats.completedTasks}/${stats.totalTasks} completed`;
+  } else if (config.key === "upcomingExams") {
+    if (analytics.upcomingExams && analytics.upcomingExams.length > 0) {
+      const avg = Math.round(analytics.upcomingExams.reduce((acc, e) => acc + (e.progress || 0), 0) / analytics.upcomingExams.length);
+      progressPct = avg;
+      progressLabel = "Exams preparation";
+    } else {
+      progressPct = 0;
+      progressLabel = "All clear!";
+    }
+  } else if (config.key === "focusToday") {
+    const targetMin = stats.targetHours * 60;
+    progressPct = targetMin > 0 ? Math.min(Math.round((stats.focusTodayMinutes / targetMin) * 100), 100) : 0;
+    progressLabel = `${progressPct}% of ${stats.targetHours}h goal`;
+  }
 
   return (
     <StaggerItem className="h-full">
@@ -595,23 +618,12 @@ function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics[
       <GlassCard
         hover
         className={cn("stat-hover group relative h-full overflow-hidden p-5", isEmpty && "icon-chip-shimmer")}
-        style={isEmpty ? {
-          backgroundImage: undefined,
-        } : undefined}
       >
-        {/* glow blob */}
-        <div
-          className={cn(
-            "pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full blur-2xl transition-opacity duration-300 group-hover:opacity-40",
-            isEmpty ? "opacity-15 empty-pulse-glow" : "opacity-25",
-            config.glow
-          )}
-        />
         <div className="relative flex items-start justify-between">
           <div
             className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br text-white shadow-lg shadow-black/5 transition-all duration-300",
-              config.gradient,
+              "flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300",
+              config.iconColorClass,
               isEmpty && "opacity-70 grayscale-30"
             )}
           >
@@ -631,6 +643,22 @@ function StatCard({ config, stats }: { config: StatCardConfig; stats: Analytics[
             />
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+
+        {/* simple progress bar at the bottom */}
+        <div className="mt-4 space-y-1.5 border-t border-violet-500/5 pt-3">
+          <div className="flex items-center justify-between text-[10px] font-medium text-muted-foreground">
+            <span>{progressLabel}</span>
+            <span className="tabular-nums">{progressPct}%</span>
+          </div>
+          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPct}%` }}
+              transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className={cn("h-full rounded-full", config.progressBarBg)}
+            />
+          </div>
         </div>
       </GlassCard>
       </div>
@@ -1577,15 +1605,18 @@ function AIInsightsPanel({
                           <p className="mt-1 text-xs leading-snug text-muted-foreground">
                             {insight.message}
                           </p>
-                          {insight.ctaLabel && insight.ctaView && (
-                            <button
-                              onClick={() => onNavigate(insight.ctaView)}
-                              className="mt-2.5 inline-flex items-center gap-1 rounded-lg bg-background/70 px-2.5 py-1 text-[11px] font-semibold text-foreground opacity-90 backdrop-blur transition-all hover:opacity-100 hover:shadow-sm"
-                            >
-                              {insight.ctaLabel}
-                              <ArrowRight className="h-3 w-3" />
-                            </button>
-                          )}
+                          {insight.ctaLabel && insight.ctaView && (() => {
+                            const view = insight.ctaView;
+                            return (
+                              <button
+                                onClick={() => onNavigate(view)}
+                                className="mt-2.5 inline-flex items-center gap-1 rounded-lg bg-background/70 px-2.5 py-1 text-[11px] font-semibold text-foreground opacity-90 backdrop-blur transition-all hover:opacity-100 hover:shadow-sm"
+                              >
+                                {insight.ctaLabel}
+                                <ArrowRight className="h-3 w-3" />
+                              </button>
+                            );
+                          })()}
                         </div>
                       </div>
                     </motion.div>
@@ -1665,6 +1696,7 @@ export function DashboardHome() {
                 key={cfg.key}
                 config={cfg}
                 stats={analytics.stats}
+                analytics={analytics}
               />
             ))}
             <StreakCard
