@@ -129,7 +129,6 @@ function PaletteInner({ onOpenChange }: { onOpenChange: (open: boolean) => void 
       // Actions
       { id: "act-new-task", label: "Create new task", subtitle: "Jump to task board", icon: Plus, group: "Actions", keywords: "add todo create", run: () => navigate("todos"), shortcut: "N" },
       { id: "act-start-focus", label: "Start focus session", subtitle: "Begin a Pomodoro", icon: Play, group: "Actions", keywords: "pomodoro timer start", run: () => navigate("focus"), shortcut: "F" },
-      { id: "act-seed", label: "Load demo data", subtitle: "Settings → Demo data", icon: Sparkles, group: "Actions", keywords: "seed demo sample", run: () => navigate("settings") },
       { id: "act-logout", label: "Log out", subtitle: "Sign out of your account", icon: LogOut, group: "Actions", keywords: "sign out exit", run: () => { onOpenChange(false); logout(); } },
       // Theme
       { id: "theme-toggle", label: "Toggle theme", subtitle: "Switch light / dark", icon: theme === "dark" ? Sun : Moon, group: "Theme", keywords: "light dark mode appearance", run: () => { setTheme(theme === "dark" ? "light" : "dark"); onOpenChange(false); } },
