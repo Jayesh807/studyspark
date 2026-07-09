@@ -265,7 +265,7 @@ export function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Study Hours over time */}
         <StaggerContainer className="lg:col-span-2 space-y-6">
-          <StaggerItem className="lg:w-[calc(150%+0.75rem)]">
+          <StaggerItem>
             <GlassCard className="p-5 sm:p-6">
               <ChartHeader
                 icon={TrendingUp}
@@ -382,60 +382,6 @@ export function AnalyticsPage() {
             </GlassCard>
           </StaggerItem>
 
-          {/* Subject performance */}
-          <StaggerItem>
-            <GlassCard className="p-5 sm:p-6">
-              <ChartHeader
-                icon={GraduationCap}
-                title="Subject Progress"
-                subtitle="Course completion by subject"
-              />
-              <div className="h-72 -mx-2 mt-4">
-                {loading ? (
-                  <Skeleton className="h-full w-full rounded-xl" />
-                ) : (data?.subjectPerformance?.length ?? 0) === 0 ? (
-                  <ChartEmpty />
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      layout="vertical"
-                      data={data?.subjectPerformance ?? []}
-                      margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" horizontal={false} />
-                      <XAxis
-                        type="number"
-                        domain={[0, 100]}
-                        tickLine={false}
-                        axisLine={false}
-                        className="text-[10px] fill-muted-foreground"
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="name"
-                        tickLine={false}
-                        axisLine={false}
-                        className="text-[11px] fill-muted-foreground"
-                        width={90}
-                      />
-                      <Tooltip cursor={{ fill: "rgba(139,92,246,0.08)" }} content={<ChartTooltip suffix="%" />} />
-                      <Bar
-                        dataKey="progress"
-                        name="Progress"
-                        radius={[0, 8, 8, 0]}
-                        maxBarSize={24}
-                        animationDuration={reduceMotion ? 0 : 900}
-                      >
-                        {(data?.subjectPerformance ?? []).map((entry, i) => (
-                          <Cell key={i} fill={colorOf(entry.color).chart} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </GlassCard>
-          </StaggerItem>
         </StaggerContainer>
 
         {/* Right column: distribution + exam progress */}
@@ -536,6 +482,63 @@ export function AnalyticsPage() {
           </StaggerItem>
         </StaggerContainer>
       </div>
+
+      {/* === Subject Progress (full-width) === */}
+      <StaggerContainer>
+        <StaggerItem>
+          <GlassCard className="p-5 sm:p-6">
+            <ChartHeader
+              icon={GraduationCap}
+              title="Subject Progress"
+              subtitle="Course completion by subject"
+            />
+            <div className="h-72 -mx-2 mt-4">
+              {loading ? (
+                <Skeleton className="h-full w-full rounded-xl" />
+              ) : (data?.subjectPerformance?.length ?? 0) === 0 ? (
+                <ChartEmpty />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    layout="vertical"
+                    data={data?.subjectPerformance ?? []}
+                    margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      domain={[0, 100]}
+                      tickLine={false}
+                      axisLine={false}
+                      className="text-[10px] fill-muted-foreground"
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tickLine={false}
+                      axisLine={false}
+                      className="text-[11px] fill-muted-foreground"
+                      width={90}
+                    />
+                    <Tooltip cursor={{ fill: "rgba(139,92,246,0.08)" }} content={<ChartTooltip suffix="%" />} />
+                    <Bar
+                      dataKey="progress"
+                      name="Progress"
+                      radius={[0, 8, 8, 0]}
+                      maxBarSize={24}
+                      animationDuration={reduceMotion ? 0 : 900}
+                    >
+                      {(data?.subjectPerformance ?? []).map((entry, i) => (
+                        <Cell key={i} fill={colorOf(entry.color).chart} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </GlassCard>
+        </StaggerItem>
+      </StaggerContainer>
 
       {/* === Secondary charts grid === */}
       <StaggerContainer className="grid grid-cols-1 lg:grid-cols-3 gap-6">

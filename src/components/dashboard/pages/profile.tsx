@@ -907,14 +907,8 @@ export function ProfilePage() {
             {/* Goal spotlight (when present and not shown in hero) */}
             {safeProfile.goal && safeProfile.goal.trim() !== "" && (
               <StaggerItem>
-                <GlassCard className="p-6 relative overflow-hidden">
-                  <div
-                    className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full opacity-20 blur-3xl"
-                    style={{
-                      background: `radial-gradient(circle, oklch(0.6 0.22 ${ACCENT_HUE}), transparent 70%)`,
-                    }}
-                  />
-                  <div className="flex items-start gap-3 relative">
+                <GlassCard className="p-4 sm:p-5">
+                  <div className="flex items-center gap-3">
                     <div
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white"
                       style={{
@@ -924,10 +918,10 @@ export function ProfilePage() {
                       <Target className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
                         Study Goal
                       </div>
-                      <p className="text-lg font-semibold italic">
+                      <p className="text-base font-semibold italic">
                         &ldquo;{safeProfile.goal}&rdquo;
                       </p>
                     </div>
