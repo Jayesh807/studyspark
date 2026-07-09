@@ -525,7 +525,7 @@ export function FocusTimerPage() {
   const modeCfg = MODE_CONFIG[mode];
 
   return (
-    <PageTransition className="space-y-6">
+    <PageTransition className="space-y-4">
       {/* === Header === */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
@@ -569,7 +569,7 @@ export function FocusTimerPage() {
               if (icon) {
                 icon.classList.remove("bell-wiggle");
                 // force reflow to restart animation
-                void icon.offsetWidth;
+                void icon.getBoundingClientRect();
                 icon.classList.add("bell-wiggle");
               }
               toggleNotifications();
@@ -625,13 +625,6 @@ export function FocusTimerPage() {
                   aria-hidden="true"
                 />
               )}
-              {/* Decorative gradient orb */}
-              <div
-                className="pointer-events-none absolute -top-20 -right-20 h-60 w-60 rounded-full opacity-30 blur-3xl"
-                style={{
-                  background: `radial-gradient(circle, ${modeCfg.accent}, transparent 70%)`,
-                }}
-              />
 
               {/* Mode tabs */}
               <div className="flex justify-center mb-3">
@@ -640,11 +633,10 @@ export function FocusTimerPage() {
                     <button
                       key={m}
                       onClick={() => switchMode(m)}
-                      className={`relative px-4 sm:px-5 py-2 text-sm font-medium rounded-xl transition-colors ${
-                        mode === m
-                          ? "text-white"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
+                      className={`relative px-4 sm:px-5 py-2 text-sm font-medium rounded-xl transition-colors ${mode === m
+                        ? "text-white"
+                        : "text-muted-foreground hover:text-foreground"
+                        }`}
                     >
                       {mode === m && (
                         <motion.div
@@ -843,16 +835,15 @@ export function FocusTimerPage() {
                     <button
                       key={p}
                       onClick={() => setDuration(p)}
-                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${
-                        durations[mode] === p
-                          ? "border-transparent text-white shadow"
-                          : "border-border bg-background/60 hover:bg-accent text-muted-foreground"
-                      }`}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${durations[mode] === p
+                        ? "border-transparent text-white shadow"
+                        : "border-border bg-background/60 hover:bg-accent text-muted-foreground"
+                        }`}
                       style={
                         durations[mode] === p
                           ? {
-                              background: `linear-gradient(135deg, ${modeCfg.ringFrom}, ${modeCfg.ringTo})`,
-                            }
+                            background: `linear-gradient(135deg, ${modeCfg.ringFrom}, ${modeCfg.ringTo})`,
+                          }
                           : undefined
                       }
                     >
@@ -1205,11 +1196,10 @@ function SessionRow({ session }: { session: FocusSession }) {
       className="flex items-center gap-3 rounded-xl border border-transparent hover:border-border hover:bg-background/40 p-2 transition-colors"
     >
       <div
-        className={`flex h-9 w-9 items-center justify-center rounded-xl shrink-0 ${
-          isFocus
-            ? "bg-violet-500/10 text-violet-500"
-            : "bg-cyan-500/10 text-cyan-500"
-        }`}
+        className={`flex h-9 w-9 items-center justify-center rounded-xl shrink-0 ${isFocus
+          ? "bg-violet-500/10 text-violet-500"
+          : "bg-cyan-500/10 text-cyan-500"
+          }`}
       >
         <Icon className="h-4 w-4" />
       </div>

@@ -250,12 +250,6 @@ interface StatCardProps {
 function StatCard({ icon: Icon, label, value, decimals = 0, suffix, gradient }: StatCardProps) {
   return (
     <GlassCard className="relative overflow-hidden p-4 sm:p-5">
-      <div
-        className={cn(
-          "absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-30 blur-2xl",
-          gradient
-        )}
-      />
       <div className="relative flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
@@ -301,14 +295,6 @@ function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
 
   return (
     <GlassCard hover className="group relative flex flex-col gap-4 p-5 sm:p-6">
-      {/* Accent glow */}
-      <div
-        className={cn(
-          "pointer-events-none absolute -left-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-2xl",
-          color.bg
-        )}
-      />
-
       {/* Top row: subject badge + menu */}
       <div className="relative flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">

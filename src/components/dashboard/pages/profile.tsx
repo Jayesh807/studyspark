@@ -654,13 +654,6 @@ function ProfileHero({
 
   return (
     <GlassCard className="p-6 sm:p-8 relative overflow-hidden">
-      {/* Decorative blob */}
-      <div
-        className="pointer-events-none absolute -top-20 -right-20 h-60 w-60 rounded-full opacity-30 blur-3xl"
-        style={{
-          background: `radial-gradient(circle, oklch(0.6 0.22 ${ACCENT_HUE}), transparent 70%)`,
-        }}
-      />
       <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-7">
         <ProfileAvatar
           username={username}
@@ -783,7 +776,7 @@ export function ProfilePage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6 sm:space-y-8">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
