@@ -215,7 +215,6 @@ export function ContactPage() {
               transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             >
               <GlassCard className="relative overflow-hidden p-6 sm:p-8">
-                <div className="absolute -right-16 -top-16 size-48 rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 blur-3xl" />
                 <form className="relative space-y-5" onSubmit={handleSubmit}>
                   <div className="grid gap-5 sm:grid-cols-2">
                     <Field label="Full Name" htmlFor="full-name">
@@ -422,9 +421,6 @@ function ContactCard({
 }) {
   return (
     <GlassCard hover className="group relative h-full overflow-hidden p-6 sm:p-7">
-      <div
-        className={`pointer-events-none absolute -right-12 -top-12 size-32 rounded-full bg-gradient-to-br ${gradient} opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-20`}
-      />
       <div className="relative flex h-full flex-col">
         <motion.div
           whileHover={{ rotate: -6, scale: 1.05 }}

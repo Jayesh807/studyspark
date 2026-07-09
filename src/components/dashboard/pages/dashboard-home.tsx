@@ -258,20 +258,11 @@ function GreetingHeader({ username }: { username: string }) {
           </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl">
             {greeting},{" "}
-            <span className="text-gradient capitalize">{username}</span>{" "}
-            <motion.span
-              animate={{ rotate: [0, 14, -8, 14, 0] }}
-              transition={{
-                duration: 2.4,
-                repeat: Infinity,
-                repeatDelay: 1.6,
-                ease: "easeInOut",
-              }}
-              className="inline-block origin-[70%_70%]"
-            >
-              👋
-            </motion.span>
+            <span className="text-gradient capitalize">{username}</span>
           </h1>
+          <p className="text-base sm:text-lg text-muted-foreground/80 font-medium italic mt-1">
+            Believe you can and you&apos;re halfway there.
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <CalendarDays className="h-4 w-4 text-violet-500" />

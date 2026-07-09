@@ -23,7 +23,7 @@ export function Pricing() {
   return (
     <section
       id="pricing"
-      className="relative scroll-mt-24 px-4 py-20 sm:py-28"
+      className="relative scroll-mt-24 px-4 py-16 sm:py-20"
       aria-label="Pricing"
     >
       <div className="mx-auto max-w-6xl">
@@ -34,10 +34,7 @@ export function Pricing() {
           description="StudySpark is built by students, for students. The full experience is — and will remain — free. A premium Pro tier is on the way for power users."
         />
 
-          <div className="shimmer-border relative w-full overflow-hidden rounded-3xl p-8 sm:p-10 glass">
-            {/* Decorative gradient */}
-            <div className="pointer-events-none absolute -right-16 -top-16 size-48 rounded-full bg-linear-to-br from-violet-500/20 to-fuchsia-500/10 blur-3xl" />
-
+          <div className="shimmer-border relative mx-auto mt-4 w-full max-w-4xl overflow-hidden rounded-3xl p-6 sm:p-8 glass">
             <div className="relative">
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-2 rounded-full bg-linear-to-br from-violet-500 to-fuchsia-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
@@ -50,7 +47,7 @@ export function Pricing() {
                 </span>
               </div>
 
-              <div className="mt-6 flex items-end gap-1">
+              <div className="mt-5 flex items-end gap-1">
                 <span className="text-5xl font-bold tracking-tight">$0</span>
                 <span className="mb-1.5 text-sm text-muted-foreground">
                   /month
@@ -63,13 +60,13 @@ export function Pricing() {
               <Button
                 size="lg"
                 onClick={() => setView("signup")}
-                className="mt-6 h-12 w-full rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:shadow-xl hover:shadow-violet-500/45 hover:brightness-110"
+                className="mt-5 h-11 w-full rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:shadow-xl hover:shadow-violet-500/45 hover:brightness-110"
               >
                 Get started free
                 <ArrowRight className="size-4" />
               </Button>
 
-              <ul className="mt-8 space-y-3">
+              <ul className="mt-6 space-y-2.5">
                 {INCLUDED.map((feat, i) => (
                   <motion.li
                     key={feat}
@@ -87,7 +84,7 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <div className="mt-8 rounded-2xl border border-dashed border-violet-500/20 bg-violet-500/5 px-4 py-3 text-center text-xs text-muted-foreground">
+              <div className="mt-6 rounded-2xl border border-dashed border-violet-500/20 bg-violet-500/5 px-4 py-3 text-center text-xs text-muted-foreground">
                 <Sparkles className="mr-1 inline size-3.5 text-violet-500" />
                 Pro tier coming soon — AI study plans, sync & collaboration.
               </div>
