@@ -2,8 +2,12 @@ import { Metadata } from "next";
 import { AuthScreen } from "@/components/auth/auth-screen";
 
 export const metadata: Metadata = {
-  title: "Sign Up",
+  title: "Sign Up | StudySpark",
   description: "Create your StudySpark account.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function SignupPage() {

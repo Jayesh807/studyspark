@@ -563,7 +563,6 @@ export function TodosPage() {
               icon={ListTodo}
               label="Total Tasks"
               value={stats.total}
-              accent="from-violet-500/15 to-fuchsia-500/15"
               iconBg="bg-violet-500/15 text-violet-600 dark:text-violet-400"
             />
           </StaggerItem>
@@ -572,7 +571,6 @@ export function TodosPage() {
               icon={CheckCircle2}
               label="Completed"
               value={stats.completed}
-              accent="from-emerald-500/15 to-teal-500/15"
               iconBg="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
             />
           </StaggerItem>
@@ -581,7 +579,6 @@ export function TodosPage() {
               icon={ClipboardList}
               label="In Progress"
               value={stats.inProgress}
-              accent="from-amber-500/15 to-orange-500/15"
               iconBg="bg-amber-500/15 text-amber-600 dark:text-amber-400"
             />
           </StaggerItem>
@@ -793,23 +790,15 @@ function StatCard({
   icon: Icon,
   label,
   value,
-  accent,
   iconBg,
 }: {
   icon: React.ElementType;
   label: string;
   value: number;
-  accent: string;
   iconBg: string;
 }) {
   return (
     <GlassCard className={cn("p-4 sm:p-5 relative overflow-hidden")}>
-      <div
-        className={cn(
-          "absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br blur-2xl",
-          accent
-        )}
-      />
       <div className="relative">
         <div
           className={cn(
@@ -832,8 +821,7 @@ function CompletionCard({ pct }: { pct: number }) {
   const circumference = 2 * Math.PI * 28;
   const offset = circumference - (pct / 100) * circumference;
   return (
-    <GlassCard className="p-4 sm:p-5 relative overflow-hidden">
-      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 blur-2xl" />
+    <GlassCard className="relative flex h-full min-h-[116px] items-center overflow-hidden p-4 sm:min-h-[124px] sm:p-5">
       <div className="relative flex items-center gap-4">
         <div className="relative h-16 w-16 shrink-0">
           <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">

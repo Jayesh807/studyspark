@@ -265,7 +265,7 @@ export function AnalyticsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Study Hours over time */}
         <StaggerContainer className="lg:col-span-2 space-y-6">
-          <StaggerItem>
+          <StaggerItem className="lg:w-[calc(150%+0.75rem)]">
             <GlassCard className="p-5 sm:p-6">
               <ChartHeader
                 icon={TrendingUp}
@@ -448,7 +448,7 @@ export function AnalyticsPage() {
                 title="Focus Time by Subject"
                 subtitle="Hours distributed"
               />
-              <div className="h-64 mt-4">
+              <div className="h-72 mt-4">
                 {loading ? (
                   <Skeleton className="h-full w-full rounded-xl" />
                 ) : (data?.focusBySubject?.length ?? 0) === 0 ? (
@@ -755,12 +755,6 @@ function KpiCard({
 }) {
   return (
     <GlassCard className="p-5 relative overflow-hidden" hover>
-      <div
-        className={cn(
-          "absolute -top-8 -right-8 h-24 w-24 rounded-full opacity-20 blur-2xl bg-gradient-to-br",
-          gradient
-        )}
-      />
       <div className="flex items-start justify-between mb-3">
         <div
           className={cn(
