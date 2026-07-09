@@ -73,7 +73,7 @@ export function Features() {
   return (
     <section
       id="features"
-      className="relative scroll-mt-24 px-4 py-20 sm:py-28"
+      className="relative scroll-mt-24 px-4 py-16 sm:py-20"
       aria-label="Features"
     >
       <div className="mx-auto max-w-6xl">
@@ -84,13 +84,10 @@ export function Features() {
           description="Six tightly integrated tools that replace the dozen apps you're juggling today. No setup, no clutter — just clarity."
         />
 
-        <StaggerContainer className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <StaggerContainer className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
             <StaggerItem key={feature.title}>
-              <GlassCard hover className="group relative h-full overflow-hidden p-6 sm:p-7">
-                <div
-                  className={`pointer-events-none absolute -right-12 -top-12 size-32 rounded-full bg-gradient-to-br ${feature.gradient} opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-20`}
-                />
+              <GlassCard hover className="group relative h-full overflow-hidden p-5 sm:p-6">
                 <div className="relative flex flex-col gap-4">
                   <motion.div
                     whileHover={{ rotate: -6, scale: 1.05 }}

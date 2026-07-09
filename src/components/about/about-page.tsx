@@ -263,9 +263,6 @@ export function AboutPage() {
               {BENEFITS.map((benefit) => (
                 <StaggerItem key={benefit.title}>
                   <GlassCard hover className="group relative h-full overflow-hidden p-6 sm:p-7">
-                    <div
-                      className={`pointer-events-none absolute -right-12 -top-12 size-32 rounded-full bg-gradient-to-br ${benefit.gradient} opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-20`}
-                    />
                     <div className="relative">
                       <motion.div
                         whileHover={{ rotate: -6, scale: 1.05 }}
@@ -405,7 +402,6 @@ function StoryCard({
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
     >
       <GlassCard className="relative h-full overflow-hidden p-7 sm:p-8">
-        <div className="absolute -right-16 -top-16 size-48 rounded-full bg-gradient-to-br from-violet-500/20 to-fuchsia-500/10 blur-3xl" />
         <div className="relative">
           <div className="mb-6 flex items-center justify-between gap-4">
             <span className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-300">
