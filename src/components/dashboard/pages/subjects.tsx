@@ -104,12 +104,6 @@ function StatCard({
 }: StatCardProps) {
   return (
     <GlassCard className="relative overflow-hidden p-4 sm:p-5">
-      <div
-        className={cn(
-          "absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-30 blur-2xl",
-          gradient
-        )}
-      />
       <div className="relative flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
@@ -230,7 +224,7 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
   const color = colorOf(subject.color);
 
   return (
-    <GlassCard hover className="group relative overflow-hidden p-5 sm:p-6">
+    <GlassCard hover className="group relative overflow-hidden px-5 pb-6 pt-4 sm:px-6 sm:pb-7 sm:pt-5">
       {/* Make the main area clickable to open the detail drawer */}
       <button
         type="button"
@@ -245,14 +239,6 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
           color.bg
         )}
       />
-      {/* Decorative glow */}
-      <div
-        className={cn(
-          "pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-25 blur-2xl",
-          color.bg
-        )}
-      />
-
       <div className="relative flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div
@@ -324,7 +310,7 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
       </div>
 
       {/* Badges */}
-      <div className="relative mt-4 flex flex-wrap items-center gap-2">
+      <div className="relative mt-3 flex flex-wrap items-center gap-2">
         <Badge
           className={cn("border-transparent text-white", color.bg)}
           variant="default"
@@ -342,7 +328,7 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
       </div>
 
       {/* Attendance + Progress row */}
-      <div className="relative mt-4 flex items-center gap-4 rounded-2xl bg-muted/30 p-3 ring-1 ring-border/40">
+      <div className="relative mt-3 flex items-center gap-4 rounded-2xl bg-muted/30 p-3 ring-1 ring-border/40">
         <AttendanceRing value={subject.attendance} />
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-center justify-between">

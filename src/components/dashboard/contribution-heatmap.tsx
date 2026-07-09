@@ -178,8 +178,6 @@ export function ContributionHeatmap() {
 
   return (
     <GlassCard className="p-5 sm:p-6 relative overflow-hidden">
-      <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
-
       {/* Header */}
       <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div className="flex items-center gap-3">

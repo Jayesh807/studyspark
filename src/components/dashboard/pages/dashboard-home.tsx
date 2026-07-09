@@ -463,14 +463,6 @@ function TodaysGoalRing({
       transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
     >
       <GlassCard className="relative overflow-hidden p-5 sm:p-6">
-        {/* Subtle pulsing glow when behind goal */}
-        {!exceeded && rawPct < 100 && (
-          <motion.div
-            animate={{ opacity: [0.15, 0.35, 0.15] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-            className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-500/30 blur-3xl"
-          />
-        )}
         <div className="relative flex items-center gap-5 sm:gap-6">
           <div className="relative shrink-0">
             <svg
@@ -833,10 +825,6 @@ function QuoteCard() {
 
   return (
     <GlassCard className="relative flex h-full flex-col overflow-hidden p-6">
-      {/* decorative blobs */}
-      <div className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-violet-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-10 -right-6 h-32 w-32 rounded-full bg-fuchsia-500/15 blur-3xl" />
-
       <div className="relative flex items-start justify-between">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/20">
           <Quote className="h-5 w-5" />
@@ -903,8 +891,8 @@ function SubjectProgressList({
   const top = useMemo(() => [...data].sort((a, b) => b.progress - a.progress).slice(0, 4), [data]);
 
   return (
-    <GlassCard className="p-5 sm:p-6">
-      <div className="mb-4 flex items-center justify-between">
+    <GlassCard className="flex h-full flex-col p-5 sm:p-6">
+      <div className="mb-5 flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-base font-semibold">
           <GraduationCap className="h-4 w-4 text-violet-500" />
           Subject Progress
@@ -912,11 +900,11 @@ function SubjectProgressList({
         <span className="text-xs text-muted-foreground">Top {top.length}</span>
       </div>
       {top.length === 0 ? (
-        <div className="py-8 text-center text-sm text-muted-foreground">
+        <div className="flex flex-1 items-center justify-center text-center text-sm text-muted-foreground">
           No subjects tracked yet.
         </div>
       ) : (
-        <ul className="space-y-4">
+        <ul className="flex flex-1 flex-col justify-center space-y-4">
           {top.map((subject, i) => {
             const c = colorOf(subject.color);
             return (
@@ -1677,7 +1665,7 @@ export function DashboardHome() {
   const username = user?.username ?? "there";
 
   return (
-    <PageTransition className="space-y-6 sm:space-y-8">
+    <PageTransition className="space-y-4 sm:space-y-6">
       <GreetingHeader username={username} />
 
       {loading || !analytics ? (
@@ -1718,14 +1706,18 @@ export function DashboardHome() {
             onNavigate={setView}
           />
 
-          {/* Two-column section */}
+          {/* Study charts + supporting cards */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-2">
+            <div className="lg:col-span-2">
               <WeeklyChart data={analytics.weeklyData} />
+            </div>
+            <div className="h-full">
+              <QuoteCard />
+            </div>
+            <div className="lg:col-span-2">
               <MonthlyChart data={analytics.monthlyData} />
             </div>
-            <div className="space-y-6">
-              <QuoteCard />
+            <div className="h-full">
               <SubjectProgressList data={analytics.subjectPerformance} />
             </div>
           </div>
