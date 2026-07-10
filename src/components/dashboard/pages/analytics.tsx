@@ -213,7 +213,7 @@ export function AnalyticsPage() {
           <KpiCard
             icon={Clock}
             label="Total Focus Hours"
-            value={data?.stats.totalFocusHours ?? 0}
+            value={data?.stats.totalFocusHours || 0}
             decimals={1}
             suffix="h"
             gradient="from-violet-500 to-purple-500"
@@ -224,7 +224,7 @@ export function AnalyticsPage() {
           <KpiCard
             icon={TrendingUp}
             label="Weekly Focus Hours"
-            value={data?.stats.weeklyFocusHours ?? 0}
+            value={data?.stats.weeklyFocusHours || 0}
             decimals={1}
             suffix="h"
             gradient="from-fuchsia-500 to-pink-500"
@@ -235,7 +235,7 @@ export function AnalyticsPage() {
           <KpiCard
             icon={Gauge}
             label="Monthly Focus Hours"
-            value={data?.stats.monthlyFocusHours ?? 0}
+            value={data?.stats.monthlyFocusHours || 0}
             decimals={1}
             suffix="h"
             gradient="from-rose-500 to-orange-500"
@@ -246,7 +246,7 @@ export function AnalyticsPage() {
           <KpiCard
             icon={Flame}
             label="Study Streak"
-            value={data?.stats.studyStreak ?? 0}
+            value={data?.stats.studyStreak || 0}
             suffix=" days"
             gradient="from-amber-500 to-yellow-500"
             loading={loading}
@@ -340,11 +340,11 @@ export function AnalyticsPage() {
               <div className="h-64 -mx-2 mt-4">
                 {loading ? (
                   <Skeleton className="h-full w-full rounded-xl" />
-                ) : (data?.trendData?.length ?? 0) === 0 ? (
+                ) : (data?.trendData?.length || 0) === 0 ? (
                   <ChartEmpty />
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data?.trendData ?? []} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                    <BarChart data={data?.trendData || []} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="barTrend" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#a855f7" />
@@ -397,13 +397,13 @@ export function AnalyticsPage() {
               <div className="h-72 mt-4">
                 {loading ? (
                   <Skeleton className="h-full w-full rounded-xl" />
-                ) : (data?.focusBySubject?.length ?? 0) === 0 ? (
+                ) : (data?.focusBySubject?.length || 0) === 0 ? (
                   <ChartEmpty />
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={data?.focusBySubject ?? []}
+                        data={data?.focusBySubject || []}
                         dataKey="hours"
                         nameKey="name"
                         innerRadius={55}
@@ -411,7 +411,7 @@ export function AnalyticsPage() {
                         paddingAngle={3}
                         animationDuration={reduceMotion ? 0 : 800}
                       >
-                        {(data?.focusBySubject ?? []).map((entry, i) => (
+                        {(data?.focusBySubject || []).map((entry, i) => (
                           <Cell
                             key={i}
                             fill={colorOf(entry.color).chart}
@@ -445,14 +445,14 @@ export function AnalyticsPage() {
               <div className="h-64 mt-4">
                 {loading ? (
                   <Skeleton className="h-full w-full rounded-xl" />
-                ) : (data?.examProgress?.length ?? 0) === 0 ? (
+                ) : (data?.examProgress?.length || 0) === 0 ? (
                   <ChartEmpty />
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <RadialBarChart
                       innerRadius="25%"
                       outerRadius="100%"
-                      data={data?.examProgress ?? []}
+                      data={data?.examProgress || []}
                       startAngle={90}
                       endAngle={-270}
                     >
@@ -463,7 +463,7 @@ export function AnalyticsPage() {
                         cornerRadius={8}
                         animationDuration={reduceMotion ? 0 : 900}
                       >
-                        {(data?.examProgress ?? []).map((_, i) => (
+                        {(data?.examProgress || []).map((_, i) => (
                           <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
                         ))}
                       </RadialBar>
@@ -495,13 +495,13 @@ export function AnalyticsPage() {
             <div className="h-72 -mx-2 mt-4">
               {loading ? (
                 <Skeleton className="h-full w-full rounded-xl" />
-              ) : (data?.subjectPerformance?.length ?? 0) === 0 ? (
+              ) : (data?.subjectPerformance?.length || 0) === 0 ? (
                 <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     layout="vertical"
-                    data={data?.subjectPerformance ?? []}
+                    data={data?.subjectPerformance || []}
                     margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" horizontal={false} />
@@ -528,7 +528,7 @@ export function AnalyticsPage() {
                       maxBarSize={24}
                       animationDuration={reduceMotion ? 0 : 900}
                     >
-                      {(data?.subjectPerformance ?? []).map((entry, i) => (
+                      {(data?.subjectPerformance || []).map((entry, i) => (
                         <Cell key={i} fill={colorOf(entry.color).chart} />
                       ))}
                     </Bar>
@@ -553,12 +553,12 @@ export function AnalyticsPage() {
             <div className="h-56 mt-4">
               {loading ? (
                 <Skeleton className="h-full w-full rounded-xl" />
-              ) : (data?.categoryStats?.length ?? 0) === 0 ? (
+              ) : (data?.categoryStats?.length || 0) === 0 ? (
                 <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={data?.categoryStats ?? []}
+                    data={data?.categoryStats || []}
                     margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" vertical={false} />
@@ -596,12 +596,12 @@ export function AnalyticsPage() {
             <div className="h-56 mt-4">
               {loading ? (
                 <Skeleton className="h-full w-full rounded-xl" />
-              ) : (data?.priorityStats?.length ?? 0) === 0 ? (
+              ) : (data?.priorityStats?.length || 0) === 0 ? (
                 <ChartEmpty />
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={data?.priorityStats ?? []}
+                    data={data?.priorityStats || []}
                     margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
                   >
                     <defs>
@@ -649,7 +649,7 @@ export function AnalyticsPage() {
                   <Skeleton className="h-6 w-full" />
                   <Skeleton className="h-6 w-full" />
                 </div>
-              ) : (data?.subjectPerformance?.length ?? 0) === 0 ? (
+              ) : (data?.subjectPerformance?.length || 0) === 0 ? (
                 <ChartEmpty />
               ) : (
                 <>
@@ -704,7 +704,7 @@ export function AnalyticsPage() {
 
                   {/* List */}
                   <div className="space-y-2.5 max-h-44 overflow-y-auto scrollbar-thin pr-1">
-                    {(data?.subjectPerformance ?? []).map((s, i) => (
+                    {(data?.subjectPerformance || []).map((s, i) => (
                       <div key={i}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium truncate">{s.name}</span>

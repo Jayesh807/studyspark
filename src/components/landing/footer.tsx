@@ -98,7 +98,7 @@ export function Footer() {
                       </button>
                     ) : (
                       <a
-                        href={link.href ?? "#"}
+                        href={link.href || "#"}
                         className="text-sm text-muted-foreground transition-colors hover:text-violet-600 dark:hover:text-violet-300"
                       >
                         {link.label}
