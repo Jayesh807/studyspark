@@ -327,7 +327,6 @@ function StreakCard({
   return (
     <StaggerItem className="h-full">
       <GlassCard
-        hover
         className="group relative h-full overflow-hidden p-5"
       >
         <div className="relative flex items-start justify-between">
@@ -597,54 +596,51 @@ function StatCard({
 
   return (
     <StaggerItem className="h-full">
-      <div className="gradient-border-hover h-full">
       <GlassCard
-        hover
-        className={cn("stat-hover group relative h-full overflow-hidden p-5", isEmpty && "icon-chip-shimmer")}
+        className={cn("group relative h-full overflow-hidden p-5", isEmpty && "icon-chip-shimmer")}
       >
         <div className="relative flex items-start justify-between">
-          <div
-            className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300",
-              config.iconColorClass,
-              isEmpty && "opacity-70 grayscale-30"
-            )}
-          >
-            <Icon className="h-6 w-6" />
+            <div
+              className={cn(
+                "flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300",
+                config.iconColorClass,
+                isEmpty && "opacity-70 grayscale-30"
+              )}
+            >
+              <Icon className="h-6 w-6" />
+            </div>
           </div>
-        </div>
-        <div className="relative mt-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {config.label}
-          </p>
-          <div className={cn("tabular-nums mt-1 text-3xl font-bold tracking-tight sm:text-4xl", isEmpty ? "text-muted-foreground/60" : "text-foreground")}>
-            <AnimatedCounter
-              value={value}
-              suffix={config.suffix}
-              prefix={config.prefix}
-              decimals={config.decimals}
-            />
+          <div className="relative mt-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {config.label}
+            </p>
+            <div className={cn("tabular-nums mt-1 text-3xl font-bold tracking-tight sm:text-4xl", isEmpty ? "text-muted-foreground/60" : "text-foreground")}>
+              <AnimatedCounter
+                value={value}
+                suffix={config.suffix}
+                prefix={config.prefix}
+                decimals={config.decimals}
+              />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
-        </div>
 
-        {/* simple progress bar at the bottom */}
-        <div className="mt-4 space-y-1.5 border-t border-violet-500/5 pt-3">
-          <div className="flex items-center justify-between text-[10px] font-medium text-muted-foreground">
-            <span>{progressLabel}</span>
-            <span className="tabular-nums">{progressPct}%</span>
+          {/* simple progress bar at the bottom */}
+          <div className="mt-4 space-y-1.5 border-t border-violet-500/5 pt-3">
+            <div className="flex items-center justify-between text-[10px] font-medium text-muted-foreground">
+              <span>{progressLabel}</span>
+              <span className="tabular-nums">{progressPct}%</span>
+            </div>
+            <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPct}%` }}
+                transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                className={cn("h-full rounded-full", config.progressBarBg)}
+              />
+            </div>
           </div>
-          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPct}%` }}
-              transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className={cn("h-full rounded-full", config.progressBarBg)}
-            />
-          </div>
-        </div>
-      </GlassCard>
-      </div>
+        </GlassCard>
     </StaggerItem>
   );
 }
