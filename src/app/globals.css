@@ -1,14 +1,13 @@
 @import "tailwindcss" source(none);
-@import "tw-animate-css";
 @source "../app";
 @source "../components/landing";
-@source "../components/ui";
+@source "../components/ui/button.tsx";
+@source "../components/ui/sheet.tsx";
+@source "../components/ui/sonner.tsx";
 @source "../components/shared";
 @source "../components/about";
 @source "../components/contact";
 @source "../components/*.tsx"; /* For client-shell.tsx, etc. */
-@source "../lib";
-@source "../hooks";
 
 @custom-variant dark (&:is(.dark *));
 

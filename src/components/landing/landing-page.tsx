@@ -1,11 +1,11 @@
 import { Navbar } from "./navbar";
 import { Hero } from "./hero";
-// import { StatsBar } from "./stats-bar";
-import { Features } from "./features";
-import { Screenshots } from "./screenshots";
-import { Pricing } from "./pricing";
-// import { Testimonials } from "./testimonials";
-import { Footer } from "./footer";
+import dynamic from "next/dynamic";
+
+const Features = dynamic(() => import("./features").then((m) => m.Features));
+const Screenshots = dynamic(() => import("./screenshots").then((m) => m.Screenshots));
+const Pricing = dynamic(() => import("./pricing").then((m) => m.Pricing));
+const Footer = dynamic(() => import("./footer").then((m) => m.Footer));
 
 /**
  * LandingPage — the full marketing landing page for StudySpark.
