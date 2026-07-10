@@ -1,7 +1,7 @@
 // "use client";
 
 // import { useCallback, useRef, useState } from "react";
-// import { motion } from "framer-motion";
+// import {  m  } from 'framer-motion';
 // import { Star, Quote } from "lucide-react";
 // import {
 //   StaggerContainer,
@@ -41,7 +41,7 @@
 //   }, []);
 
 //   return (
-//     <motion.div
+//     <m.div
 //       ref={cardRef}
 //       onMouseMove={handleMouseMove}
 //       onMouseLeave={handleMouseLeave}
@@ -55,7 +55,7 @@
 //       className={["glass rounded-3xl", className].filter(Boolean).join(" ")}
 //     >
 //       {children}
-//     </motion.div>
+//     </m.div>
 //   );
 // }
 

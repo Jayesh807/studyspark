@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import {  m  } from 'framer-motion';
 import { Check, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "./section-heading";
@@ -68,7 +68,7 @@ export function Pricing() {
 
               <ul className="mt-6 space-y-2.5">
                 {INCLUDED.map((feat, i) => (
-                  <motion.li
+                  <m.li
                     key={feat}
                     initial={{ opacity: 0, x: -8 }}
                     whileInView={{ opacity: 1, x: 0 }}
@@ -80,7 +80,7 @@ export function Pricing() {
                       <Check className="size-3.5" strokeWidth={3} />
                     </span>
                     <span className="text-sm text-foreground/90">{feat}</span>
-                  </motion.li>
+                  </m.li>
                 ))}
               </ul>
 

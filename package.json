@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
+    "build": "next build && node -e \"const fs = require('fs'); fs.mkdirSync('.next/standalone/.next', { recursive: true }); fs.cpSync('.next/static', '.next/standalone/.next/static', { recursive: true }); fs.cpSync('public', '.next/standalone/public', { recursive: true });\"",
     "build:netlify": "prisma generate --schema=prisma/schema.netlify.prisma && next build",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",

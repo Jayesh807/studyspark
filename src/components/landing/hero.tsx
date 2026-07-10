@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import {  m  } from 'framer-motion';
 import {
   ArrowRight,
   Sparkles,
@@ -57,37 +57,37 @@ export function Hero() {
 
       <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 lg:grid-cols-2 lg:gap-8">
         {/* Left column */}
-        <motion.div
+        <m.div
           variants={container}
           initial="hidden"
           animate="visible"
           className="flex flex-col items-start gap-6"
         >
-          <motion.div variants={item}>
+          <m.div variants={item}>
             <span className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-4 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-300">
               <Sparkles className="size-3.5" />
               Your all-in-one student workspace
             </span>
-          </motion.div>
+          </m.div>
 
-          <motion.h1
+          <m.h1
             variants={item}
             className="text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-[3.75rem]"
           >
             Your studies,{" "}
             <span className="text-gradient">beautifully organized.</span>
-          </motion.h1>
+          </m.h1>
 
-          <motion.p
+          <m.p
             variants={item}
             className="max-w-xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg"
           >
             StudySpark brings tasks, calendar, focus sessions, subjects and
             exams into one calm, beautifully crafted dashboard — so you can stop
             juggling apps and start making real progress.
-          </motion.p>
+          </m.p>
 
-          <motion.div
+          <m.div
             variants={item}
             className="flex flex-col gap-3 sm:flex-row sm:items-center"
           >
@@ -107,14 +107,14 @@ export function Hero() {
             >
               See features
             </Button>
-          </motion.div>
+          </m.div>
 
-          <motion.ul
+          <m.ul
             variants={container}
             className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2"
           >
             {TRUST_BADGES.map(({ label, icon: Icon }, i) => (
-              <motion.li
+              <m.li
                 key={label}
                 custom={i}
                 initial={{ opacity: 0, y: 12 }}
@@ -127,20 +127,20 @@ export function Hero() {
                 {label === "Free forever" && (
                   <span className="glow-dot ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-violet-500" />
                 )}
-              </motion.li>
+              </m.li>
             ))}
-          </motion.ul>
-        </motion.div>
+          </m.ul>
+        </m.div>
 
         {/* Right column — floating dashboard preview */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.94, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
           className="relative mx-auto w-full max-w-md lg:max-w-lg"
         >
           <FloatingDashboard />
-        </motion.div>
+        </m.div>
       </div>
     </section>
   );
@@ -249,7 +249,7 @@ function FloatingDashboard() {
                 { t: "Math: calculus assignment", c: "bg-violet-500" },
                 { t: "Physics: lab report draft", c: "bg-fuchsia-500" },
               ].map((task, i) => (
-                <motion.div
+                <m.div
                   key={task.t}
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -259,7 +259,7 @@ function FloatingDashboard() {
                   <span className={cn("size-2 rounded-full", task.c)} />
                   <span className="flex-1 text-xs font-medium">{task.t}</span>
                   <span className="size-4 rounded-full border-2 border-violet-500/30" />
-                </motion.div>
+                </m.div>
               ))}
             </div>
           </div>
