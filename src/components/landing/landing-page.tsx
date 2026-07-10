@@ -7,6 +7,8 @@ const Screenshots = dynamic(() => import("./screenshots").then((m) => m.Screensh
 const Pricing = dynamic(() => import("./pricing").then((m) => m.Pricing));
 const Footer = dynamic(() => import("./footer").then((m) => m.Footer));
 
+import { LazyMotion, domAnimation } from "framer-motion";
+
 /**
  * LandingPage — the full marketing landing page for StudySpark.
  *
@@ -22,17 +24,19 @@ const Footer = dynamic(() => import("./footer").then((m) => m.Footer));
  */
 export function LandingPage() {
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <main>
-        <Hero />
-        {/* <StatsBar /> */}
-        <Features />
-        <Screenshots />
-        <Pricing />
-        {/* <Testimonials /> */}
-      </main>
-      <Footer />
-    </div>
+    <LazyMotion features={domAnimation}>
+      <div className="min-h-screen">
+        <Navbar />
+        <main>
+          <Hero />
+          {/* <StatsBar /> */}
+          <Features />
+          <Screenshots />
+          <Pricing />
+          {/* <Testimonials /> */}
+        </main>
+        <Footer />
+      </div>
+    </LazyMotion>
   );
 }

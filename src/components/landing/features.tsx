@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import {  m  } from 'framer-motion';
 import {
   LayoutDashboard,
   ListTodo,
@@ -89,13 +89,13 @@ export function Features() {
             <StaggerItem key={feature.title}>
               <GlassCard hover className="group relative h-full overflow-hidden p-5 sm:p-6">
                 <div className="relative flex flex-col gap-4">
-                  <motion.div
+                  <m.div
                     whileHover={{ rotate: -6, scale: 1.05 }}
                     transition={{ type: "spring", stiffness: 350, damping: 15 }}
                     className={`flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.gradient} text-white shadow-lg`}
                   >
                     <feature.icon className="size-6" strokeWidth={2.2} />
-                  </motion.div>
+                  </m.div>
                   <div>
                     <h3 className="text-lg font-semibold tracking-tight">
                       {feature.title}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import {  m  } from 'framer-motion';
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,10 +63,10 @@ export function Navbar() {
   };
 
   return (
-    <motion.header
-      initial={{ y: -24, opacity: 0 }}
+    <m.header
+      initial={{ y: -8, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-3 sm:pt-4"
     >
       <nav
@@ -151,7 +151,7 @@ export function Navbar() {
               <Logo onClick={goHome} />
             </SheetTitle>
             <div className="flex flex-col gap-1 px-4 pt-6">
-              <motion.button
+              <m.button
                 type="button"
                 onClick={() => {
                   setOpen(false);
@@ -164,8 +164,8 @@ export function Navbar() {
               >
                 About
                 <ArrowRight className="size-4 text-muted-foreground" />
-              </motion.button>
-              <motion.button
+              </m.button>
+              <m.button
                 type="button"
                 onClick={() => {
                   setOpen(false);
@@ -178,9 +178,9 @@ export function Navbar() {
               >
                 Contact
                 <ArrowRight className="size-4 text-muted-foreground" />
-              </motion.button>
+              </m.button>
               {NAV_LINKS.map((link, i) => (
-                <motion.button
+                <m.button
                   key={link.id}
                   type="button"
                   onClick={() => go(link.id)}
@@ -191,7 +191,7 @@ export function Navbar() {
                 >
                   {link.label}
                   <ArrowRight className="size-4 text-muted-foreground" />
-                </motion.button>
+                </m.button>
               ))}
             </div>
             <div className="mt-auto flex flex-col gap-2 border-t border-violet-500/10 p-4">
@@ -217,6 +217,6 @@ export function Navbar() {
           </SheetContent>
         </Sheet>
       </nav>
-    </motion.header>
+    </m.header>
   );
 }

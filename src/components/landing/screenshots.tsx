@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion } from "framer-motion";
+import {  m  } from 'framer-motion';
 import { TrendingUp, Clock, Target, CheckCircle2 } from "lucide-react";
 import { SectionHeading } from "./section-heading";
 
@@ -69,7 +69,7 @@ function PreviewRow({ preview, index }: { preview: Preview; index: number }) {
   const reverse = index % 2 === 1;
   return (
     <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-14">
-      <motion.div
+      <m.div
         initial={{ opacity: 0, x: reverse ? 40 : -40 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: true, margin: "-80px" }}
@@ -85,9 +85,9 @@ function PreviewRow({ preview, index }: { preview: Preview; index: number }) {
         <p className="mt-3 max-w-md text-pretty text-base leading-relaxed text-muted-foreground">
           {preview.description}
         </p>
-      </motion.div>
+      </m.div>
 
-      <motion.div
+      <m.div
         initial={{ opacity: 0, y: 30, scale: 0.97 }}
         whileInView={{ opacity: 1, y: 0, scale: 1 }}
         viewport={{ once: true, margin: "-80px" }}
@@ -102,7 +102,7 @@ function PreviewRow({ preview, index }: { preview: Preview; index: number }) {
             </div>
           </div>
         </div>
-      </motion.div>
+      </m.div>
     </div>
   );
 }
@@ -160,7 +160,7 @@ function DashboardPreview() {
           </div>
           <div className="flex h-16 items-end gap-1.5">
             {[40, 65, 35, 80, 55, 90, 70].map((h, i) => (
-              <motion.div
+              <m.div
                 key={i}
                 initial={{ height: 0 }}
                 whileInView={{ height: `${h}%` }}
@@ -214,7 +214,7 @@ function AnalyticsPreview() {
                 <span className="text-muted-foreground">{s.value}%</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-violet-500/10">
-                <motion.div
+                <m.div
                   initial={{ width: 0 }}
                   whileInView={{ width: `${s.value}%` }}
                   viewport={{ once: true }}
@@ -255,7 +255,7 @@ function FocusPreview() {
               stroke="oklch(0.55 0.21 277 / 0.12)"
               strokeWidth="8"
             />
-            <motion.circle
+            <m.circle
               cx="60"
               cy="60"
               r="52"
