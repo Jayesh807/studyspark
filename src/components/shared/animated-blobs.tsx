@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import {  m  } from 'framer-motion';
 
 interface AnimatedBlobsProps {
   variant?: "landing" | "dashboard";
@@ -89,7 +89,7 @@ function FullBlobs({ variant }: { variant: "landing" | "dashboard" }) {
 
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-      <motion.div
+      <m.div
         className={`absolute -top-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-gradient-to-br ${colors[0]} blur-3xl`}
         initial={{ x: 0, y: 0, scale: 1 }}
         animate={{
@@ -99,7 +99,7 @@ function FullBlobs({ variant }: { variant: "landing" | "dashboard" }) {
         }}
         transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
       />
-      <motion.div
+      <m.div
         className={`absolute top-1/3 -right-40 h-[32rem] w-[32rem] rounded-full bg-gradient-to-br ${colors[1]} blur-3xl`}
         initial={{ x: 0, y: 0, scale: 1 }}
         animate={{
@@ -109,7 +109,7 @@ function FullBlobs({ variant }: { variant: "landing" | "dashboard" }) {
         }}
         transition={{ duration: 26, repeat: Infinity, ease: "easeInOut" }}
       />
-      <motion.div
+      <m.div
         className={`absolute -bottom-40 left-1/4 h-[26rem] w-[26rem] rounded-full bg-gradient-to-br ${colors[2]} blur-3xl`}
         initial={{ x: 0, y: 0, scale: 1 }}
         animate={{
@@ -120,7 +120,7 @@ function FullBlobs({ variant }: { variant: "landing" | "dashboard" }) {
         transition={{ duration: 24, repeat: Infinity, ease: "easeInOut" }}
       />
       {variant === "landing" && (
-        <motion.div
+        <m.div
           className={`absolute top-1/2 left-1/2 h-[24rem] w-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-br ${colors[3]} blur-3xl`}
           initial={{ x: -100, y: -60, scale: 1 }}
           animate={{

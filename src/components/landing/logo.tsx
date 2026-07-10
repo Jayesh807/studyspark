@@ -1,7 +1,7 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
+import {  m  } from 'framer-motion';
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -22,7 +22,7 @@ export function Logo({ className, showWordmark = true, onClick }: LogoProps) {
       )}
       aria-label="StudySpark home"
     >
-      <motion.span
+      <m.span
         whileHover={{ rotate: 12, scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -30,7 +30,7 @@ export function Logo({ className, showWordmark = true, onClick }: LogoProps) {
       >
         <Sparkles className="size-5" strokeWidth={2.4} />
         <span className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/30 to-transparent" />
-      </motion.span>
+      </m.span>
       {showWordmark && (
         <span className="text-lg font-bold tracking-tight">
           Study<span className="text-gradient">Spark</span>

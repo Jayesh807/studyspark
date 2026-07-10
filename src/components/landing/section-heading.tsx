@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import {  m  } from 'framer-motion';
 import { cn } from "@/lib/utils";
 
 interface SectionHeadingProps {
@@ -30,7 +30,7 @@ export function SectionHeading({
       )}
     >
       {eyebrow && (
-        <motion.span
+        <m.span
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
@@ -39,9 +39,9 @@ export function SectionHeading({
         >
           <span className="size-1.5 rounded-full bg-violet-500" />
           {eyebrow}
-        </motion.span>
+        </m.span>
       )}
-      <motion.h2
+      <m.h2
         initial={{ opacity: 0, y: 16 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-80px" }}
@@ -53,9 +53,9 @@ export function SectionHeading({
       >
         {title}{" "}
         {highlight && <span className="text-gradient">{highlight}</span>}
-      </motion.h2>
+      </m.h2>
       {description && (
-        <motion.p
+        <m.p
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-80px" }}
@@ -66,7 +66,7 @@ export function SectionHeading({
           )}
         >
           {description}
-        </motion.p>
+        </m.p>
       )}
     </div>
   );
