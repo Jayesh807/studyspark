@@ -750,7 +750,7 @@ export function SettingsPage() {
                     <Skeleton className="h-9 w-full rounded-md" />
                   ) : (
                     <Input
-                      value={user?.username ?? "—"}
+                      value={user?.username || "—"}
                       readOnly
                       disabled
                       className="bg-muted/40"
