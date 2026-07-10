@@ -739,7 +739,7 @@ export function TodosPage() {
 
         {/* Form dialog */}
         <TaskFormDialog
-          key={formOpen ? `open-${editing?.id ?? "new"}` : "closed"}
+          key={formOpen ? `open-${editing?.id || "new"}` : "closed"}
           open={formOpen}
           onOpenChange={(o) => {
             setFormOpen(o);

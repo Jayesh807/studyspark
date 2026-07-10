@@ -520,7 +520,7 @@ export function CalendarPage() {
         <EventFormDialog
           key={
             formOpen
-              ? `open-${editing?.id ?? formDate?.toISOString() ?? "new"}`
+              ? `open-${editing?.id || formDate?.toISOString() || "new"}`
               : "closed"
           }
           open={formOpen}

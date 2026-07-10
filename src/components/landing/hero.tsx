@@ -148,145 +148,148 @@ export function Hero() {
 
 function FloatingDashboard() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const dx = (e.clientX - centerX) / rect.width;
-    const dy = (e.clientY - centerY) / rect.height;
-    setOffset({ x: dx * 12, y: dy * 8 });
-  }, []);
+  const animationFrameRef = useRef<number | null>(null);
+  const mousePosRef = useRef({ x: 0, y: 0 });
+  const currentPosRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      // Calculate target translation offset
+      mousePosRef.current.x = ((e.clientX - centerX) / rect.width) * 12;
+      mousePosRef.current.y = ((e.clientY - centerY) / rect.height) * 8;
+    };
+
+    const updatePosition = () => {
+      if (containerRef.current) {
+        // Interpolate position (lerp) for smooth easing transition
+        currentPosRef.current.x += (mousePosRef.current.x - currentPosRef.current.x) * 0.1;
+        currentPosRef.current.y += (mousePosRef.current.y - currentPosRef.current.y) * 0.1;
+        
+        containerRef.current.style.transform = `translate3d(${currentPosRef.current.x}px, ${currentPosRef.current.y}px, 0)`;
+      }
+      animationFrameRef.current = requestAnimationFrame(updatePosition);
+    };
+
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [handleMouseMove]);
+    animationFrameRef.current = requestAnimationFrame(updatePosition);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   return (
-    <motion.div
-      ref={containerRef}
-      animate={{ y: [0, -14, 0] }}
-      transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-      style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
-      className="relative transition-transform duration-200 ease-out"
-    >
-      {/* Glow behind */}
-      <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-purple-500/20 blur-3xl" />
+    <div className="animate-hero-float">
+      <div
+        ref={containerRef}
+        className="relative transition-transform duration-300 ease-out"
+        style={{ willChange: "transform" }}
+      >
+        {/* Glow behind */}
+        <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-purple-500/20 blur-3xl" />
 
-      <div className="glass-strong overflow-hidden rounded-3xl shadow-2xl shadow-violet-500/15">
-        {/* Window chrome */}
-        <div className="flex items-center gap-2 border-b border-violet-500/10 bg-white/40 px-4 py-3 dark:bg-white/5">
-          <span className="size-3 rounded-full bg-rose-400/80" />
-          <span className="size-3 rounded-full bg-amber-400/80" />
-          <span className="size-3 rounded-full bg-emerald-400/80" />
-          <div className="ml-3 flex h-6 flex-1 items-center rounded-md bg-white/60 px-3 text-[10px] font-medium text-muted-foreground dark:bg-white/5">
-            studyspark.app/dashboard
+        <div className="glass-strong overflow-hidden rounded-3xl shadow-2xl shadow-violet-500/15">
+          {/* Window chrome */}
+          <div className="flex items-center gap-2 border-b border-violet-500/10 bg-white/40 px-4 py-3 dark:bg-white/5">
+            <span className="size-3 rounded-full bg-rose-400/80" />
+            <span className="size-3 rounded-full bg-amber-400/80" />
+            <span className="size-3 rounded-full bg-emerald-400/80" />
+            <div className="ml-3 flex h-6 flex-1 items-center rounded-md bg-white/60 px-3 text-[10px] font-medium text-muted-foreground dark:bg-white/5">
+              studyspark.app/dashboard
+            </div>
+          </div>
+
+          {/* Dashboard body */}
+          <div className="space-y-4 p-5">
+            {/* Greeting */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Good morning,</p>
+                <p className="text-base font-semibold">Alex 👋</p>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <TrendingUp className="size-3" />
+                +12% this week
+              </div>
+            </div>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-3 gap-2.5">
+              <MiniStat tone="violet" icon={Target} value="12" label="Tasks left" />
+              <MiniStat tone="fuchsia" icon={Clock} value="4.2h" label="Focus today" />
+              <MiniStat tone="purple" icon={Calendar} value="2" label="Exams soon" />
+            </div>
+
+            {/* Weekly study activity chart */}
+            <div className="rounded-2xl border border-violet-500/10 bg-white/50 p-4 dark:bg-white/5">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Activity
+                  </p>
+                  <p className="text-xs font-bold leading-none">Weekly study hours</p>
+                </div>
+                <p className="text-xs font-semibold text-violet-600 dark:text-violet-400">
+                  24.5 hrs
+                </p>
+              </div>
+              <FakeAreaChart />
+            </div>
+
+            {/* Tasks list */}
+            <div className="space-y-2">
+              {[
+                { t: "Math: calculus assignment", c: "bg-violet-500" },
+                { t: "Physics: lab report draft", c: "bg-fuchsia-500" },
+              ].map((task, i) => (
+                <motion.div
+                  key={task.t}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 + i * 0.12 }}
+                  className="flex items-center gap-2.5 rounded-xl bg-white/50 px-3 py-2 dark:bg-white/5"
+                >
+                  <span className={cn("size-2 rounded-full", task.c)} />
+                  <span className="flex-1 text-xs font-medium">{task.t}</span>
+                  <span className="size-4 rounded-full border-2 border-violet-500/30" />
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Dashboard body */}
-        <div className="space-y-4 p-5">
-          {/* Greeting */}
-          <div className="flex items-center justify-between">
+        {/* Floating chip — Focus timer */}
+        <div className="animate-float-chip-right absolute -right-3 -top-4 hidden rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 px-3.5 py-2.5 text-white shadow-xl shadow-violet-500/30 sm:block">
+          <div className="flex items-center gap-2">
+            <Clock className="size-4" />
             <div>
-              <p className="text-xs text-muted-foreground">Good morning,</p>
-              <p className="text-base font-semibold">Alex 👋</p>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <TrendingUp className="size-3" />
-              +12% this week
+              <p className="text-[9px] uppercase tracking-wide opacity-80">
+                Focus
+              </p>
+              <p className="text-sm font-bold leading-none">25:00</p>
             </div>
           </div>
+        </div>
 
-          {/* Stat cards */}
-          <div className="grid grid-cols-3 gap-2.5">
-            <MiniStat
-              icon={Target}
-              label="Tasks"
-              value="24"
-              tone="violet"
-            />
-            <MiniStat icon={Clock} label="Focus" value="6.2h" tone="fuchsia" />
-            <MiniStat
-              icon={Calendar}
-              label="Events"
-              value="8"
-              tone="purple"
-            />
-          </div>
-
-          {/* Fake chart */}
-          <div className="rounded-2xl border border-violet-500/10 bg-white/50 p-4 dark:bg-white/5">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-xs font-semibold">Study hours</p>
-              <p className="text-[10px] text-muted-foreground">Last 7 days</p>
-            </div>
-            <FakeAreaChart />
-          </div>
-
-          {/* Mini task list */}
-          <div className="space-y-1.5">
-            {[
-              { t: "Calculus problem set", c: "bg-violet-500" },
-              { t: "Read Ch. 4 — Algorithms", c: "bg-fuchsia-500" },
-              { t: "Physics lab report", c: "bg-purple-500" },
-            ].map((task, i) => (
-              <motion.div
-                key={task.t}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.6 + i * 0.12 }}
-                className="flex items-center gap-2.5 rounded-xl bg-white/50 px-3 py-2 dark:bg-white/5"
-              >
-                <span className={cn("size-2 rounded-full", task.c)} />
-                <span className="flex-1 text-xs font-medium">{task.t}</span>
-                <span className="size-4 rounded-full border-2 border-violet-500/30" />
-              </motion.div>
-            ))}
+        {/* Floating chip — Streak */}
+        <div className="animate-float-chip-left absolute -bottom-5 -left-3 hidden items-center gap-2 rounded-2xl glass-strong px-3.5 py-2.5 shadow-xl sm:flex">
+          <Heart className="size-4 text-fuchsia-500" />
+          <div>
+            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">
+              Streak
+            </p>
+            <p className="text-sm font-bold leading-none">14 days 🔥</p>
           </div>
         </div>
       </div>
-
-      {/* Floating chip — Focus timer */}
-      <motion.div
-        animate={{ y: [0, 10, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        className="absolute -right-3 -top-4 hidden rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 px-3.5 py-2.5 text-white shadow-xl shadow-violet-500/30 sm:block"
-      >
-        <div className="flex items-center gap-2">
-          <Clock className="size-4" />
-          <div>
-            <p className="text-[9px] uppercase tracking-wide opacity-80">
-              Focus
-            </p>
-            <p className="text-sm font-bold leading-none">25:00</p>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Floating chip — Streak */}
-      <motion.div
-        animate={{ y: [0, -10, 0] }}
-        transition={{
-          duration: 5.5,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 0.5,
-        }}
-        className="absolute -bottom-5 -left-3 hidden items-center gap-2 rounded-2xl glass-strong px-3.5 py-2.5 shadow-xl sm:flex"
-      >
-        <Heart className="size-4 text-fuchsia-500" />
-        <div>
-          <p className="text-[9px] uppercase tracking-wide text-muted-foreground">
-            Streak
-          </p>
-          <p className="text-sm font-bold leading-none">14 days 🔥</p>
-        </div>
-      </motion.div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -383,25 +386,18 @@ function FloatingShapes() {
       className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
       aria-hidden="true"
     >
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+      <div
         className="absolute left-[8%] top-[18%] size-16 rounded-3xl bg-gradient-to-br from-violet-400/30 to-fuchsia-400/20 blur-[1px]"
+        style={{ animation: "spin 40s linear infinite", willChange: "transform" }}
       />
-      <motion.div
-        animate={{ y: [0, 20, 0], rotate: [-12, 8, -12] }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute right-[12%] top-[12%] size-10 rounded-full bg-gradient-to-br from-fuchsia-400/30 to-rose-400/20"
+      <div
+        className="animate-float-rotate-a absolute right-[12%] top-[12%] size-10 rounded-full bg-gradient-to-br from-fuchsia-400/30 to-rose-400/20"
       />
-      <motion.div
-        animate={{ y: [0, -16, 0], rotate: [0, 18, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-[14%] left-[14%] size-12 rotate-12 rounded-2xl bg-gradient-to-br from-purple-400/30 to-violet-400/20"
+      <div
+        className="animate-float-rotate-b absolute bottom-[14%] left-[14%] size-12 rotate-12 rounded-2xl bg-gradient-to-br from-purple-400/30 to-violet-400/20"
       />
-      <motion.div
-        animate={{ y: [0, 14, 0] }}
-        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-[22%] right-[6%] size-8 rounded-full bg-gradient-to-br from-emerald-400/25 to-teal-400/15"
+      <div
+        className="animate-float-y-slow absolute bottom-[22%] right-[6%] size-8 rounded-full bg-gradient-to-br from-emerald-400/25 to-teal-400/15"
       />
     </div>
   );

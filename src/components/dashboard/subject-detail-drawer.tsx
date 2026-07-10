@@ -48,7 +48,7 @@ const STATUS_LABEL: Record<Todo["status"], { label: string; cls: string; icon: t
 };
 
 function priorityChip(p: Priority) {
-  const cfg = PRIORITY_CONFIG[p] ?? PRIORITY_CONFIG.medium;
+  const cfg = PRIORITY_CONFIG[p] || PRIORITY_CONFIG.medium;
   return (
     <span
       className={cn(
@@ -114,9 +114,9 @@ export function SubjectDetailDrawer({
       ]);
       const subjectName = subject.name;
       setRelated({
-        todos: (todosRes.todos ?? []).filter((t) => t.subject === subjectName),
-        exams: (examsRes.exams ?? []).filter((e) => e.subject === subjectName),
-        sessions: (sessionsRes.sessions ?? []).filter((s) => s.subject === subjectName),
+        todos: (todosRes.todos || []).filter((t) => t.subject === subjectName),
+        exams: (examsRes.exams || []).filter((e) => e.subject === subjectName),
+        sessions: (sessionsRes.sessions || []).filter((s) => s.subject === subjectName),
       });
     } catch (err) {
       handleError(err, "Failed to load subject details");
@@ -157,9 +157,9 @@ export function SubjectDetailDrawer({
   }, [related]);
 
   const tabs = [
-    { id: "tasks" as const, label: "Tasks", count: related?.todos.length ?? 0 },
-    { id: "exams" as const, label: "Exams", count: related?.exams.length ?? 0 },
-    { id: "focus" as const, label: "Focus", count: related?.sessions.filter((s) => s.type === "focus").length ?? 0 },
+    { id: "tasks" as const, label: "Tasks", count: related?.todos.length || 0 },
+    { id: "exams" as const, label: "Exams", count: related?.exams.length || 0 },
+    { id: "focus" as const, label: "Focus", count: related?.sessions.filter((s) => s.type === "focus").length || 0 },
     { id: "notes" as const, label: "Notes", count: subject?.notes ? 1 : 0 },
   ];
 
@@ -361,14 +361,14 @@ export function SubjectDetailDrawer({
                     transition={{ duration: 0.18 }}
                   >
                     {tab === "tasks" && (
-                      <TaskList todos={related?.todos ?? []} />
+                      <TaskList todos={related?.todos || []} />
                     )}
                     {tab === "exams" && (
-                      <ExamList exams={related?.exams ?? []} />
+                      <ExamList exams={related?.exams || []} />
                     )}
                     {tab === "focus" && (
                       <FocusList
-                        sessions={related?.sessions ?? []}
+                        sessions={related?.sessions || []}
                         subjectName={subject.name}
                         onLogged={loadRelated}
                       />

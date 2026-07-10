@@ -1,7 +1,8 @@
 "use client";
 
 import "@/styles/dashboard.css";
-import { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "@/lib/store";
 import { Sidebar } from "./sidebar";
@@ -76,36 +77,38 @@ function NotFoundPage() {
 }
 
 // Lazy-load dashboard pages so the initial bundle stays light
-const DashboardHome = lazy(() =>
-  import("./pages/dashboard-home").then((m) => ({ default: m.DashboardHome }))
-);
-const TodosPage = lazy(() =>
-  import("./pages/todos").then((m) => ({ default: m.TodosPage }))
-);
-const CalendarPage = lazy(() =>
-  import("./pages/calendar").then((m) => ({ default: m.CalendarPage }))
-);
-const ExamsPage = lazy(() =>
-  import("./pages/exams").then((m) => ({ default: m.ExamsPage }))
-);
-const SubjectsPage = lazy(() =>
-  import("./pages/subjects").then((m) => ({ default: m.SubjectsPage }))
-);
-const FocusTimerPage = lazy(() =>
-  import("./pages/focus-timer").then((m) => ({ default: m.FocusTimerPage }))
-);
-const AnalyticsPage = lazy(() =>
-  import("./pages/analytics").then((m) => ({ default: m.AnalyticsPage }))
-);
-const ProfilePage = lazy(() =>
-  import("./pages/profile").then((m) => ({ default: m.ProfilePage }))
-);
-const SettingsPage = lazy(() =>
-  import("./pages/settings").then((m) => ({ default: m.SettingsPage }))
-);
-const PlannerPage = lazy(() =>
-  import("./pages/planner").then((m) => ({ default: m.PlannerPage }))
-);
+const DashboardHome = dynamic(() => import("./pages/dashboard-home").then((m) => m.DashboardHome), {
+  loading: () => <PageLoader />
+});
+const TodosPage = dynamic(() => import("./pages/todos").then((m) => m.TodosPage), {
+  loading: () => <PageLoader />
+});
+const CalendarPage = dynamic(() => import("./pages/calendar").then((m) => m.CalendarPage), {
+  loading: () => <PageLoader />
+});
+const ExamsPage = dynamic(() => import("./pages/exams").then((m) => m.ExamsPage), {
+  loading: () => <PageLoader />
+});
+const SubjectsPage = dynamic(() => import("./pages/subjects").then((m) => m.SubjectsPage), {
+  loading: () => <PageLoader />
+});
+const FocusTimerPage = dynamic(() => import("./pages/focus-timer").then((m) => m.FocusTimerPage), {
+  loading: () => <PageLoader />,
+  ssr: false
+});
+const AnalyticsPage = dynamic(() => import("./pages/analytics").then((m) => m.AnalyticsPage), {
+  loading: () => <PageLoader />,
+  ssr: false
+});
+const ProfilePage = dynamic(() => import("./pages/profile").then((m) => m.ProfilePage), {
+  loading: () => <PageLoader />
+});
+const SettingsPage = dynamic(() => import("./pages/settings").then((m) => m.SettingsPage), {
+  loading: () => <PageLoader />
+});
+const PlannerPage = dynamic(() => import("./pages/planner").then((m) => m.PlannerPage), {
+  loading: () => <PageLoader />
+});
 
 function PageRouter() {
   const currentView = useAppStore((s) => s.currentView);
@@ -149,7 +152,7 @@ function PageRouter() {
             exit={reduceMotion ? undefined : { opacity: 0, y: -8 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Suspense fallback={<PageLoader />}>{renderPage()}</Suspense>
+            {renderPage()}
           </motion.div>
         </AnimatePresence>
       </div>
