@@ -5,7 +5,6 @@ import { Features } from "./features";
 import { Screenshots } from "./screenshots";
 import { Pricing } from "./pricing";
 // import { Testimonials } from "./testimonials";
-import { CTASection } from "./cta-section";
 import { Footer } from "./footer";
 
 /**
@@ -32,7 +31,6 @@ export function LandingPage() {
         <Screenshots />
         <Pricing />
         {/* <Testimonials /> */}
-        <CTASection />
       </main>
       <Footer />
     </div>
