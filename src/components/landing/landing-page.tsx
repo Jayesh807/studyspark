@@ -31,7 +31,7 @@ export function LandingPage() {
           <Hero />
           {/* <StatsBar /> */}
           <Features />
-          <Screenshots />
+          {/* <Screenshots /> */}
           <Pricing />
           {/* <Testimonials /> */}
         </main>
