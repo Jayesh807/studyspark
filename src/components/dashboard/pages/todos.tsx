@@ -509,8 +509,7 @@ export function TodosPage() {
           }),
         });
         toast.success(
-          `Moved to ${
-            COLUMN_CONFIG.find((c) => c.id === targetColumn)?.label
+          `Moved to ${COLUMN_CONFIG.find((c) => c.id === targetColumn)?.label
           }`
         );
       } catch (err) {
@@ -1054,7 +1053,7 @@ function TaskCardInner({
               checked={completed}
               onCheckedChange={() => onToggleComplete?.(todo)}
               className={cn(
-                "h-5 w-5 rounded-md data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500",
+                "h-5 w-5 rounded-md data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-100",
                 !completed && "border-muted-foreground/30"
               )}
             />
@@ -1082,7 +1081,7 @@ function TaskCardInner({
                 <button
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
-                  className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                   aria-label="Task actions"
                 >
                   <MoreVertical className="h-4 w-4" />
