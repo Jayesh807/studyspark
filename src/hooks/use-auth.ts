@@ -26,14 +26,12 @@ let meCheckDone = false;
 
 /** Hook that manages auth state and exposes login/signup/logout. */
 export function useAuth() {
-  const {
-    user,
-    isAuthenticated,
-    authLoading,
-    setUser,
-    logout: storeLogout,
-    setView,
-  } = useAppStore();
+  const user = useAppStore((s) => s.user);
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated);
+  const authLoading = useAppStore((s) => s.authLoading);
+  const setUser = useAppStore((s) => s.setUser);
+  const storeLogout = useAppStore((s) => s.logout);
+  const setView = useAppStore((s) => s.setView);
 
   // Track whether this hook instance is still mounted
   const mountedRef = useRef(true);

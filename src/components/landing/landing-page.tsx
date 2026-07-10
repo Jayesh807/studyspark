@@ -1,5 +1,3 @@
-"use client";
-
 import { Navbar } from "./navbar";
 import { Hero } from "./hero";
 // import { StatsBar } from "./stats-bar";

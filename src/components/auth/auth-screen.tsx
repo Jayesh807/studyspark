@@ -1,5 +1,6 @@
 "use client";
 
+import "@/styles/dashboard.css";
 import { PageTransition } from "@/components/shared/motion";
 import { AuthLeftPanel } from "@/components/auth/auth-left-panel";
 import { AuthForm } from "@/components/auth/auth-form";
