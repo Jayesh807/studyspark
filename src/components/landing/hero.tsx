@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
-import { AnimatedBlobs } from "@/components/shared/animated-blobs";
+import dynamic from "next/dynamic";
+const AnimatedBlobs = dynamic(() => import("@/components/shared/animated-blobs").then((m) => m.AnimatedBlobs), { ssr: false });
 import { scrollToSection } from "./scroll-helpers";
 import { cn } from "@/lib/utils";
 
