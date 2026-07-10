@@ -1,5 +1,6 @@
 "use client";
 
+import "@/styles/dashboard.css";
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "@/lib/store";
