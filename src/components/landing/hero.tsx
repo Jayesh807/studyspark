@@ -30,16 +30,16 @@ const container = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0 },
+    transition: { staggerChildren: 0.03, delayChildren: 0 },
   },
 };
 
 const item = {
-  hidden: { opacity: 0, y: 22 },
+  hidden: { opacity: 0, y: 8 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] as const },
   },
 };
 
@@ -117,9 +117,9 @@ export function Hero() {
               <m.li
                 key={label}
                 custom={i}
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.6 + i * 0.12, ease: [0.22, 1, 0.36, 1] as const }}
+                transition={{ duration: 0.25, delay: 0.15 + i * 0.04, ease: [0.22, 1, 0.36, 1] as const }}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground"
               >
                 <Icon className="size-4 text-violet-500" />
@@ -134,9 +134,9 @@ export function Hero() {
 
         {/* Right column — floating dashboard preview */}
         <m.div
-          initial={{ opacity: 0, scale: 0.94, y: 30 }}
+          initial={{ opacity: 0, scale: 0.97, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
+          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
           className="relative mx-auto w-full max-w-md lg:max-w-lg"
         >
           <FloatingDashboard />
