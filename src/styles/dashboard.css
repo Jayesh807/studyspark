@@ -7,6 +7,9 @@
 @import "tailwindcss" source(none);
 @source "../components/dashboard";
 @source "../components/auth";
+@source "../components/ui";
+@source "../lib";
+@source "../hooks";
 
 @theme inline {
   --color-background: var(--background);
