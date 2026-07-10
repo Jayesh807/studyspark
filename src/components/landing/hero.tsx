@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import {  m  } from 'framer-motion';
+import { m } from 'framer-motion';
 import {
   ArrowRight,
   Sparkles,
@@ -16,7 +16,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
-import { AnimatedBlobs } from "@/components/shared/animated-blobs";
+import dynamic from "next/dynamic";
+const AnimatedBlobs = dynamic(() => import("@/components/shared/animated-blobs").then((m) => m.AnimatedBlobs), { ssr: false });
 import { scrollToSection } from "./scroll-helpers";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +52,7 @@ export function Hero() {
       className="relative overflow-hidden pt-28 pb-20 sm:pt-36 sm:pb-28"
       aria-label="Hero"
     >
-      <AnimatedBlobs variant="landing" />
+      {/* <AnimatedBlobs variant="landing" /> */}
       {/* Floating decorative shapes */}
       <FloatingShapes />
 
@@ -161,7 +162,7 @@ function FloatingDashboard() {
         // Interpolate position (lerp) for smooth easing transition
         currentPosRef.current.x += (mousePosRef.current.x - currentPosRef.current.x) * 0.1;
         currentPosRef.current.y += (mousePosRef.current.y - currentPosRef.current.y) * 0.1;
-        
+
         containerRef.current.style.transform = `translate3d(${currentPosRef.current.x}px, ${currentPosRef.current.y}px, 0)`;
       }
       animationFrameRef.current = requestAnimationFrame(updatePosition);
