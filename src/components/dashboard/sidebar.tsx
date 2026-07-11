@@ -24,7 +24,7 @@ import { useAppStore, type AppView } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
@@ -217,6 +217,9 @@ export function Sidebar() {
         {!collapsed && user ? (
           <div className="flex items-center gap-3 rounded-xl bg-accent/50 p-2.5">
             <Avatar className="h-9 w-9 ring-2 ring-violet-500/20">
+              {user.avatar && (
+                <AvatarImage src={user.avatar} alt={user.username} className="object-cover" />
+              )}
               <AvatarFallback className="bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white text-sm font-semibold">
                 {user.username.charAt(0).toUpperCase()}
               </AvatarFallback>

@@ -13,6 +13,7 @@ interface MeResponse {
 
 interface AuthResponse {
   user: User;
+  profile?: Profile | null;
 }
 
 /**
@@ -90,7 +91,7 @@ export function useAuth() {
           method: "POST",
           body: JSON.stringify({ username, password }),
         });
-        setUser(data.user);
+        setUser({ ...data.user, avatar: data.profile?.avatar || undefined });
         setView("dashboard");
         return data.user;
       } catch (error) {
@@ -111,7 +112,7 @@ export function useAuth() {
           method: "POST",
           body: JSON.stringify({ username, password }),
         });
-        setUser(data.user);
+        setUser({ ...data.user, avatar: data.profile?.avatar || undefined });
         setView("dashboard");
         return data.user;
       } catch (error) {
@@ -134,6 +135,7 @@ export function useAuth() {
       // ignore
     }
     storeLogout();
+    _resetMeCheck();
     setView("landing");
   }, [storeLogout, setView]);
 
