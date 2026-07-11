@@ -455,249 +455,249 @@ function EditProfileForm({
   return (
     <>
       <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-white"
-              style={{
-                background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </span>
-            Edit Profile
-          </DialogTitle>
-          <DialogDescription>
-            Update your personal info, study goal, and avatar.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          {/* Profile Photo Upload */}
-          <div className="space-y-2">
-            <Label>Profile Photo</Label>
-            <div className="flex items-center gap-4">
-              {/* Preview */}
-              <div className="relative shrink-0 h-16 w-16 rounded-full border-2 border-border shadow-sm overflow-hidden bg-muted flex items-center justify-center">
-                {form.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={form.avatar}
-                    alt="Avatar preview"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <User className="h-7 w-7 text-muted-foreground" />
-                )}
-                {form.avatar && (
-                  <button
-                    type="button"
-                    onClick={() => update("avatar", "")}
-                    className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white shadow-md hover:bg-destructive/90 transition-colors"
-                    title="Remove photo"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-              {/* Upload button */}
-              <div className="flex flex-col gap-1.5">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  {form.avatar ? "Change Photo" : "Upload Photo"}
-                </Button>
-                <p className="text-[11px] text-muted-foreground">
-                  PNG, JPG, or WebP. Max 2 MB.
-                </p>
-              </div>
-            </div>
-            {errors.avatar && (
-              <p className="text-xs text-destructive">{errors.avatar}</p>
-            )}
-          </div>
-
-          {/* Bio */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-bio">
-              Bio
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
-                {form.bio.length}/500
-              </span>
-            </Label>
-            <Textarea
-              id="edit-bio"
-              rows={3}
-              placeholder="Tell us a bit about yourself..."
-              value={form.bio}
-              onChange={(e) => update("bio", e.target.value.slice(0, 500))}
-              aria-invalid={!!errors.bio}
-            />
-            {errors.bio && (
-              <p className="text-xs text-destructive">{errors.bio}</p>
-            )}
-          </div>
-
-          {/* Goal */}
-          <div className="space-y-2">
-            <Label htmlFor="edit-goal">
-              Study Goal
-              <span className="ml-2 text-xs font-normal text-muted-foreground">
-                {form.goal.length}/200
-              </span>
-            </Label>
-            <Input
-              id="edit-goal"
-              placeholder="e.g. Ace every exam this semester"
-              value={form.goal}
-              onChange={(e) => update("goal", e.target.value.slice(0, 200))}
-              aria-invalid={!!errors.goal}
-            />
-            {errors.goal && (
-              <p className="text-xs text-destructive">{errors.goal}</p>
-            )}
-          </div>
-
-          {/* Two column row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="edit-target">Target hours / day</Label>
-              <Input
-                id="edit-target"
-                type="number"
-                min={1}
-                max={24}
-                value={form.targetHours}
-                onChange={(e) =>
-                  update("targetHours", parseInt(e.target.value || "0", 10))
-                }
-                aria-invalid={!!errors.targetHours}
-              />
-              {errors.targetHours && (
-                <p className="text-xs text-destructive">{errors.targetHours}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-semester">Semester (1–12)</Label>
-              <Input
-                id="edit-semester"
-                type="number"
-                min={1}
-                max={12}
-                value={form.semester}
-                onChange={(e) =>
-                  update("semester", parseInt(e.target.value || "0", 10))
-                }
-                aria-invalid={!!errors.semester}
-              />
-              {errors.semester && (
-                <p className="text-xs text-destructive">{errors.semester}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="edit-college">College</Label>
-              <Input
-                id="edit-college"
-                placeholder="e.g. Stanford University"
-                value={form.college}
-                onChange={(e) => update("college", e.target.value.slice(0, 100))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-course">Course</Label>
-              <Input
-                id="edit-course"
-                placeholder="e.g. Computer Science"
-                value={form.course}
-                onChange={(e) => update("course", e.target.value.slice(0, 100))}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-avatar">Avatar URL (optional)</Label>
-            <Input
-              id="edit-avatar"
-              type="url"
-              placeholder="https://example.com/avatar.png"
-              value={form.avatar}
-              onChange={(e) => update("avatar", e.target.value.slice(0, 500))}
-              aria-invalid={!!errors.avatar}
-            />
-            {errors.avatar && (
-              <p className="text-xs text-destructive">{errors.avatar}</p>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2">
-          <DialogClose asChild>
-            <Button variant="outline" disabled={saveState !== "idle"}>
-              Cancel
-            </Button>
-          </DialogClose>
-          <Button
-            onClick={handleSave}
-            disabled={saveState !== "idle"}
-            className="relative min-w-[140px] text-white"
+        <DialogTitle className="flex items-center gap-2 text-xl">
+          <span
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-white"
             style={{
               background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
             }}
           >
-            <AnimatePresence mode="wait" initial={false}>
-              {saveState === "idle" && (
-                <motion.span
-                  key="idle"
-                  className="flex items-center gap-2"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                >
-                  <Check className="h-4 w-4 opacity-0" />
-                  Save Changes
-                </motion.span>
+            <Pencil className="h-3.5 w-3.5" />
+          </span>
+          Edit Profile
+        </DialogTitle>
+        <DialogDescription>
+          Update your personal info, study goal, and avatar.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4 py-2">
+        {/* Profile Photo Upload */}
+        <div className="space-y-2">
+          <Label>Profile Photo</Label>
+          <div className="flex items-center gap-4">
+            {/* Preview */}
+            <div className="relative shrink-0 h-16 w-16 rounded-full border-2 border-border shadow-sm overflow-hidden bg-muted flex items-center justify-center">
+              {form.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={form.avatar}
+                  alt="Avatar preview"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <User className="h-7 w-7 text-muted-foreground" />
               )}
-              {saveState === "saving" && (
-                <motion.span
-                  key="saving"
-                  className="flex items-center gap-2"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
+              {form.avatar && (
+                <button
+                  type="button"
+                  onClick={() => update("avatar", "")}
+                  className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white shadow-md hover:bg-destructive/90 transition-colors"
+                  title="Remove photo"
                 >
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </motion.span>
+                  <X className="h-3 w-3" />
+                </button>
               )}
-              {saveState === "success" && (
-                <motion.span
-                  key="success"
-                  className="flex items-center gap-2"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                >
-                  <AnimatedCheck />
-                  Saved!
-                </motion.span>
-              )}
-            </AnimatePresence>
+            </div>
+            {/* Upload button */}
+            <div className="flex flex-col gap-1.5">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {form.avatar ? "Change Photo" : "Upload Photo"}
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                PNG, JPG, or WebP. Max 2 MB.
+              </p>
+            </div>
+          </div>
+          {errors.avatar && (
+            <p className="text-xs text-destructive">{errors.avatar}</p>
+          )}
+        </div>
+
+        {/* Bio */}
+        <div className="space-y-2">
+          <Label htmlFor="edit-bio">
+            Bio
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              {form.bio.length}/500
+            </span>
+          </Label>
+          <Textarea
+            id="edit-bio"
+            rows={3}
+            placeholder="Tell us a bit about yourself..."
+            value={form.bio}
+            onChange={(e) => update("bio", e.target.value.slice(0, 500))}
+            aria-invalid={!!errors.bio}
+          />
+          {errors.bio && (
+            <p className="text-xs text-destructive">{errors.bio}</p>
+          )}
+        </div>
+
+        {/* Goal */}
+        <div className="space-y-2">
+          <Label htmlFor="edit-goal">
+            Study Goal
+            <span className="ml-2 text-xs font-normal text-muted-foreground">
+              {form.goal.length}/200
+            </span>
+          </Label>
+          <Input
+            id="edit-goal"
+            placeholder="e.g. Ace every exam this semester"
+            value={form.goal}
+            onChange={(e) => update("goal", e.target.value.slice(0, 200))}
+            aria-invalid={!!errors.goal}
+          />
+          {errors.goal && (
+            <p className="text-xs text-destructive">{errors.goal}</p>
+          )}
+        </div>
+
+        {/* Two column row */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="edit-target">Target hours / day</Label>
+            <Input
+              id="edit-target"
+              type="number"
+              min={1}
+              max={24}
+              value={form.targetHours}
+              onChange={(e) =>
+                update("targetHours", parseInt(e.target.value || "0", 10))
+              }
+              aria-invalid={!!errors.targetHours}
+            />
+            {errors.targetHours && (
+              <p className="text-xs text-destructive">{errors.targetHours}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-semester">Semester (1–12)</Label>
+            <Input
+              id="edit-semester"
+              type="number"
+              min={1}
+              max={12}
+              value={form.semester}
+              onChange={(e) =>
+                update("semester", parseInt(e.target.value || "0", 10))
+              }
+              aria-invalid={!!errors.semester}
+            />
+            {errors.semester && (
+              <p className="text-xs text-destructive">{errors.semester}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="edit-college">College</Label>
+            <Input
+              id="edit-college"
+              placeholder="e.g. Stanford University"
+              value={form.college}
+              onChange={(e) => update("college", e.target.value.slice(0, 100))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-course">Course</Label>
+            <Input
+              id="edit-course"
+              placeholder="e.g. Computer Science"
+              value={form.course}
+              onChange={(e) => update("course", e.target.value.slice(0, 100))}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="edit-avatar">Avatar URL (optional)</Label>
+          <Input
+            id="edit-avatar"
+            type="url"
+            placeholder="https://example.com/avatar.png"
+            value={form.avatar}
+            onChange={(e) => update("avatar", e.target.value.slice(0, 500))}
+            aria-invalid={!!errors.avatar}
+          />
+          {errors.avatar && (
+            <p className="text-xs text-destructive">{errors.avatar}</p>
+          )}
+        </div>
+      </div>
+
+      <DialogFooter className="gap-2">
+        <DialogClose asChild>
+          <Button variant="outline" disabled={saveState !== "idle"}>
+            Cancel
           </Button>
-        </DialogFooter>
+        </DialogClose>
+        <Button
+          onClick={handleSave}
+          disabled={saveState !== "idle"}
+          className="relative min-w-[140px] text-white"
+          style={{
+            background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
+          }}
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            {saveState === "idle" && (
+              <motion.span
+                key="idle"
+                className="flex items-center gap-2"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+              >
+                <Check className="h-4 w-4 opacity-0" />
+                Save Changes
+              </motion.span>
+            )}
+            {saveState === "saving" && (
+              <motion.span
+                key="saving"
+                className="flex items-center gap-2"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+              >
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving...
+              </motion.span>
+            )}
+            {saveState === "success" && (
+              <motion.span
+                key="success"
+                className="flex items-center gap-2"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+              >
+                <AnimatedCheck />
+                Saved!
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </Button>
+      </DialogFooter>
     </>
   );
 }

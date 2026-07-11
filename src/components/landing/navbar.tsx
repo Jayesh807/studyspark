@@ -28,8 +28,10 @@ export function Navbar() {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -132,90 +134,92 @@ export function Navbar() {
         </div>
 
         {/* Mobile menu trigger */}
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              aria-label="Open menu"
+        {mounted && (
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                aria-label="Open menu"
+              >
+                <Menu className="size-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="w-80 border-violet-500/10 bg-background/95 backdrop-blur-xl"
             >
-              <Menu className="size-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="right"
-            className="w-80 border-violet-500/10 bg-background/95 backdrop-blur-xl"
-          >
-            <SheetTitle className="px-2 pt-2">
-              <Logo onClick={goHome} />
-            </SheetTitle>
-            <div className="flex flex-col gap-1 px-4 pt-6">
-              <m.button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  router.push("/about");
-                }}
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.05 }}
-                className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-violet-500/10"
-              >
-                About
-                <ArrowRight className="size-4 text-muted-foreground" />
-              </m.button>
-              <m.button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  router.push("/contact");
-                }}
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-violet-500/10"
-              >
-                Contact
-                <ArrowRight className="size-4 text-muted-foreground" />
-              </m.button>
-              {NAV_LINKS.map((link, i) => (
+              <SheetTitle className="px-2 pt-2">
+                <Logo onClick={goHome} />
+              </SheetTitle>
+              <div className="flex flex-col gap-1 px-4 pt-6">
                 <m.button
-                  key={link.id}
                   type="button"
-                  onClick={() => go(link.id)}
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/about");
+                  }}
                   initial={{ opacity: 0, x: 16 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.15 + i * 0.05 }}
+                  transition={{ delay: 0.05 }}
                   className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-violet-500/10"
                 >
-                  {link.label}
+                  About
                   <ArrowRight className="size-4 text-muted-foreground" />
                 </m.button>
-              ))}
-            </div>
-            <div className="mt-auto flex flex-col gap-2 border-t border-violet-500/10 p-4">
-              <SheetClose asChild>
-                <Button
-                  variant="outline"
-                  onClick={() => openAuth("login")}
-                  className="w-full"
+                <m.button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/contact");
+                  }}
+                  initial={{ opacity: 0, x: 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-violet-500/10"
                 >
-                  Login
-                </Button>
-              </SheetClose>
-              <SheetClose asChild>
-                <Button
-                  onClick={() => openAuth("signup")}
-                  className="w-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:brightness-110"
-                >
-                  Get Started
-                  <ArrowRight className="size-4" />
-                </Button>
-              </SheetClose>
-            </div>
-          </SheetContent>
-        </Sheet>
+                  Contact
+                  <ArrowRight className="size-4 text-muted-foreground" />
+                </m.button>
+                {NAV_LINKS.map((link, i) => (
+                  <m.button
+                    key={link.id}
+                    type="button"
+                    onClick={() => go(link.id)}
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.15 + i * 0.05 }}
+                    className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-violet-500/10"
+                  >
+                    {link.label}
+                    <ArrowRight className="size-4 text-muted-foreground" />
+                  </m.button>
+                ))}
+              </div>
+              <div className="mt-auto flex flex-col gap-2 border-t border-violet-500/10 p-4">
+                <SheetClose asChild>
+                  <Button
+                    variant="outline"
+                    onClick={() => openAuth("login")}
+                    className="w-full"
+                  >
+                    Login
+                  </Button>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Button
+                    onClick={() => openAuth("signup")}
+                    className="w-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:brightness-110"
+                  >
+                    Get Started
+                    <ArrowRight className="size-4" />
+                  </Button>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
       </nav>
     </m.header>
   );

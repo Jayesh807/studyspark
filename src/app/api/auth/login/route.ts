@@ -39,8 +39,13 @@ export async function POST(req: NextRequest) {
 
     await setAuthCookie(user.id);
 
+    const profile = await db.profile.findUnique({
+      where: { userId: user.id },
+    });
+
     return NextResponse.json({
       user: { id: user.id, username: user.username },
+      profile,
     });
   } catch (error) {
     console.error("Login error:", error);

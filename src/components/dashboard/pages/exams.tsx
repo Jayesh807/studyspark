@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -31,6 +31,7 @@ import {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
+import { playBell } from "./focus-timer";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -171,10 +172,6 @@ function CountdownTimer({ target }: { target: Date }) {
   const urgency = urgencyOf(target);
 
   useEffect(() => {
-    // Re-sync if target changes (e.g., after editing the exam).
-    // The lint rule discourages setState in effects, but here we genuinely
-    // need to resync internal countdown state to a changed external target.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setParts(getCountdown(target));
     const id = setInterval(() => {
       setParts(getCountdown(target));
@@ -830,6 +827,13 @@ export function ExamsPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    // Request desktop notification permission on mount
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+  }, []);
 
   const { upcoming, past } = useMemo(() => {
     const now = new Date();
