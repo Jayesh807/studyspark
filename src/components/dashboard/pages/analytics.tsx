@@ -16,6 +16,7 @@ import {
   Layers,
   Gauge,
   Download,
+  Sparkles,
 } from "lucide-react";
 import {
   Area,
@@ -141,6 +142,10 @@ export function AnalyticsPage() {
       {/* === Header === */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Insights to power your growth</span>
+          </div>
           <div className="flex items-center gap-2 mb-1">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30">
               <BarChart3 className="h-5 w-5" />
@@ -177,32 +182,6 @@ export function AnalyticsPage() {
                 {p}
               </span>
             </button>
-          ))}
-        </div>
-
-        {/* Export buttons */}
-        <div className="flex items-center gap-2">
-          {[
-            { type: "todos", label: "Tasks" },
-            { type: "focus", label: "Focus" },
-            { type: "exams", label: "Exams" },
-          ].map((exp) => (
-            <motion.button
-              key={exp.type}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                const a = document.createElement("a");
-                a.href = `/api/export?type=${exp.type}`;
-                a.download = `studyspark-${exp.type}.csv`;
-                a.click();
-                toast.success(`${exp.label} CSV exported!`);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-            >
-              <Download className="h-3 w-3" />
-              {exp.label}
-            </motion.button>
           ))}
         </div>
       </div>

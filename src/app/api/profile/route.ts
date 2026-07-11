@@ -10,7 +10,7 @@ const profileSchema = z.object({
   college: z.string().max(100).optional(),
   course: z.string().max(100).optional(),
   semester: z.number().int().min(1).max(12).optional(),
-  avatar: z.string().max(500).optional(),
+  avatar: z.string().max(200000).optional(),
 });
 
 export async function GET() {

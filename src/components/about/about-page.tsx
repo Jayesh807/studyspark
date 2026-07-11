@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, LazyMotion, domAnimation } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
   ArrowRight,
@@ -141,11 +141,12 @@ export function AboutPage() {
   };
 
   return (
+    <LazyMotion features={domAnimation}>
     <div className="min-h-screen overflow-hidden">
       <Navbar />
       <main>
         <section className="relative px-4 pb-20 pt-32 sm:pb-28 sm:pt-40">
-          <AnimatedBlobs variant="landing" />
+          {/* <AnimatedBlobs variant="landing" /> */}
           <div className="absolute inset-x-0 top-0 -z-10 h-[34rem] bg-gradient-to-b from-violet-500/15 via-fuchsia-500/10 to-transparent" />
           <div
             className="pointer-events-none absolute inset-0 -z-10 opacity-[0.08]"
@@ -380,6 +381,7 @@ export function AboutPage() {
       </main>
       <Footer />
     </div>
+    </LazyMotion>
   );
 }
 

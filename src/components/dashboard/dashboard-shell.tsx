@@ -142,7 +142,7 @@ function PageRouter() {
   };
 
   return (
-    <main className="flex-1 overflow-y-auto scrollbar-thin">
+    <main className="flex-1 overflow-y-auto scrollbar-thin scroll-smooth">
       <div className="mx-auto w-full max-w-[1400px] p-4 sm:p-6 lg:p-8">
         <AnimatePresence mode="wait">
           <motion.div

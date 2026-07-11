@@ -254,7 +254,7 @@ function LoginForm({ onAuthenticated }: AuthModeFormProps) {
         error={errors.password?.message}
       />
 
-      <div className="flex items-center justify-between pt-1">
+      <div className="flex items-center pt-1">
         <div className="flex items-center gap-2">
           <Checkbox
             id="remember"
@@ -268,12 +268,6 @@ function LoginForm({ onAuthenticated }: AuthModeFormProps) {
             Remember me
           </Label>
         </div>
-        <button
-          type="button"
-          className="text-sm font-medium text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300 dark:hover:text-violet-200"
-        >
-          Forgot password?
-        </button>
       </div>
 
       <SubmitButton submitting={submitting} mode="login" />

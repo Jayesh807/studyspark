@@ -529,6 +529,10 @@ export function FocusTimerPage() {
       {/* === Header === */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Deep focus, deep results</span>
+          </div>
           <div className="flex items-center gap-2 mb-1">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30">
               <Timer className="h-5 w-5" />

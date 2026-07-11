@@ -223,7 +223,7 @@ function BlockDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg"
+        className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg border-border/50"
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
@@ -651,6 +651,10 @@ export function PlannerPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Plan your success, week by week</span>
+          </div>
           <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight sm:text-3xl">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25">
               <CalendarRange className="h-5 w-5" />

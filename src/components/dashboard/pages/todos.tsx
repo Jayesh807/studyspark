@@ -535,9 +535,9 @@ export function TodosPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 mb-2 text-xs font-medium text-violet-600 dark:text-violet-400">
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Task Board</span>
+              <span>Conquer your day, one task at a time</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
               Daily Tasks
@@ -1024,7 +1024,7 @@ function TaskCardInner({
   return (
     <div
       className={cn(
-        "group relative rounded-2xl border bg-card/80 backdrop-blur-sm p-3.5 transition-all duration-200",
+        "group relative rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-3.5 transition-all duration-200",
         "hover:-translate-y-0.5 hover:shadow-lg hover:shadow-violet-500/10 hover:border-violet-500/40",
         dragging && !overlay && "opacity-40",
         overlay && "shadow-xl shadow-violet-500/20 rotate-2 cursor-grabbing",
@@ -1221,7 +1221,7 @@ function TaskFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin">
+      <DialogContent className="sm:max-w-[560px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin border-border/50">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
