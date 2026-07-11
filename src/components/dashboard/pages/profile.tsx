@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Flame,
@@ -18,6 +18,9 @@ import {
   Clock,
   Hash,
   ImageOff,
+  User,
+  Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -338,6 +341,54 @@ function EditProfileForm({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /** Compress an image file to a small JPEG Base64 string */
+  const compressImage = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const MAX_SIZE = 256;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let w = img.width;
+          let h = img.height;
+          // Scale down to MAX_SIZE x MAX_SIZE while preserving aspect ratio
+          if (w > h) {
+            if (w > MAX_SIZE) { h = Math.round((h * MAX_SIZE) / w); w = MAX_SIZE; }
+          } else {
+            if (h > MAX_SIZE) { w = Math.round((w * MAX_SIZE) / h); h = MAX_SIZE; }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.75));
+        };
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = reader.result as string;
+      };
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
+    if (file.size > 2 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, avatar: "Image must be under 2 MB." }));
+      return;
+    }
+    try {
+      const base64 = await compressImage(file);
+      update("avatar", base64);
+    } catch {
+      setErrors((prev) => ({ ...prev, avatar: "Failed to process image." }));
+    }
+  };
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -366,8 +417,8 @@ function EditProfileForm({
       form.semester > 12
     )
       e.semester = "Semester must be between 1 and 12";
-    if (form.avatar && form.avatar.length > 500)
-      e.avatar = "Avatar URL is too long";
+    if (form.avatar && form.avatar.length > 200000)
+      e.avatar = "Avatar image is too large. Please choose a smaller image.";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -421,6 +472,62 @@ function EditProfileForm({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Profile Photo Upload */}
+          <div className="space-y-2">
+            <Label>Profile Photo</Label>
+            <div className="flex items-center gap-4">
+              {/* Preview */}
+              <div className="relative shrink-0 h-16 w-16 rounded-full border-2 border-border shadow-sm overflow-hidden bg-muted flex items-center justify-center">
+                {form.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={form.avatar}
+                    alt="Avatar preview"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <User className="h-7 w-7 text-muted-foreground" />
+                )}
+                {form.avatar && (
+                  <button
+                    type="button"
+                    onClick={() => update("avatar", "")}
+                    className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white shadow-md hover:bg-destructive/90 transition-colors"
+                    title="Remove photo"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              {/* Upload button */}
+              <div className="flex flex-col gap-1.5">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {form.avatar ? "Change Photo" : "Upload Photo"}
+                </Button>
+                <p className="text-[11px] text-muted-foreground">
+                  PNG, JPG, or WebP. Max 2 MB.
+                </p>
+              </div>
+            </div>
+            {errors.avatar && (
+              <p className="text-xs text-destructive">{errors.avatar}</p>
+            )}
+          </div>
+
           {/* Bio */}
           <div className="space-y-2">
             <Label htmlFor="edit-bio">
@@ -603,7 +710,7 @@ function EditProfileDialog({
 }: EditDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto scrollbar-thin">
+      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto scrollbar-thin border-border/50">
         <EditProfileForm
           profile={profile}
           onSaved={onSaved}
@@ -654,7 +761,7 @@ function ProfileHero({
 
   return (
     <GlassCard className="p-6 sm:p-8 relative overflow-hidden">
-      <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-7">
+      <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-7">
         <ProfileAvatar
           username={username}
           avatarUrl={profile.avatar}
@@ -701,7 +808,7 @@ function ProfileHero({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="mb-5 inline-flex items-start gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm max-w-full"
+              className="mt-2 inline-flex items-start gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm max-w-full"
             >
               <Quote className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
               <span className="font-medium italic text-foreground/90">
@@ -709,19 +816,19 @@ function ProfileHero({
               </span>
             </motion.div>
           )}
+        </div>
 
-          <div className="flex justify-center sm:justify-start">
-            <Button
-              onClick={onEdit}
-              className="text-white"
-              style={{
-                background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-              Edit Profile
-            </Button>
-          </div>
+        <div className="flex-shrink-0 flex items-center mt-4 sm:mt-0">
+          <Button
+            onClick={onEdit}
+            className="text-white"
+            style={{
+              background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+            Edit Profile
+          </Button>
         </div>
       </div>
     </GlassCard>
@@ -766,6 +873,9 @@ export function ProfilePage() {
 
   const handleSaved = (p: Profile) => {
     setProfile(p);
+    if (user) {
+      useAppStore.getState().setUser({ ...user, avatar: p.avatar || undefined });
+    }
   };
 
   const safeProfile = profile ?? DEFAULT_PROFILE;
@@ -780,6 +890,10 @@ export function ProfilePage() {
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Your learning journey</span>
+            </div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               My <span className="text-gradient">Profile</span>
             </h1>
@@ -787,16 +901,6 @@ export function ProfilePage() {
               Manage your personal info, study goal, and account details.
             </p>
           </div>
-          {!loading && !error && (
-            <Button
-              onClick={() => setEditOpen(true)}
-              variant="outline"
-              className="gap-2"
-            >
-              <Pencil className="h-4 w-4" />
-              Edit Profile
-            </Button>
-          )}
         </div>
 
         {error ? (
@@ -904,31 +1008,7 @@ export function ProfilePage() {
               </div>
             </div>
 
-            {/* Goal spotlight (when present and not shown in hero) */}
-            {safeProfile.goal && safeProfile.goal.trim() !== "" && (
-              <StaggerItem>
-                <GlassCard className="p-4 sm:p-5">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white"
-                      style={{
-                        background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
-                      }}
-                    >
-                      <Target className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
-                        Study Goal
-                      </div>
-                      <p className="text-base font-semibold italic">
-                        &ldquo;{safeProfile.goal}&rdquo;
-                      </p>
-                    </div>
-                  </div>
-                </GlassCard>
-              </StaggerItem>
-            )}
+
           </StaggerContainer>
         )}
       </div>

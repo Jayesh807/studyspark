@@ -1,6 +1,6 @@
 "use client";
 
-import { Github, Twitter, Linkedin, Heart } from "lucide-react";
+import { Instagram, Linkedin, Heart } from "lucide-react";
 import { Logo } from "./logo";
 import { scrollToSection } from "./scroll-helpers";
 
@@ -9,47 +9,25 @@ interface FooterColumn {
   links: { label: string; id?: string; href?: string }[];
 }
 
-const COLUMNS: FooterColumn[] = [
-  {
-    title: "Product",
-    links: [
-      { label: "Features", id: "features" },
-      { label: "Preview", id: "screenshots" },
-      { label: "Pricing", id: "pricing" },
-    ],
-  },
-  {
-    title: "Company",
-    links: [
-      { label: "About", href: "/about" },
-      { label: "Blog" },
-      { label: "Careers" },
-      { label: "Contact", href: "/contact" },
-    ],
-  },
-  {
-    title: "Resources",
-    links: [
-      { label: "Documentation" },
-      { label: "Help center" },
-      { label: "Community" },
-      { label: "Changelog" },
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      { label: "Privacy" },
-      { label: "Terms" },
-      { label: "Cookies" },
-      { label: "Licenses" },
-    ],
-  },
-];
+function XIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      stroke="none"
+      {...props}
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+const COLUMNS: FooterColumn[] = [];
 
 const SOCIALS = [
-  { icon: Github, label: "GitHub", href: "#" },
-  { icon: Twitter, label: "Twitter", href: "#" },
+  { icon: Instagram, label: "Instagram", href: "https://www.instagram.com/studysparks.cloud/" },
+  { icon: XIcon, label: "X", href: "https://x.com/Jayesho1" },
   { icon: Linkedin, label: "LinkedIn", href: "#" },
 ];
 
@@ -57,58 +35,31 @@ export function Footer() {
   return (
     <footer className="relative mt-12 border-t border-violet-500/10 bg-background/60 backdrop-blur-xl">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:py-16">
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-6">
-          {/* Brand block */}
-          <div className="col-span-2">
+        <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+          {/* Brand block - Left Side */}
+          <div className="flex-1">
             <Logo />
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
               A calm, beautifully crafted workspace for students. Tasks,
               calendar, focus and analytics — all in one place.
             </p>
-            <div className="mt-5 flex items-center gap-2">
-              {SOCIALS.map(({ icon: Icon, label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  className="flex size-9 items-center justify-center rounded-xl border border-violet-500/15 bg-background/60 text-muted-foreground transition-all hover:scale-105 hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-300"
-                >
-                  <Icon className="size-4" />
-                </a>
-              ))}
-            </div>
           </div>
 
-          {/* Link columns */}
-          {COLUMNS.map((col) => (
-            <div key={col.title}>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-                {col.title}
-              </h3>
-              <ul className="mt-4 space-y-2.5">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    {link.id ? (
-                      <button
-                        type="button"
-                        onClick={() => scrollToSection(link.id!)}
-                        className="text-sm text-muted-foreground transition-colors hover:text-violet-600 dark:hover:text-violet-300"
-                      >
-                        {link.label}
-                      </button>
-                    ) : (
-                      <a
-                        href={link.href || "#"}
-                        className="text-sm text-muted-foreground transition-colors hover:text-violet-600 dark:hover:text-violet-300"
-                      >
-                        {link.label}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Socials - Right Side */}
+          <div className="flex items-center gap-3">
+            {SOCIALS.map(({ icon: Icon, label, href }) => (
+              <a
+                key={label}
+                href={href}
+                aria-label={label}
+                target={href.startsWith("http") ? "_blank" : undefined}
+                rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+                className="flex size-10 items-center justify-center rounded-xl border border-violet-500/15 bg-background/60 text-muted-foreground transition-all hover:scale-105 hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-300"
+              >
+                <Icon className="size-5" />
+              </a>
+            ))}
+          </div>
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-violet-500/10 pt-6 sm:flex-row">
