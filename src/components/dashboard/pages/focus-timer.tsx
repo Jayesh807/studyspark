@@ -22,7 +22,18 @@ import {
   VolumeX,
   Bell,
   BellRing,
+  Plus,
+  Eye,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Bar,
   BarChart,
@@ -229,6 +240,61 @@ export function FocusTimerPage() {
   const [autoBreak, setAutoBreak] = useState(true);
   const [completedFocusCount, setCompletedFocusCount] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [stretchDismissed, setStretchDismissed] = useState(false);
+  const [hydrateDismissed, setHydrateDismissed] = useState(false);
+
+  const [customNudges, setCustomNudges] = useState<{ id: string; title: string; body: string; icon: 'coffee' | 'droplets' | 'eye' | 'sparkles' | 'brain'; dismissed: boolean }[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const saved = localStorage.getItem("custom-nudges");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const saveCustomNudges = (nudges: typeof customNudges) => {
+    setCustomNudges(nudges);
+    localStorage.setItem("custom-nudges", JSON.stringify(nudges));
+  };
+
+  const handleAddCustomNudge = (title: string, body: string, icon: 'coffee' | 'droplets' | 'eye' | 'sparkles' | 'brain') => {
+    const next = [...customNudges, { id: String(Date.now()), title, body, icon, dismissed: false }];
+    saveCustomNudges(next);
+  };
+
+  const handleDismissCustomNudge = (id: string) => {
+    const next = customNudges.map(n => n.id === id ? { ...n, dismissed: true } : n);
+    saveCustomNudges(next);
+    toast("Custom nudge dismissed");
+  };
+
+  const handleDismissAll = () => {
+    setStretchDismissed(true);
+    setHydrateDismissed(true);
+    const next = customNudges.map(n => ({ ...n, dismissed: true }));
+    saveCustomNudges(next);
+    toast("All wellness nudges dismissed");
+  };
+
+  const [addNudgeOpen, setAddNudgeOpen] = useState(false);
+  const [newNudgeTitle, setNewNudgeTitle] = useState("");
+  const [newNudgeBody, setNewNudgeBody] = useState("");
+  const [newNudgeIcon, setNewNudgeIcon] = useState<'coffee' | 'droplets' | 'eye' | 'sparkles' | 'brain'>("coffee");
+
+  const submitNewNudge = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newNudgeTitle.trim() || !newNudgeBody.trim()) {
+      toast.error("Please fill in both title and description.");
+      return;
+    }
+    handleAddCustomNudge(newNudgeTitle.trim(), newNudgeBody.trim(), newNudgeIcon);
+    setNewNudgeTitle("");
+    setNewNudgeBody("");
+    setNewNudgeIcon("coffee");
+    setAddNudgeOpen(false);
+    toast.success("Custom nudge added!");
+  };
 
   // === Data state ===
   const [sessions, setSessions] = useState<FocusSession[]>([]);
@@ -773,89 +839,124 @@ export function FocusTimerPage() {
           </StaggerItem>
 
           {/* === Break reminders === */}
-          <StaggerItem>
-            <GlassCard className="p-5 sm:p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-violet-500" />
-                  <h3 className="text-sm font-semibold">Wellness nudges</h3>
-                </div>
-                <button
-                  onClick={() =>
-                    toast("Stay mindful — small breaks, big focus.", {
-                      icon: <Sparkles className="h-4 w-4" />,
-                    })
-                  }
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Dismiss
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ReminderCard
-                  icon={Coffee}
-                  title="Stretch break"
-                  body="Stand up, roll your shoulders, reach for the sky. Hold for 30 seconds."
-                  accent="from-amber-400/20 to-orange-400/10"
-                  iconColor="text-amber-500"
-                  onDismiss={() => toast("Stretch reminder dismissed")}
-                />
-                <ReminderCard
-                  icon={Droplets}
-                  title="Hydrate"
-                  body="Drink a glass of water. Your brain works best when hydrated."
-                  accent="from-cyan-400/20 to-sky-400/10"
-                  iconColor="text-cyan-500"
-                  onDismiss={() => toast("Hydration reminder dismissed")}
-                />
-              </div>
-
-              {/* Rotating break tip — only shown during break modes */}
-              <AnimatePresence>
-                {mode !== "focus" && (
-                  <motion.div
-                    initial={reduceMotion ? false : { opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
-                    transition={{ duration: 0.25 }}
-                    className="mt-3"
-                  >
-                    <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-400/10 to-fuchsia-400/5 p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-violet-500" />
-                          <p className="text-xs font-semibold">Break tip · rotating</p>
-                        </div>
-                        <div
-                          className="flex items-end gap-0.5 h-4"
-                          style={{ color: modeCfg.accent }}
-                          aria-hidden="true"
-                        >
-                          <span className="sound-wave-bar" style={{ animationDelay: "0ms" }} />
-                          <span className="sound-wave-bar" style={{ animationDelay: "150ms" }} />
-                          <span className="sound-wave-bar" style={{ animationDelay: "300ms" }} />
-                          <span className="sound-wave-bar" style={{ animationDelay: "450ms" }} />
-                        </div>
+          {(!stretchDismissed || !hydrateDismissed || customNudges.some(n => !n.dismissed) || mode !== "focus") && (
+            <StaggerItem>
+              <GlassCard className="p-5 sm:p-6">
+                {(!stretchDismissed || !hydrateDismissed || customNudges.some(n => !n.dismissed)) && (
+                  <>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-violet-500" />
+                        <h3 className="text-sm font-semibold">Wellness nudges</h3>
                       </div>
-                      <AnimatePresence mode="wait">
-                        <motion.p
-                          key={tipIndex}
-                          initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
-                          transition={{ duration: 0.25 }}
-                          className="text-sm text-foreground/90 leading-relaxed"
-                          aria-live="polite"
-                        >
-                          {BREAK_TIPS[tipIndex]}
-                        </motion.p>
-                      </AnimatePresence>
+                      <button
+                        onClick={handleDismissAll}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Dismiss
+                      </button>
                     </div>
-                  </motion.div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {!stretchDismissed && (
+                        <ReminderCard
+                          icon={Coffee}
+                          title="Stretch break"
+                          body="Stand up, roll your shoulders, reach for the sky. Hold for 30 seconds."
+                          accent="from-amber-400/20 to-orange-400/10"
+                          iconColor="text-amber-500"
+                          onDismiss={() => {
+                            setStretchDismissed(true);
+                            toast("Stretch reminder dismissed");
+                          }}
+                        />
+                      )}
+                      {!hydrateDismissed && (
+                        <ReminderCard
+                          icon={Droplets}
+                          title="Hydrate"
+                          body="Drink a glass of water. Your brain works best when hydrated."
+                          accent="from-cyan-400/20 to-sky-400/10"
+                          iconColor="text-cyan-500"
+                          onDismiss={() => {
+                            setHydrateDismissed(true);
+                            toast("Hydration reminder dismissed");
+                          }}
+                        />
+                      )}
+                      {customNudges.filter(n => !n.dismissed).map(n => {
+                        const Icon = n.icon === 'coffee' ? Coffee : n.icon === 'droplets' ? Droplets : n.icon === 'eye' ? Eye : n.icon === 'sparkles' ? Sparkles : Brain;
+                        const accent = n.icon === 'coffee' ? "from-amber-400/20 to-orange-400/10" : n.icon === 'droplets' ? "from-cyan-400/20 to-sky-400/10" : n.icon === 'eye' ? "from-emerald-400/20 to-teal-400/10" : n.icon === 'sparkles' ? "from-fuchsia-400/20 to-pink-400/10" : "from-violet-400/20 to-purple-400/10";
+                        const iconColor = n.icon === 'coffee' ? "text-amber-500" : n.icon === 'droplets' ? "text-cyan-500" : n.icon === 'eye' ? "text-emerald-500" : n.icon === 'sparkles' ? "text-fuchsia-500" : "text-violet-500";
+                        return (
+                          <ReminderCard
+                            key={n.id}
+                            icon={Icon}
+                            title={n.title}
+                            body={n.body}
+                            accent={accent}
+                            iconColor={iconColor}
+                            onDismiss={() => handleDismissCustomNudge(n.id)}
+                          />
+                        );
+                      })}
+                      <button
+                        onClick={() => setAddNudgeOpen(true)}
+                        className="flex flex-col items-center justify-center border border-dashed border-border hover:border-violet-500/50 bg-foreground/[0.01] hover:bg-violet-500/[0.02] rounded-2xl p-4 transition-all duration-300 min-h-[96px] gap-1.5"
+                      >
+                        <Plus className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-xs font-semibold text-muted-foreground">Add custom nudge</span>
+                      </button>
+                    </div>
+                  </>
                 )}
-              </AnimatePresence>
-            </GlassCard>
-          </StaggerItem>
+
+                {/* Rotating break tip — only shown during break modes */}
+                <AnimatePresence>
+                  {mode !== "focus" && (
+                    <motion.div
+                      initial={reduceMotion ? false : { opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={reduceMotion ? undefined : { opacity: 0, y: -6 }}
+                      transition={{ duration: 0.25 }}
+                      className={cn(!stretchDismissed || !hydrateDismissed ? "mt-3" : "")}
+                    >
+                      <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-400/10 to-fuchsia-400/5 p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4 text-violet-500" />
+                            <p className="text-xs font-semibold">Break tip · rotating</p>
+                          </div>
+                          <div
+                            className="flex items-end gap-0.5 h-4"
+                            style={{ color: modeCfg.accent }}
+                            aria-hidden="true"
+                          >
+                            <span className="sound-wave-bar" style={{ animationDelay: "0ms" }} />
+                            <span className="sound-wave-bar" style={{ animationDelay: "150ms" }} />
+                            <span className="sound-wave-bar" style={{ animationDelay: "300ms" }} />
+                            <span className="sound-wave-bar" style={{ animationDelay: "450ms" }} />
+                          </div>
+                        </div>
+                        <AnimatePresence mode="wait">
+                          <motion.p
+                            key={tipIndex}
+                            initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={reduceMotion ? undefined : { opacity: 0, y: -4 }}
+                            transition={{ duration: 0.25 }}
+                            className="text-sm text-foreground/90 leading-relaxed"
+                            aria-live="polite"
+                          >
+                            {BREAK_TIPS[tipIndex]}
+                          </motion.p>
+                        </AnimatePresence>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </GlassCard>
+            </StaggerItem>
+          )}
         </StaggerContainer>
 
         {/* === Right column: stats + recent === */}
@@ -985,6 +1086,72 @@ export function FocusTimerPage() {
           </StaggerItem>
         </StaggerContainer>
       </div>
+      {/* Add Custom Nudge Dialog */}
+      <Dialog open={addNudgeOpen} onOpenChange={setAddNudgeOpen}>
+        <DialogContent className="rounded-2xl border-border/50 max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-violet-500" />
+              Add Wellness Nudge
+            </DialogTitle>
+            <DialogDescription>
+              Create a custom reminder to help you stay mindful and healthy during your studies.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={submitNewNudge} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="nudge-title">Reminder Title</Label>
+              <Input
+                id="nudge-title"
+                placeholder="e.g. Rest Eyes"
+                value={newNudgeTitle}
+                onChange={(e) => setNewNudgeTitle(e.target.value)}
+                maxLength={40}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nudge-body">Instructions / Details</Label>
+              <Input
+                id="nudge-body"
+                placeholder="e.g. Look at something 20 feet away for 20 seconds."
+                value={newNudgeBody}
+                onChange={(e) => setNewNudgeBody(e.target.value)}
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Icon / Theme</Label>
+              <div className="grid grid-cols-5 gap-2 pt-1">
+                {(['coffee', 'droplets', 'eye', 'sparkles', 'brain'] as const).map((ic) => {
+                  const Icon = ic === 'coffee' ? Coffee : ic === 'droplets' ? Droplets : ic === 'eye' ? Eye : ic === 'sparkles' ? Sparkles : Brain;
+                  const activeColor = ic === 'coffee' ? "bg-amber-500/20 text-amber-500 border-amber-500/40" : ic === 'droplets' ? "bg-cyan-500/20 text-cyan-500 border-cyan-500/40" : ic === 'eye' ? "bg-emerald-500/20 text-emerald-500 border-emerald-500/40" : ic === 'sparkles' ? "bg-fuchsia-500/20 text-fuchsia-500 border-fuchsia-500/40" : "bg-violet-500/20 text-violet-500 border-violet-500/40";
+                  return (
+                    <button
+                      key={ic}
+                      type="button"
+                      onClick={() => setNewNudgeIcon(ic)}
+                      className={cn(
+                        "flex items-center justify-center p-2.5 rounded-xl border border-border hover:bg-muted transition-all",
+                        newNudgeIcon === ic ? activeColor : "bg-background"
+                      )}
+                    >
+                      <Icon className="h-4.5 w-4.5" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setAddNudgeOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                Add nudge
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </PageTransition>
   );
 }
