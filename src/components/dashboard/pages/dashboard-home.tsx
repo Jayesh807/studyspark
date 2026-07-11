@@ -252,7 +252,7 @@ function GreetingHeader({ username }: { username: string }) {
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-600 dark:text-violet-300 ring-1 ring-violet-500/20">
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 dark:text-violet-300 ring-1 ring-violet-500/20">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Welcome back to your dashboard</span>
           </div>
@@ -263,19 +263,20 @@ function GreetingHeader({ username }: { username: string }) {
           <p className="text-base sm:text-lg text-muted-foreground/80 font-medium italic mt-1">
             Believe you can and you&apos;re halfway there.
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <CalendarDays className="h-4 w-4 text-violet-500" />
-              <span>{format(now, "EEEE, MMMM d, yyyy")}</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground sm:justify-end pb-1">
+          <span className="inline-flex items-center gap-1.5">
+            <CalendarDays className="h-4 w-4 text-violet-500" />
+            <span>{format(now, "EEEE, MMMM d, yyyy")}</span>
+          </span>
+          <span className="hidden sm:inline text-muted-foreground/40">•</span>
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="h-4 w-4 text-violet-500" />
+            <span className="tabular-nums font-medium text-foreground/80">
+              {format(now, "HH:mm:ss")}
             </span>
-            <span className="hidden sm:inline text-muted-foreground/40">•</span>
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-4 w-4 text-violet-500" />
-              <span className="tabular-nums font-medium text-foreground/80">
-                {format(now, "HH:mm:ss")}
-              </span>
-            </span>
-          </div>
+          </span>
         </div>
       </div>
     </motion.div>

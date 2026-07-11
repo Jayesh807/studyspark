@@ -4,6 +4,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useAppStore } from "@/lib/store";
 import { apiFetch, ApiError, handleError } from "@/lib/api";
 import type { User, Profile } from "@/lib/types";
+import { stopRadio } from "@/components/dashboard/lofi-player";
 
 interface MeResponse {
   user: User | null;
@@ -57,7 +58,7 @@ export function useAuth() {
         // no authenticated user yet (defensive: never clobber a user that a
         // concurrent login/signup may have just set).
         if (data.user) {
-          setUser(data.user);
+          setUser({ ...data.user, avatar: data.profile?.avatar || undefined });
         } else if (!useAppStore.getState().user) {
           setUser(null);
         }
@@ -125,6 +126,8 @@ export function useAuth() {
   );
 
   const logout = useCallback(async () => {
+    // Stop music before logging out
+    stopRadio();
     try {
       await apiFetch("/api/auth/logout", { method: "POST" });
     } catch {

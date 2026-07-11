@@ -321,9 +321,9 @@ export function CalendarPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 mb-2 text-xs font-medium text-violet-600 dark:text-violet-400">
+            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>Schedule</span>
+              <span>Organize your life, day by day</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
               Calendar
@@ -1255,7 +1255,7 @@ function DayDetailDialog({
 }) {
   return (
     <Dialog open={!!date} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin">
+      <DialogContent className="sm:max-w-[480px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin border-border/50">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
@@ -1421,7 +1421,7 @@ function EventFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin">
+      <DialogContent className="sm:max-w-[520px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin border-border/50">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">

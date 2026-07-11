@@ -505,7 +505,7 @@ function SubjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg border-border/50">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
@@ -813,9 +813,9 @@ export function SubjectsPage() {
       {/* Header */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-600 ring-1 ring-violet-500/20 dark:text-violet-300">
-            <BookOpen className="h-3.5 w-3.5" />
-            Subjects
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>Your knowledge universe</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             My Subjects

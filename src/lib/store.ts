@@ -23,6 +23,7 @@ export type AccentColor = "277" | "300" | "162" | "16" | "200" | "70";
 interface User {
   id: string;
   username: string;
+  avatar?: string;
 }
 
 interface AppState {

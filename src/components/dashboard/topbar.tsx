@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   BookOpen,
   Target,
+  Calculator as CalculatorIcon,
+  Music,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAppStore, type AppView } from "@/lib/store";
@@ -31,6 +33,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { CalculatorWidget } from "./calculator";
+import { LofiPlayer } from "./lofi-player";
 
 /* -------------------------------------------------------------------------- */
 /*  Types & helpers                                                            */
@@ -388,6 +392,9 @@ function NotificationPopover() {
 export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
   const { currentView, setMobileSidebarOpen, user } = useAppStore();
   const { theme, setTheme } = useTheme();
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [radioOpen, setRadioOpen] = useState(false);
+  const [isRadioPlaying, setIsRadioPlaying] = useState(false);
 
   const meta = VIEW_TITLES[currentView] ?? VIEW_TITLES.dashboard;
 
@@ -448,6 +455,53 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
         <Search className="h-[18px] w-[18px]" />
       </Button>
 
+      {/* Study Radio popover */}
+      <Popover open={radioOpen} onOpenChange={setRadioOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "relative h-9 w-9 rounded-xl transition-colors",
+              (radioOpen || isRadioPlaying) && "bg-violet-500/10 text-violet-500"
+            )}
+            aria-label="Study Radio"
+          >
+            <Music className="h-[18px] w-[18px]" />
+            {isRadioPlaying && (
+              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-violet-500 animate-pulse ring-2 ring-background" />
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          sideOffset={8}
+          className="w-[360px] p-0 border-border/60 shadow-2xl bg-background/80 backdrop-blur-xl rounded-2xl overflow-hidden"
+        >
+          <div className="p-1">
+            <LofiPlayer onPlayingChange={setIsRadioPlaying} />
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Calculator toggle */}
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCalcOpen(true)}
+              className="relative h-9 w-9 rounded-xl"
+              aria-label="Open calculator"
+            >
+              <CalculatorIcon className="h-[18px] w-[18px]" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Calculator</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
       {/* Theme toggle */}
       <TooltipProvider delayDuration={0}>
         <Tooltip>
@@ -479,10 +533,15 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
                 onClick={() => useAppStore.getState().setView("profile")}
                 className="group flex items-center gap-2 rounded-xl px-1 py-1 transition-colors hover:bg-accent/60"
               >
-                <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-semibold text-white shadow-sm ring-2 ring-transparent transition-all group-hover:ring-violet-500/30">
-                  {user.username.charAt(0).toUpperCase()}
+                <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-sm font-semibold text-white shadow-sm ring-2 ring-transparent transition-all group-hover:ring-violet-500/30 overflow-hidden">
+                  {user.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.avatar} alt={user.username} className="h-full w-full object-cover" />
+                  ) : (
+                    user.username.charAt(0).toUpperCase()
+                  )}
                   {/* Online indicator dot */}
-                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background" />
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background z-10" />
                 </div>
                 <span className="hidden text-sm font-medium sm:block max-w-[120px] truncate">
                   {user.username}
@@ -496,6 +555,8 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
           </Tooltip>
         </TooltipProvider>
       )}
+      
+      <CalculatorWidget open={calcOpen} onOpenChange={setCalcOpen} />
     </header>
   );
 }

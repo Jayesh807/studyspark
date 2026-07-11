@@ -111,7 +111,7 @@ function NavButton({
       className={cn(
         "relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors overflow-hidden",
         active
-          ? "text-primary-foreground"
+          ? "text-white"
           : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
       )}
     >
