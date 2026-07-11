@@ -12,8 +12,13 @@ import { QuickAddFAB } from "./quick-add-fab";
 import { OnboardingTour } from "./onboarding-tour";
 import { AnimatedBlobs } from "@/components/shared/animated-blobs";
 import { PageLoader } from "@/components/shared/feedback";
-import { Button } from "@/components/ui/button";
 import { Home, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api";
+import { parseISO } from "date-fns";
+import { playBell } from "./pages/focus-timer";
+import { toast } from "sonner";
+import type { Exam } from "@/lib/types";
 
 function NotFoundPage() {
   const setView = useAppStore((s) => s.setView);
@@ -199,6 +204,96 @@ export function DashboardShell() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [paletteOpen]);
+
+  // Global Upcoming Exams Notification Monitor
+  useEffect(() => {
+    let examsList: Exam[] = [];
+    const notifiedIds = new Set<string>();
+
+    const examDate = (exam: Exam): Date => {
+      const base = parseISO(exam.date);
+      if (exam.time) {
+        const [h, m] = exam.time.split(":").map((v) => Number(v));
+        if (!Number.isNaN(h) && !Number.isNaN(m)) {
+          base.setHours(h, m, 0, 0);
+        }
+      }
+      return base;
+    };
+
+    const fetchExams = async () => {
+      try {
+        const data = await apiFetch<{ exams: Exam[] }>("/api/exams");
+        const now = Date.now();
+        // Only keep upcoming/today exams
+        examsList = (data.exams ?? []).filter((e) => {
+          const target = examDate(e);
+          // If already passed, mark as notified so we don't alert
+          if (target.getTime() < now) {
+            notifiedIds.add(e.id);
+            return false;
+          }
+          return true;
+        });
+      } catch {
+        // ignore fetch errors
+      }
+    };
+
+    // Request notification permission when dashboard shell mounts
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+
+    // Initial fetch
+    void fetchExams();
+
+    // Re-fetch exams list every 30 seconds
+    const fetchIntervalId = setInterval(fetchExams, 30000);
+
+    // Check timer every second
+    const tickIntervalId = setInterval(() => {
+      const now = Date.now();
+      examsList.forEach((e) => {
+        if (notifiedIds.has(e.id)) return;
+        const target = examDate(e);
+        const diff = target.getTime() - now;
+        if (diff <= 0) {
+          notifiedIds.add(e.id);
+          try {
+            // Play sound chime arpeggio
+            playBell("focus-end");
+
+            // Trigger desktop notification
+            if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+              const n = new Notification("Exam Starting! 📚", {
+                body: `Your exam "${e.examName}" is starting now! Good luck! 🚀`,
+                icon: "/favicon.ico",
+                tag: `exam-start-${e.id}`,
+                silent: false,
+              });
+              n.onclick = () => {
+                window.focus();
+                n.close();
+              };
+            } else {
+              // Fallback toast inside page
+              toast.success(`Exam time! "${e.examName}" starts now! Good luck! 🚀`, {
+                duration: 10000,
+              });
+            }
+          } catch {
+            // ignore
+          }
+        }
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(fetchIntervalId);
+      clearInterval(tickIntervalId);
+    };
+  }, []);
 
   return (
     <div className="relative flex h-screen overflow-hidden">
