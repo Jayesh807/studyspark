@@ -545,9 +545,9 @@ export function PlannerPage() {
   useEffect(() => {
     (async () => {
       try {
-        const subRes = await apiFetch("/api/subjects");
-        if (subRes.ok) {
-          setSubjects(await subRes.json());
+        const subRes = await apiFetch<{ subjects: Subject[] }>("/api/subjects");
+        if (subRes && subRes.subjects) {
+          setSubjects(subRes.subjects);
         }
       } catch {
         // ignore

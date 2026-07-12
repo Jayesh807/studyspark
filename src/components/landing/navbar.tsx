@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {  m  } from 'framer-motion';
+import { m } from 'framer-motion';
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS: { label: string; id: string }[] = [
-  { label: "Features", id: "features" },
   { label: "Pricing", id: "pricing" },
 ];
 
@@ -83,6 +82,15 @@ export function Navbar() {
         <Logo onClick={goHome} />
 
         <ul className="hidden items-center gap-1 md:flex">
+          <li>
+            <button
+              type="button"
+              onClick={() => router.push("/features")}
+              className="rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-violet-500/10 hover:text-foreground"
+            >
+              Features
+            </button>
+          </li>
           <li>
             <button
               type="button"
@@ -158,11 +166,25 @@ export function Navbar() {
                   type="button"
                   onClick={() => {
                     setOpen(false);
-                    router.push("/about");
+                    router.push("/features");
                   }}
                   initial={{ opacity: 0, x: 16 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.05 }}
+                  className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-violet-500/10"
+                >
+                  Features
+                  <ArrowRight className="size-4 text-muted-foreground" />
+                </m.button>
+                <m.button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    router.push("/about");
+                  }}
+                  initial={{ opacity: 0, x: 16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
                   className="flex items-center justify-between rounded-xl px-4 py-3 text-left text-base font-medium text-foreground transition-colors hover:bg-violet-500/10"
                 >
                   About

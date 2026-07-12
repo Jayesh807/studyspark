@@ -2,7 +2,6 @@ import { Navbar } from "./navbar";
 import { Hero } from "./hero";
 import dynamic from "next/dynamic";
 
-const Features = dynamic(() => import("./features").then((m) => m.Features));
 const Screenshots = dynamic(() => import("./screenshots").then((m) => m.Screenshots));
 const Pricing = dynamic(() => import("./pricing").then((m) => m.Pricing));
 const Footer = dynamic(() => import("./footer").then((m) => m.Footer));
@@ -30,7 +29,6 @@ export function LandingPage() {
         <main>
           <Hero />
           {/* <StatsBar /> */}
-          <Features />
           {/* <Screenshots /> */}
           <Pricing />
           {/* <Testimonials /> */}

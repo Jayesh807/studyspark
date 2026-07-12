@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 const AnimatedBlobs = dynamic(() => import("@/components/shared/animated-blobs").then((m) => m.AnimatedBlobs), { ssr: false });
 import { scrollToSection } from "./scroll-helpers";
@@ -46,6 +47,7 @@ const item = {
 
 export function Hero() {
   const setView = useAppStore((s) => s.setView);
+  const router = useRouter();
 
   return (
     <section
@@ -103,7 +105,7 @@ export function Hero() {
             <Button
               size="lg"
               variant="outline"
-              onClick={() => scrollToSection("features")}
+              onClick={() => router.push("/features")}
               className="h-12 rounded-xl px-7 text-base font-semibold"
             >
               See features

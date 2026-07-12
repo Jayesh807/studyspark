@@ -233,7 +233,7 @@ function LoginForm({ onAuthenticated }: AuthModeFormProps) {
             className={cn(
               "h-11 rounded-xl pl-9",
               errors.username &&
-                "border-destructive/60 focus-visible:ring-destructive/30"
+              "border-destructive/60 focus-visible:ring-destructive/30"
             )}
             {...register("username")}
           />
@@ -333,7 +333,7 @@ function SignupForm({ onAuthenticated }: AuthModeFormProps) {
             className={cn(
               "h-11 rounded-xl pl-9",
               errors.username &&
-                "border-destructive/60 focus-visible:ring-destructive/30"
+              "border-destructive/60 focus-visible:ring-destructive/30"
             )}
             {...register("username")}
           />

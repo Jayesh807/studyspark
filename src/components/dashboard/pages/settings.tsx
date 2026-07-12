@@ -573,7 +573,157 @@ function ResetDataDialog() {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*                              Delete Account Dialog                         */
+/* -------------------------------------------------------------------------- */
 
+interface DeleteAccountState {
+  status: "idle" | "deleting" | "done";
+  label: string;
+}
+
+function DeleteAccountDialog() {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [state, setState] = useState<DeleteAccountState>({
+    status: "idle",
+    label: "",
+  });
+  const { logout } = useAuth();
+
+  // Reset state on dialog open/close
+  useEffect(() => {
+    if (!open) {
+      setPassword("");
+      setState({ status: "idle", label: "" });
+    }
+  }, [open]);
+
+  const handleDeleteAccount = useCallback(async () => {
+    if (!password.trim()) {
+      toast.error("Please enter your password.");
+      return;
+    }
+    setState({
+      status: "deleting",
+      label: "Permanently deleting your account and all data...",
+    });
+    try {
+      const res = await apiFetch<{ success?: boolean; error?: string }>("/api/auth/delete-account", {
+        method: "DELETE",
+        body: JSON.stringify({ password }),
+      });
+
+      if (res.error) {
+        throw new Error(res.error);
+      }
+
+      setState({ status: "done", label: "Account deleted." });
+      toast.success("Your account has been deleted permanently.");
+      
+      setTimeout(() => {
+        logout();
+      }, 1000);
+    } catch (error) {
+      handleError(error, "Failed to delete account");
+      setState({
+        status: "idle",
+        label: "",
+      });
+    }
+  }, [logout, password]);
+
+  const isWorking = state.status === "deleting";
+  const canSubmit = password.trim().length > 0 && !isWorking;
+
+  return (
+    <AlertDialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!isWorking) setOpen(v);
+      }}
+    >
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="outline"
+          className="gap-2 border-rose-500/30 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 hover:border-rose-500/50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-500/15"
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete Account
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            Permanently delete your account?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            This action is permanent and cannot be undone. All of your profile data, subjects, tasks, events, focus sessions, and settings will be permanently erased.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="space-y-1.5 py-3">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Confirm Password
+          </label>
+          <Input
+            type="password"
+            placeholder="Enter your password to verify your identity"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isWorking}
+            className="rounded-xl border-border/50 bg-background/50 focus-visible:ring-rose-500"
+          />
+        </div>
+
+        {isWorking && (
+          <div className="space-y-2 py-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>{state.label}</span>
+            </div>
+          </div>
+        )}
+
+        {state.status === "done" && (
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            <Check className="h-4 w-4" />
+            Account deleted successfully.
+          </div>
+        )}
+
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isWorking}>
+            {state.status === "done" ? "Close" : "Cancel"}
+          </AlertDialogCancel>
+          {state.status !== "done" && (
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDeleteAccount();
+              }}
+              disabled={!canSubmit}
+              className="bg-destructive text-white hover:bg-destructive/90 disabled:opacity-50"
+            >
+              {isWorking ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  Yes, delete my account
+                </>
+              )}
+            </AlertDialogAction>
+          )}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
 
 /* -------------------------------------------------------------------------- */
 /*                              Main Settings Page                            */
@@ -793,6 +943,7 @@ export function SettingsPage() {
                   {loggingOut ? "Logging out..." : "Log Out"}
                 </Button>
                 <ResetDataDialog />
+                <DeleteAccountDialog />
               </div>
             </div>
           </SettingsSection>
