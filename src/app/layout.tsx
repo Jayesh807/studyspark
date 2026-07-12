@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
 
   description:
-    "StudySpark helps students stay organized with task management, focus timer, calendar, events, and productivity analytics. Plan smarter and achieve your study goals.",
+    "StudySpark helps students stay organized with task management, focus timer, calendar, study tools (GPA, Age & Unit calculators), Study Radio, and productivity analytics. Plan smarter and achieve your study goals.",
 
   applicationName: "StudySpark",
 
@@ -47,6 +47,12 @@ export const metadata: Metadata = {
     "study analytics",
     "student dashboard",
     "online planner",
+    "gpa calculator",
+    "cgpa calculator",
+    "age calculator",
+    "lofi study music",
+    "study radio",
+    "unit converter",
   ],
 
   authors: [
