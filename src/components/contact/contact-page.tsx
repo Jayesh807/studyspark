@@ -7,16 +7,14 @@ import {
   ArrowLeft,
   ArrowRight,
   BriefcaseBusiness,
-  LifeBuoy,
   Mail,
   MessageSquareText,
-  Send,
   Sparkles,
   Wrench,
   type LucideIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Navbar } from "@/components/landing/navbar";
+import { Footer } from "@/components/landing/footer";
 import { SectionHeading } from "@/components/landing/section-heading";
 import { AnimatedBlobs } from "@/components/shared/animated-blobs";
 import {
@@ -26,9 +24,6 @@ import {
 } from "@/components/shared/motion";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -109,12 +104,6 @@ export function ContactPage() {
     router.push("/signup");
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    toast.success("Thanks for reaching out. We will get back to you soon.");
-    event.currentTarget.reset();
-  };
-
   return (
     <LazyMotion features={domAnimation}>
     <div className="min-h-screen overflow-hidden">
@@ -177,103 +166,6 @@ export function ContactPage() {
               ))}
             </StaggerContainer>
           </motion.div>
-        </section>
-
-        <section className="relative px-4 py-16 sm:py-24" aria-labelledby="contact-form-title">
-          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-            <div>
-              <SectionHeading
-                eyebrow="Send a message"
-                title="Tell us what you"
-                highlight="need help with"
-                description="Share a little context and the StudySpark team will route your message to the right place."
-                align="left"
-              />
-
-              <GlassCard className="mt-8 p-6 sm:p-7">
-                <div className="flex items-start gap-4">
-                  <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25">
-                    <LifeBuoy className="size-6" />
-                  </div>
-                  <div>
-                    <h2 id="contact-form-title" className="text-lg font-semibold tracking-tight">
-                      Support hours
-                    </h2>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      We review messages regularly and prioritize anything that
-                      blocks a student from planning, focusing or accessing an
-                      account.
-                    </p>
-                  </div>
-                </div>
-              </GlassCard>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <GlassCard className="relative overflow-hidden p-6 sm:p-8">
-                <form className="relative space-y-5" onSubmit={handleSubmit}>
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <Field label="Full Name" htmlFor="full-name">
-                      <Input
-                        id="full-name"
-                        name="fullName"
-                        autoComplete="name"
-                        placeholder="Your name"
-                        required
-                        className="h-12 rounded-xl bg-background/70 px-4"
-                      />
-                    </Field>
-                    <Field label="Email Address" htmlFor="email">
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        autoComplete="email"
-                        placeholder="you@example.com"
-                        required
-                        className="h-12 rounded-xl bg-background/70 px-4"
-                      />
-                    </Field>
-                  </div>
-
-                  <Field label="Subject" htmlFor="subject">
-                    <Input
-                      id="subject"
-                      name="subject"
-                      placeholder="How can we help?"
-                      required
-                      className="h-12 rounded-xl bg-background/70 px-4"
-                    />
-                  </Field>
-
-                  <Field label="Message" htmlFor="message">
-                    <Textarea
-                      id="message"
-                      name="message"
-                      placeholder="Tell us a little more..."
-                      required
-                      minLength={10}
-                      className="min-h-36 resize-y rounded-xl bg-background/70 px-4 py-3"
-                    />
-                  </Field>
-
-                  <Button
-                    type="submit"
-                    size="lg"
-                    className="h-12 w-full rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:shadow-xl hover:shadow-violet-500/45 hover:brightness-110 sm:w-auto"
-                  >
-                    Send Message
-                    <Send className="size-4" />
-                  </Button>
-                </form>
-              </GlassCard>
-            </motion.div>
-          </div>
         </section>
 
         <section className="relative px-4 py-16 sm:py-24" aria-labelledby="faq-title">
@@ -381,28 +273,7 @@ export function ContactPage() {
         </section>
       </main>
 
-      <footer className="relative border-t border-violet-500/10 bg-background/60 px-4 py-8 backdrop-blur-xl">
-        <nav
-          aria-label="Contact footer"
-          className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 sm:flex-row"
-        >
-          <p className="text-sm text-muted-foreground">
-            Study<span className="text-gradient font-semibold">Spark</span>
-          </p>
-          <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-            {FOOTER_LINKS.map((link) => (
-              <li key={link.label}>
-                <Link
-                  href={link.href}
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-violet-600 dark:hover:text-violet-300"
-                >
-                  {link.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </footer>
+      <Footer />
     </div>
     </LazyMotion>
   );
@@ -447,22 +318,5 @@ function ContactCard({
         </Link>
       </div>
     </GlassCard>
-  );
-}
-
-function Field({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={htmlFor}>{label}</Label>
-      {children}
-    </div>
   );
 }

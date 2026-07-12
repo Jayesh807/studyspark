@@ -1,6 +1,6 @@
 "use client";
 
-import {  m  } from 'framer-motion';
+import { m } from 'framer-motion';
 import {
   LayoutDashboard,
   ListTodo,
@@ -8,6 +8,8 @@ import {
   BarChart3,
   CalendarDays,
   GraduationCap,
+  Music,
+  Calculator,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -67,6 +69,20 @@ const FEATURES: Feature[] = [
       "Countdown to every exam with preparation progress. Never lose track of what's coming or how ready you are.",
     gradient: "from-amber-500 to-yellow-500",
   },
+  {
+    icon: Music,
+    title: "Study Radio",
+    description:
+      "Integrated Lofi & study music player. Stream ambient sounds or load your favorite YouTube playlist right from your dashboard.",
+    gradient: "from-sky-500 to-indigo-500",
+  },
+  {
+    icon: Calculator,
+    title: "Student Toolbox",
+    description:
+      "Quick access to essential student calculators: CGPA/GPA estimator, Age calculator, Unit converter, and Percentage tool.",
+    gradient: "from-pink-500 to-rose-500",
+  },
 ];
 
 export function Features() {
@@ -81,7 +97,7 @@ export function Features() {
           eyebrow="Features"
           title="Everything you need to"
           highlight="study smarter"
-          description="Six tightly integrated tools that replace the dozen apps you're juggling today. No setup, no clutter — just clarity."
+          description="Eight tightly integrated tools that replace the dozen apps you're juggling today. No setup, no clutter — just clarity."
         />
 
         <StaggerContainer className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
