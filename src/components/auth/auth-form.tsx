@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +15,9 @@ import {
   User,
   Lock,
   KeyRound,
+  Mail,
+  ShieldCheck,
+  CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,7 +25,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAppStore, type AppView } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
-import { ApiError } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -30,6 +33,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 /* ------------------------------------------------------------------ */
 /* Schemas                                                             */
 /* ------------------------------------------------------------------ */
+
+const emailSchema = z
+  .string()
+  .trim()
+  .refine((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), {
+    message: "Enter a valid email address",
+  });
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -47,6 +57,7 @@ const signupSchema = z
         (val) => /^[a-zA-Z0-9_]+$/.test(val),
         "Only letters, numbers, and underscores allowed"
       ),
+    email: emailSchema,
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
   })
@@ -55,6 +66,8 @@ const signupSchema = z
     path: ["confirmPassword"],
   });
 type SignupValues = z.infer<typeof signupSchema>;
+
+type ForgotStep = "email" | "otp" | "password" | "done";
 
 /* ------------------------------------------------------------------ */
 /* Segmented control                                                   */
@@ -165,7 +178,10 @@ interface AuthModeFormProps {
   onAuthenticated: () => void;
 }
 
-function LoginForm({ onAuthenticated }: AuthModeFormProps) {
+function LoginForm({
+  onAuthenticated,
+  onForgotPassword,
+}: AuthModeFormProps & { onForgotPassword: () => void }) {
   const { login } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [remember, setRemember] = useState(true);
@@ -254,7 +270,7 @@ function LoginForm({ onAuthenticated }: AuthModeFormProps) {
         error={errors.password?.message}
       />
 
-      <div className="flex items-center pt-1">
+      <div className="flex items-center justify-between gap-3 pt-1">
         <div className="flex items-center gap-2">
           <Checkbox
             id="remember"
@@ -268,6 +284,13 @@ function LoginForm({ onAuthenticated }: AuthModeFormProps) {
             Remember me
           </Label>
         </div>
+        <button
+          type="button"
+          onClick={onForgotPassword}
+          className="text-sm font-semibold text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300 dark:hover:text-violet-200"
+        >
+          Forgot password?
+        </button>
       </div>
 
       <SubmitButton submitting={submitting} mode="login" />
@@ -289,13 +312,18 @@ function SignupForm({ onAuthenticated }: AuthModeFormProps) {
     formState: { errors },
   } = useForm<SignupValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { username: "", password: "", confirmPassword: "" },
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
   });
 
   const onSubmit = async (values: SignupValues) => {
     setSubmitting(true);
     try {
-      await signup(values.username, values.password);
+      await signup(values.username, values.email, values.password);
       toast.success("Account created! Welcome to StudySpark.");
       onAuthenticated();
     } catch (err) {
@@ -345,6 +373,30 @@ function SignupForm({ onAuthenticated }: AuthModeFormProps) {
         )}
       </div>
 
+      <div className="space-y-1.5">
+        <Label htmlFor="signup-email">Email</Label>
+        <div className="relative">
+          <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="signup-email"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            className={cn(
+              "h-11 rounded-xl pl-9",
+              errors.email &&
+              "border-destructive/60 focus-visible:ring-destructive/30"
+            )}
+            {...register("email")}
+          />
+        </div>
+        {errors.email && (
+          <p className="text-xs font-medium text-destructive">
+            {errors.email.message}
+          </p>
+        )}
+      </div>
+
       <PasswordField
         id="signup-password"
         label="Password"
@@ -368,6 +420,259 @@ function SignupForm({ onAuthenticated }: AuthModeFormProps) {
         <SubmitButton submitting={submitting} mode="signup" />
       </div>
     </motion.form>
+  );
+}
+
+function ForgotPasswordForm({
+  onBack,
+}: {
+  onBack: () => void;
+}) {
+  const [step, setStep] = useState<ForgotStep>("email");
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const requestOtp = async (event: FormEvent) => {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      await apiFetch<{ message: string }>("/api/auth/forgot-password/request", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      toast.success("If that email is linked, an OTP has been sent.");
+      setStep("otp");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send OTP");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const verifyOtp = async (event: FormEvent) => {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      const data = await apiFetch<{ resetToken: string }>(
+        "/api/auth/forgot-password/verify",
+        {
+          method: "POST",
+          body: JSON.stringify({ email, otp }),
+        }
+      );
+      setResetToken(data.resetToken);
+      toast.success("OTP verified.");
+      setStep("password");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Invalid OTP");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      await apiFetch<{ success: boolean }>("/api/auth/forgot-password/reset", {
+        method: "POST",
+        body: JSON.stringify({ resetToken, password, confirmPassword }),
+      });
+      toast.success("Password reset successfully. Please sign in.");
+      setStep("done");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not reset password"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitLabel =
+    step === "email"
+      ? "Send OTP"
+      : step === "otp"
+        ? "Verify OTP"
+        : "Set new password";
+
+  return (
+    <motion.div
+      key="forgot-password-form"
+      initial={{ opacity: 0, x: 12 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -12 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-4"
+    >
+      {step === "done" ? (
+        <div className="space-y-5 text-center">
+          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-300">
+            <CheckCircle2 className="size-7" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">Password updated</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              You can now sign in with your new password.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onBack}
+            className="h-11 w-full rounded-xl bg-violet-600 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+          >
+            Back to login
+          </button>
+        </div>
+      ) : (
+        <form
+          onSubmit={
+            step === "email"
+              ? requestOtp
+              : step === "otp"
+                ? verifyOtp
+                : resetPassword
+          }
+          className="space-y-4"
+          noValidate
+        >
+          {step === "email" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="reset-email">Email</Label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="reset-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  className="h-11 rounded-xl pl-9"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          {step === "otp" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="reset-otp">OTP</Label>
+              <div className="relative">
+                <ShieldCheck className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="reset-otp"
+                  inputMode="numeric"
+                  value={otp}
+                  onChange={(e) =>
+                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  placeholder="6-digit code"
+                  autoComplete="one-time-code"
+                  className="h-11 rounded-xl pl-9"
+                  required
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("email");
+                  setOtp("");
+                }}
+                className="text-xs font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-300"
+              >
+                Use a different email
+              </button>
+            </div>
+          )}
+
+          {step === "password" && (
+            <>
+              <SimplePasswordInput
+                id="reset-password"
+                label="New Password"
+                value={password}
+                onChange={setPassword}
+                autoComplete="new-password"
+              />
+              <SimplePasswordInput
+                id="reset-confirm-password"
+                label="Confirm Password"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                autoComplete="new-password"
+              />
+            </>
+          )}
+
+          <motion.button
+            type="submit"
+            disabled={submitting}
+            whileHover={{ scale: submitting ? 1 : 1.015 }}
+            whileTap={{ scale: submitting ? 1 : 0.985 }}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-sm font-semibold text-white shadow-lg shadow-violet-600/25 disabled:cursor-not-allowed disabled:opacity-80"
+          >
+            {submitting && <Loader2 className="size-4 animate-spin" />}
+            {submitting ? "Please wait..." : submitLabel}
+          </motion.button>
+
+          <button
+            type="button"
+            onClick={onBack}
+            className="w-full text-center text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Back to login
+          </button>
+        </form>
+      )}
+    </motion.div>
+  );
+}
+
+function SimplePasswordInput({
+  id,
+  label,
+  value,
+  onChange,
+  autoComplete,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+}) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="relative">
+        <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          id={id}
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          className="h-11 rounded-xl pl-9 pr-10"
+          required
+        />
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          aria-label={show ? "Hide password" : "Show password"}
+          tabIndex={-1}
+        >
+          {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -416,6 +721,7 @@ interface AuthFormProps {
 export function AuthForm({ initialMode = "login" }: AuthFormProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [forgotPassword, setForgotPassword] = useState(false);
   const currentView = useAppStore((s) => s.currentView);
   const setView = useAppStore((s) => s.setView);
 
@@ -431,6 +737,7 @@ export function AuthForm({ initialMode = "login" }: AuthFormProps) {
         : initialMode);
 
   const go = (v: AppView) => {
+    setForgotPassword(false);
     setView(v);
     if (v === "login" || v === "signup") {
       if (pathname !== "/" && pathname !== `/${v}`) {
@@ -481,58 +788,80 @@ export function AuthForm({ initialMode = "login" }: AuthFormProps) {
         {/* Header */}
         <div className="mb-6 text-center">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            {mode === "login" ? "Welcome back" : "Create your account"}
+            {forgotPassword
+              ? "Reset your password"
+              : mode === "login"
+                ? "Welcome back"
+                : "Create your account"}
           </h2>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            {mode === "login"
-              ? "Sign in to continue to your dashboard"
-              : "Start studying smarter in under a minute"}
+            {forgotPassword
+              ? "Verify your email, enter the OTP, then choose a new password"
+              : mode === "login"
+                ? "Sign in to continue to your dashboard"
+                : "Start studying smarter in under a minute"}
           </p>
         </div>
 
         {/* Segmented control */}
-        <div className="mb-6">
-          <SegmentedControl
-            mode={mode}
-            onChange={(m) => go(m === "login" ? "login" : "signup")}
-          />
-        </div>
+        {!forgotPassword && (
+          <div className="mb-6">
+            <SegmentedControl
+              mode={mode}
+              onChange={(m) => go(m === "login" ? "login" : "signup")}
+            />
+          </div>
+        )}
 
         {/* Form with crossfade */}
         <AnimatePresence mode="wait" initial={false}>
-          {mode === "login" ? (
-            <LoginForm key="login" onAuthenticated={handleAuthenticated} />
+          {forgotPassword ? (
+            <ForgotPasswordForm
+              key="forgot-password"
+              onBack={() => {
+                setForgotPassword(false);
+                go("login");
+              }}
+            />
+          ) : mode === "login" ? (
+            <LoginForm
+              key="login"
+              onAuthenticated={handleAuthenticated}
+              onForgotPassword={() => setForgotPassword(true)}
+            />
           ) : (
             <SignupForm key="signup" onAuthenticated={handleAuthenticated} />
           )}
         </AnimatePresence>
 
         {/* Switch-mode link */}
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          {mode === "login" ? (
-            <>
-              Don&apos;t have an account?{" "}
-              <button
-                type="button"
-                onClick={() => go("signup")}
-                className="font-semibold text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300 dark:hover:text-violet-200"
-              >
-                Sign up
-              </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{" "}
-              <button
-                type="button"
-                onClick={() => go("login")}
-                className="font-semibold text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300 dark:hover:text-violet-200"
-              >
-                Login
-              </button>
-            </>
-          )}
-        </p>
+        {!forgotPassword && (
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            {mode === "login" ? (
+              <>
+                Don&apos;t have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => go("signup")}
+                  className="font-semibold text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300 dark:hover:text-violet-200"
+                >
+                  Sign up
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{" "}
+                <button
+                  type="button"
+                  onClick={() => go("login")}
+                  className="font-semibold text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300 dark:hover:text-violet-200"
+                >
+                  Login
+                </button>
+              </>
+            )}
+          </p>
+        )}
       </motion.div>
     </div>
   );

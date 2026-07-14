@@ -6,6 +6,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AccentColorApplier } from "@/components/accent-color-applier";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -171,6 +172,7 @@ export default function RootLayout({
         >
           <AccentColorApplier />
           {children}
+          <PwaInstallPrompt />
           <Toaster position="top-right" richColors closeButton />
         </ThemeProvider>
       </body>

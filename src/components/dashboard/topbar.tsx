@@ -6,9 +6,11 @@ import {
   Menu,
   Search,
   Bell,
+  Download,
   Sun,
   Moon,
   Command,
+  SlidersHorizontal,
   AlertTriangle,
   BookOpen,
   Target,
@@ -36,6 +38,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CalculatorWidget } from "./calculator";
 import { LofiPlayer } from "./lofi-player";
+import { PWA_INSTALL_REQUEST_EVENT } from "@/components/pwa-install-prompt";
 
 /* -------------------------------------------------------------------------- */
 /*  Types & helpers                                                            */
@@ -204,7 +207,13 @@ const VIEW_TITLES: Record<AppView, { title: string; subtitle: string }> = {
 /*  Notification Popover                                                       */
 /* -------------------------------------------------------------------------- */
 
-function NotificationPopover() {
+function NotificationPopover({
+  buttonClassName,
+  showLabel = false,
+}: {
+  buttonClassName?: string;
+  showLabel?: boolean;
+}) {
   const setView = useAppStore((s) => s.setView);
   const user = useAppStore((s) => s.user);
   const [notifications, setNotifications] = useState<SmartNotification[]>([]);
@@ -266,11 +275,16 @@ function NotificationPopover() {
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
-          className="relative h-9 w-9 rounded-xl"
+          size={showLabel ? "sm" : "icon"}
+          className={cn(
+            "relative rounded-xl",
+            showLabel ? "h-11 justify-start gap-3 px-3" : "h-9 w-9",
+            buttonClassName
+          )}
           aria-label="Notifications"
         >
           <Bell className="h-[18px] w-[18px]" />
+          {showLabel && <span>Notifications</span>}
           {unreadCount > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-violet-500 px-1 text-[10px] font-bold text-white shadow-sm">
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -394,13 +408,20 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
   const { currentView, setMobileSidebarOpen, user } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [calcOpen, setCalcOpen] = useState(false);
-  const [radioOpen, setRadioOpen] = useState(false);
+  const [desktopRadioOpen, setDesktopRadioOpen] = useState(false);
+  const [mobileRadioOpen, setMobileRadioOpen] = useState(false);
   const [isRadioPlaying, setIsRadioPlaying] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
 
   const meta = VIEW_TITLES[currentView] ?? VIEW_TITLES.dashboard;
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const requestAppInstall = () => {
+    window.dispatchEvent(new Event(PWA_INSTALL_REQUEST_EVENT));
+    setMobileActionsOpen(false);
   };
 
   return (
@@ -460,15 +481,15 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="inline-block">
-              <Popover open={radioOpen} onOpenChange={setRadioOpen}>
+            <div className="hidden md:inline-block">
+              <Popover open={desktopRadioOpen} onOpenChange={setDesktopRadioOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
                     className={cn(
                       "relative h-9 w-9 rounded-xl transition-colors",
-                      (radioOpen || isRadioPlaying) && "bg-violet-500/10 text-violet-500"
+                      (desktopRadioOpen || isRadioPlaying) && "bg-violet-500/10 text-violet-500"
                     )}
                     aria-label="Study Radio"
                   >
@@ -504,7 +525,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="icon"
               onClick={() => setCalcOpen(true)}
-              className="relative h-9 w-9 rounded-xl"
+              className="relative hidden h-9 w-9 rounded-xl md:inline-flex"
               aria-label="Open calculator"
             >
               <CalculatorIcon className="h-[18px] w-[18px]" />
@@ -522,7 +543,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="relative h-9 w-9 rounded-xl"
+              className="relative hidden h-9 w-9 rounded-xl md:inline-flex"
               aria-label="Toggle theme"
             >
               <Sun className="h-[18px] w-[18px] rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
@@ -534,7 +555,112 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
       </TooltipProvider>
 
       {/* Notifications — smart popover */}
-      <NotificationPopover />
+      <div className="hidden md:block">
+        <NotificationPopover />
+      </div>
+
+      {/* Mobile utility actions */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn(
+          "relative h-9 w-9 rounded-xl md:hidden",
+          mobileActionsOpen && "bg-violet-500/10 text-violet-500"
+        )}
+        onClick={() => setMobileActionsOpen((open) => !open)}
+        aria-label="Open dashboard options"
+        aria-expanded={mobileActionsOpen}
+      >
+        <SlidersHorizontal className="h-[18px] w-[18px]" />
+        {isRadioPlaying && (
+          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-violet-500 ring-2 ring-background" />
+        )}
+      </Button>
+
+      <AnimatePresence>
+        {mobileActionsOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.18 }}
+            className="absolute left-3 right-3 top-full mt-2 grid grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-background/95 p-2 shadow-2xl backdrop-blur-xl md:hidden"
+          >
+            <Popover open={mobileRadioOpen} onOpenChange={setMobileRadioOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "relative h-11 justify-start gap-3 rounded-xl px-3",
+                    (mobileRadioOpen || isRadioPlaying) && "bg-violet-500/10 text-violet-500"
+                  )}
+                  aria-label="Study Radio"
+                >
+                  <Music className="h-[18px] w-[18px]" />
+                  <span>Music</span>
+                  {isRadioPlaying && (
+                    <span className="ml-auto h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                sideOffset={12}
+                className="w-[calc(100vw-2rem)] max-w-[360px] overflow-hidden rounded-2xl border-border/60 bg-background/90 p-0 shadow-2xl backdrop-blur-xl"
+              >
+                <div className="p-1">
+                  <LofiPlayer onPlayingChange={setIsRadioPlaying} />
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setCalcOpen(true);
+                setMobileActionsOpen(false);
+              }}
+              className="h-11 justify-start gap-3 rounded-xl px-3"
+              aria-label="Open calculator"
+            >
+              <CalculatorIcon className="h-[18px] w-[18px]" />
+              <span>Calculator</span>
+            </Button>
+
+            <NotificationPopover showLabel buttonClassName="w-full rounded-xl" />
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                toggleTheme();
+                setMobileActionsOpen(false);
+              }}
+              className="h-11 justify-start gap-3 rounded-xl px-3"
+              aria-label="Toggle theme"
+            >
+              <span className="relative h-[18px] w-[18px]">
+                <Sun className="absolute h-[18px] w-[18px] rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
+                <Moon className="absolute h-[18px] w-[18px] rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
+              </span>
+              <span>Theme</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={requestAppInstall}
+              className="col-span-2 h-11 justify-start gap-3 rounded-xl px-3"
+              aria-label="Install StudySpark app"
+            >
+              <Download className="h-[18px] w-[18px]" />
+              <span>Install App</span>
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* User chip (mobile shows avatar only) */}
       {user && (

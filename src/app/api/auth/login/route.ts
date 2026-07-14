@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({
-      user: { id: user.id, username: user.username },
+      user: { id: user.id, username: user.username, email: user.email },
       profile,
     });
   } catch (error) {

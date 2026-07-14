@@ -85,12 +85,15 @@ function getYTContainer(): HTMLDivElement | null {
     container = document.createElement("div");
     container.id = "global-yt-player-container";
     container.style.position = "fixed";
-    container.style.left = "-9999px";
-    container.style.top = "-9999px";
+    container.style.left = "0";
+    container.style.bottom = "0";
     container.style.width = "200px";
     container.style.height = "200px";
-    container.style.zIndex = "-1000";
+    container.style.zIndex = "0";
+    container.style.opacity = "0";
+    container.style.overflow = "hidden";
     container.style.pointerEvents = "none";
+    container.setAttribute("aria-hidden", "true");
     document.body.appendChild(container);
 
     const target = document.createElement("div");

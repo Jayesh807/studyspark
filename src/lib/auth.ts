@@ -44,7 +44,7 @@ export async function getCurrentUser() {
   if (!payload) return null;
   const user = await db.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, username: true, createdAt: true },
+    select: { id: true, username: true, email: true, createdAt: true },
   });
   return user;
 }

@@ -4,7 +4,6 @@ import { db } from "@/lib/db";
 import {
   hashPassword,
   setAuthCookie,
-  verifyPassword,
 } from "@/lib/auth";
 
 const signupSchema = z.object({
@@ -16,6 +15,12 @@ const signupSchema = z.object({
       /^[a-zA-Z0-9_]+$/,
       "Username can only contain letters, numbers and underscores"
     ),
+  email: z
+    .string()
+    .trim()
+    .refine((value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), {
+      message: "Enter a valid email address",
+    }),
   password: z
     .string()
     .min(6, "Password must be at least 6 characters")
@@ -33,7 +38,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { username, password } = parsed.data;
+    const { username, email, password } = parsed.data;
+    const normalizedEmail = email.trim().toLowerCase();
 
     const existing = await db.user.findUnique({ where: { username } });
     if (existing) {
@@ -43,10 +49,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const existingEmail = await db.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (existingEmail) {
+      return NextResponse.json(
+        { error: "Email already used" },
+        { status: 409 }
+      );
+    }
+
     const hashed = await hashPassword(password);
     const user = await db.user.create({
       data: {
         username,
+        email: normalizedEmail,
         password: hashed,
         profile: {
           create: {
@@ -59,7 +76,7 @@ export async function POST(req: NextRequest) {
           },
         },
       },
-      select: { id: true, username: true },
+      select: { id: true, username: true, email: true },
     });
 
     await setAuthCookie(user.id);
@@ -69,7 +86,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({
-      user: { id: user.id, username: user.username },
+      user: { id: user.id, username: user.username, email: user.email },
       profile,
     });
   } catch (error) {

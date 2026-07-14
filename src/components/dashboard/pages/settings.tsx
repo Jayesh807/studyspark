@@ -14,6 +14,7 @@ import {
   LogOut,
   Trash2,
   User,
+  Mail,
   Calendar,
   Check,
   Loader2,
@@ -739,12 +740,15 @@ export function SettingsPage() {
     setReduceMotion,
     sidebarOpen,
     setSidebarOpen,
+    setUser,
   } = useAppStore();
   const { logout } = useAuth();
 
   const [memberSince, setMemberSince] = useState<string>("Recently");
+  const [accountEmail, setAccountEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
 
 
 
@@ -753,9 +757,15 @@ export function SettingsPage() {
     (async () => {
       try {
         const me = await apiFetch<{
-          user: { id: string; username: string; createdAt?: string } | null;
+          user: {
+            id: string;
+            username: string;
+            email?: string | null;
+            createdAt?: string;
+          } | null;
         }>("/api/auth/me");
         if (!active) return;
+        setAccountEmail(me.user?.email || "");
         if (me.user?.createdAt) {
           try {
             const d = new Date(me.user.createdAt);
@@ -791,6 +801,32 @@ export function SettingsPage() {
       toast.error("Logout failed");
     } finally {
       setLoggingOut(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    setSavingEmail(true);
+    try {
+      const data = await apiFetch<{
+        user: {
+          id: string;
+          username: string;
+          email?: string | null;
+          createdAt?: string;
+        };
+      }>("/api/auth/email", {
+        method: "PUT",
+        body: JSON.stringify({ email: accountEmail }),
+      });
+      setAccountEmail(data.user.email || "");
+      if (user) {
+        setUser({ ...user, email: data.user.email || null });
+      }
+      toast.success("Email saved for password recovery.");
+    } catch (error) {
+      handleError(error, "Failed to save email");
+    } finally {
+      setSavingEmail(false);
     }
   };
 
@@ -921,6 +957,41 @@ export function SettingsPage() {
                     <div className="flex h-9 items-center gap-2 rounded-md border border-input bg-muted/40 px-3 text-sm">
                       <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                       <span>{memberSince}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Recovery Email
+                  </label>
+                  {loading ? (
+                    <Skeleton className="h-9 w-full rounded-md" />
+                  ) : (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <div className="relative min-w-0 flex-1">
+                        <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          type="email"
+                          value={accountEmail}
+                          onChange={(e) => setAccountEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          className="pl-9"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleSaveEmail}
+                        disabled={savingEmail || !accountEmail.trim()}
+                        className="gap-2"
+                      >
+                        {savingEmail ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        {savingEmail ? "Saving..." : "Save Email"}
+                      </Button>
                     </div>
                   )}
                 </div>

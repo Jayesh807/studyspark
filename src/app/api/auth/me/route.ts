@@ -20,6 +20,7 @@ export async function GET() {
       user: {
         id: user.id,
         username: user.username,
+        email: user.email,
         createdAt: user.createdAt,
       },
       profile,
