@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import { Suspense } from "react";
 import { AuthScreen } from "@/components/auth/auth-screen";
 
 export const metadata: Metadata = {
@@ -11,5 +12,9 @@ export const metadata: Metadata = {
 };
 
 export default function SignupPage() {
-  return <AuthScreen initialMode="signup" />;
+  return (
+    <Suspense fallback={null}>
+      <AuthScreen initialMode="signup" />
+    </Suspense>
+  );
 }
