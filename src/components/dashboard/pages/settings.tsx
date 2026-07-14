@@ -585,7 +585,6 @@ interface DeleteAccountState {
 
 function DeleteAccountDialog() {
   const [open, setOpen] = useState(false);
-  const [password, setPassword] = useState("");
   const [state, setState] = useState<DeleteAccountState>({
     status: "idle",
     label: "",
@@ -595,16 +594,11 @@ function DeleteAccountDialog() {
   // Reset state on dialog open/close
   useEffect(() => {
     if (!open) {
-      setPassword("");
       setState({ status: "idle", label: "" });
     }
   }, [open]);
 
   const handleDeleteAccount = useCallback(async () => {
-    if (!password.trim()) {
-      toast.error("Please enter your password.");
-      return;
-    }
     setState({
       status: "deleting",
       label: "Permanently deleting your account and all data...",
@@ -612,7 +606,7 @@ function DeleteAccountDialog() {
     try {
       const res = await apiFetch<{ success?: boolean; error?: string }>("/api/auth/delete-account", {
         method: "DELETE",
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ confirm: true }),
       });
 
       if (res.error) {
@@ -632,10 +626,10 @@ function DeleteAccountDialog() {
         label: "",
       });
     }
-  }, [logout, password]);
+  }, [logout]);
 
   const isWorking = state.status === "deleting";
-  const canSubmit = password.trim().length > 0 && !isWorking;
+  const canSubmit = !isWorking;
 
   return (
     <AlertDialog
@@ -664,18 +658,9 @@ function DeleteAccountDialog() {
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="space-y-1.5 py-3">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Confirm Password
-          </label>
-          <Input
-            type="password"
-            placeholder="Enter your password to verify your identity"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={isWorking}
-            className="rounded-xl border-border/50 bg-background/50 focus-visible:ring-rose-500"
-          />
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-3 text-sm text-destructive">
+          Click the delete button below to confirm. Your account and all related
+          study data will be permanently removed.
         </div>
 
         {isWorking && (

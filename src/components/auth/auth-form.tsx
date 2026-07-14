@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "next-themes";
 import {
   Sparkles,
   Eye,
@@ -26,9 +27,248 @@ import { cn } from "@/lib/utils";
 import { useAppStore, type AppView } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError, apiFetch } from "@/lib/api";
+import type { Profile, User as UserType } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+
+function GoogleGIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" {...props}>
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.31 9.14 5.38 12 5.38z"
+      />
+    </svg>
+  );
+}
+
+type GoogleCredentialResponse = {
+  credential?: string;
+};
+
+type GoogleTokenResponse = {
+  access_token?: string;
+  error?: string;
+};
+
+type GoogleTokenClient = {
+  requestAccessToken: () => void;
+};
+
+type GoogleAccounts = {
+  id: {
+    initialize: (config: {
+      client_id: string;
+      callback: (response: GoogleCredentialResponse) => void;
+    }) => void;
+  };
+  oauth2: {
+    initTokenClient: (config: {
+      client_id: string;
+      scope: string;
+      callback: (response: GoogleTokenResponse) => void;
+    }) => GoogleTokenClient;
+  };
+};
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: GoogleAccounts;
+    };
+  }
+}
+
+function GoogleAuthButton({ mode }: { mode: "login" | "signup" }) {
+  const router = useRouter();
+  const { resolvedTheme } = useTheme();
+  const setUser = useAppStore((s) => s.setUser);
+  const setView = useAppStore((s) => s.setView);
+  const tokenClientRef = useRef<GoogleTokenClient | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [configured, setConfigured] = useState<boolean | null>(null);
+  const [clientId, setClientId] = useState("");
+  const isDark = resolvedTheme === "dark";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadStatus = async () => {
+      try {
+        const status = await apiFetch<{
+          configured: boolean;
+          clientId: string | null;
+        }>("/api/auth/google/status");
+
+        if (cancelled) return;
+        setConfigured(status.configured);
+        setClientId(status.clientId || "");
+      } catch {
+        if (!cancelled) {
+          setConfigured(false);
+        }
+      }
+    };
+
+    void loadStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const finishGoogleSignIn = async (accessToken: string) => {
+    setLoading(true);
+    try {
+      const data = await apiFetch<{
+        user?: UserType;
+        profile?: Profile | null;
+        requiresUsername?: boolean;
+      }>("/api/auth/google/access-token", {
+        method: "POST",
+        body: JSON.stringify({ accessToken }),
+      });
+
+      if (data.requiresUsername) {
+        router.push("/google-username");
+        return;
+      }
+
+      if (data.user) {
+        setUser({ ...data.user, avatar: data.profile?.avatar || undefined });
+        setView("dashboard");
+        toast.success("Welcome back!");
+        router.push("/");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not complete Google Sign-In."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToken = (response: GoogleTokenResponse) => {
+    if (response.error || !response.access_token) {
+      toast.error("Google did not return an access token. Please try again.");
+      return;
+    }
+
+    void finishGoogleSignIn(response.access_token);
+  };
+
+  useEffect(() => {
+    if (!configured || !clientId) {
+      return;
+    }
+
+    const setupTokenClient = () => {
+      if (!window.google?.accounts?.oauth2) {
+        return;
+      }
+
+      tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: "openid email profile",
+        callback: handleToken,
+      });
+    };
+
+    if (window.google?.accounts?.oauth2) {
+      setupTokenClient();
+      return;
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[src="https://accounts.google.com/gsi/client"]'
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener("load", setupTokenClient, { once: true });
+      return () => existingScript.removeEventListener("load", setupTokenClient);
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.addEventListener("load", setupTokenClient, { once: true });
+    document.head.appendChild(script);
+
+    return () => script.removeEventListener("load", setupTokenClient);
+  }, [clientId, configured]);
+
+  const startGoogleAuth = () => {
+    if (!configured) {
+      toast.error(
+        "Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env, then restart the server."
+      );
+      return;
+    }
+
+    if (!tokenClientRef.current) {
+      toast.error("Google Sign-In is still loading. Please try again.");
+      return;
+    }
+
+    setLoading(true);
+    tokenClientRef.current.requestAccessToken();
+  };
+
+  if (configured === false) {
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          toast.error(
+            "Google Sign-In is not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env, then restart the server."
+          )
+        }
+        className="flex h-11 w-full items-center justify-center gap-3 rounded-lg border border-transparent bg-zinc-100 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+      >
+        <GoogleGIcon className="size-5" />
+        Continue with Google
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={configured === null || loading}
+      onClick={startGoogleAuth}
+      className={cn(
+        "flex h-11 w-full items-center justify-center gap-3 rounded-lg text-sm font-semibold transition-colors disabled:cursor-wait disabled:opacity-80",
+        isDark
+          ? "bg-zinc-900 text-zinc-100 hover:bg-zinc-800"
+          : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
+      )}
+    >
+      {loading || configured === null ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <GoogleGIcon className="size-5" />
+      )}
+      {loading ? "Checking Google..." : "Continue with Google"}
+    </button>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Schemas                                                             */
@@ -324,7 +564,7 @@ function SignupForm({ onAuthenticated }: AuthModeFormProps) {
     setSubmitting(true);
     try {
       await signup(values.username, values.email, values.password);
-      toast.success("Account created! Welcome to StudySpark.");
+      toast.success("Account created. Please sign in when you're ready.");
       onAuthenticated();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -721,6 +961,7 @@ interface AuthFormProps {
 export function AuthForm({ initialMode = "login" }: AuthFormProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [forgotPassword, setForgotPassword] = useState(false);
   const currentView = useAppStore((s) => s.currentView);
   const setView = useAppStore((s) => s.setView);
@@ -755,6 +996,22 @@ export function AuthForm({ initialMode = "login" }: AuthFormProps) {
       router.push("/");
     }
   };
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (!error) return;
+
+    const messages: Record<string, string> = {
+      google_cancelled: "Google sign-in was cancelled.",
+      google_config: "Google sign-in is not configured yet.",
+      google_email_exists:
+        "That email already has a password account. Sign in with your password first.",
+      google_failed: "Google sign-in failed. Please try again.",
+      google_state: "Google sign-in expired. Please try again.",
+    };
+
+    toast.error(messages[error] ?? "Google sign-in could not be completed.");
+  }, [searchParams]);
 
   return (
     <div className="w-full max-w-md">
@@ -814,6 +1071,17 @@ export function AuthForm({ initialMode = "login" }: AuthFormProps) {
         )}
 
         {/* Form with crossfade */}
+        {!forgotPassword && (
+          <div className="mb-5 space-y-4">
+            <GoogleAuthButton mode={mode} />
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="h-px flex-1 bg-border/70" />
+              <span>or continue with username</span>
+              <span className="h-px flex-1 bg-border/70" />
+            </div>
+          </div>
+        )}
+
         <AnimatePresence mode="wait" initial={false}>
           {forgotPassword ? (
             <ForgotPasswordForm

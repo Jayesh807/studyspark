@@ -29,6 +29,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!user.password) {
+      return NextResponse.json(
+        { error: "This account uses Google Sign-In. Please continue with Google." },
+        { status: 401 }
+      );
+    }
+
     const valid = await verifyPassword(password, user.password);
     if (!valid) {
       return NextResponse.json(

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import {
-  hashPassword,
-  setAuthCookie,
-} from "@/lib/auth";
+import { hashPassword } from "@/lib/auth";
 
 const signupSchema = z.object({
   username: z
@@ -65,6 +62,8 @@ export async function POST(req: NextRequest) {
         username,
         email: normalizedEmail,
         password: hashed,
+        authProvider: "credentials",
+        usernameCompleted: true,
         profile: {
           create: {
             bio: "",
@@ -78,8 +77,6 @@ export async function POST(req: NextRequest) {
       },
       select: { id: true, username: true, email: true },
     });
-
-    await setAuthCookie(user.id);
 
     const profile = await db.profile.findUnique({
       where: { userId: user.id },

@@ -24,7 +24,10 @@ model User {
   id        String   @id @default(cuid())
   username  String   @unique
   email     String?  @unique
-  password  String
+  password  String?
+  authProvider String @default("credentials")
+  googleId  String?  @unique
+  usernameCompleted Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
