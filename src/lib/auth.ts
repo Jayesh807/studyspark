@@ -6,6 +6,15 @@ import { db } from "./db";
 const JWT_SECRET =
   process.env.JWT_SECRET || "studyspark-super-secret-key-change-in-production";
 const TOKEN_NAME = "studyspark_token";
+export const GOOGLE_OAUTH_STATE_COOKIE = "studyspark_google_oauth_state";
+export const GOOGLE_PENDING_COOKIE = "studyspark_google_pending";
+
+export interface GooglePendingProfile {
+  googleId: string;
+  email: string;
+  name?: string;
+  avatar?: string;
+}
 
 export async function hashPassword(password: string): Promise<string> {
   const salt = await bcrypt.genSalt(10);
@@ -21,6 +30,35 @@ export async function verifyPassword(
 
 export function signToken(userId: string): string {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "30d" });
+}
+
+export function signGooglePending(profile: GooglePendingProfile): string {
+  return jwt.sign({ kind: "google-pending", ...profile }, JWT_SECRET, {
+    expiresIn: "15m",
+  });
+}
+
+export function verifyGooglePending(token: string): GooglePendingProfile | null {
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as GooglePendingProfile & {
+      kind?: string;
+    };
+    if (
+      payload.kind !== "google-pending" ||
+      !payload.googleId ||
+      !payload.email
+    ) {
+      return null;
+    }
+    return {
+      googleId: payload.googleId,
+      email: payload.email,
+      name: payload.name,
+      avatar: payload.avatar,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function verifyToken(token: string): { userId: string } | null {
@@ -44,7 +82,7 @@ export async function getCurrentUser() {
   if (!payload) return null;
   const user = await db.user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, username: true, createdAt: true },
+    select: { id: true, username: true, email: true, createdAt: true },
   });
   return user;
 }
@@ -59,6 +97,30 @@ export async function setAuthCookie(userId: string) {
     maxAge: 60 * 60 * 24 * 30, // 30 days
     path: "/",
   });
+}
+
+export async function setGooglePendingCookie(profile: GooglePendingProfile) {
+  const token = signGooglePending(profile);
+  const cookieStore = await cookies();
+  cookieStore.set(GOOGLE_PENDING_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 15,
+    path: "/",
+  });
+}
+
+export async function getGooglePendingProfile() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(GOOGLE_PENDING_COOKIE)?.value;
+  if (!token) return null;
+  return verifyGooglePending(token);
+}
+
+export async function clearGooglePendingCookie() {
+  const cookieStore = await cookies();
+  cookieStore.delete(GOOGLE_PENDING_COOKIE);
 }
 
 export async function clearAuthCookie() {

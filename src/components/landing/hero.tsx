@@ -32,16 +32,16 @@ const container = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.03, delayChildren: 0 },
+    transition: { staggerChildren: 0.08, delayChildren: 0 },
   },
 };
 
 const item = {
-  hidden: { opacity: 0, y: 8 },
+  hidden: { opacity: 0, y: 22 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] as const },
   },
 };
 
@@ -60,29 +60,38 @@ export function Hero() {
 
       <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 lg:grid-cols-2 lg:gap-8">
         {/* Left column */}
-        <div className="flex flex-col items-start gap-6">
-          <div>
+        <m.div
+          variants={container}
+          initial="hidden"
+          animate="visible"
+          className="flex flex-col items-start gap-6"
+        >
+          <m.div variants={item}>
             <span className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-4 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-300">
               <Sparkles className="size-3.5" />
               Your all-in-one student workspace
             </span>
-          </div>
+          </m.div>
 
-          <h1 className="text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-[3.75rem]">
+          <m.h1
+            variants={item}
+            className="text-balance text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl lg:text-[3.75rem]"
+          >
             Your studies,{" "}
             <span className="text-gradient">beautifully organized.</span>
-          </h1>
+          </m.h1>
 
-          <p className="max-w-xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <m.p
+            variants={item}
+            className="max-w-xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg"
+          >
             StudySpark brings tasks, calendar, focus sessions, subjects and
             exams into one calm, beautifully crafted dashboard — so you can stop
             juggling apps and start making real progress.
-          </p>
+          </m.p>
 
           <m.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+            variants={item}
             className="flex flex-col gap-3 sm:flex-row sm:items-center"
           >
             <Button
@@ -104,18 +113,16 @@ export function Hero() {
           </m.div>
 
           <m.ul
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15, duration: 0.3 }}
+            variants={container}
             className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2"
           >
             {TRUST_BADGES.map(({ label, icon: Icon }, i) => (
               <m.li
                 key={label}
                 custom={i}
-                initial={{ opacity: 0, y: 4 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: 0.2 + i * 0.04, ease: [0.22, 1, 0.36, 1] as const }}
+                transition={{ duration: 0.5, delay: 0.6 + i * 0.12, ease: [0.22, 1, 0.36, 1] as const }}
                 className="flex items-center gap-1.5 text-sm text-muted-foreground"
               >
                 <Icon className="size-4 text-violet-500" />
@@ -126,13 +133,13 @@ export function Hero() {
               </m.li>
             ))}
           </m.ul>
-        </div>
+        </m.div>
 
         {/* Right column — floating dashboard preview */}
         <m.div
-          initial={{ opacity: 0, scale: 0.97, y: 10 }}
+          initial={{ opacity: 0, scale: 0.94, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1], delay: 0.25 }}
           className="relative mx-auto w-full max-w-md lg:max-w-lg"
         >
           <FloatingDashboard />

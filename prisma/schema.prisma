@@ -15,7 +15,11 @@ datasource db {
 model User {
   id        String   @id @default(cuid())
   username  String   @unique
-  password  String
+  email     String?  @unique
+  password  String?
+  authProvider String @default("credentials")
+  googleId  String?  @unique
+  usernameCompleted Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -26,6 +30,26 @@ model User {
   exams         Exam[]
   focusSessions FocusSession[]
   badges        BadgeEarned[]
+  passwordResetOtps PasswordResetOtp[]
+}
+
+model PasswordResetOtp {
+  id             String    @id @default(cuid())
+  userId         String
+  email          String
+  otpHash        String
+  resetTokenHash String?
+  attempts       Int       @default(0)
+  expiresAt      DateTime
+  verifiedAt     DateTime?
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([userId])
+  @@index([resetTokenHash])
 }
 
 model BadgeEarned {

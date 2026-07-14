@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getCurrentUser, clearAuthCookie, verifyPassword } from "@/lib/auth";
+import { getCurrentUser, clearAuthCookie } from "@/lib/auth";
 
 export async function DELETE(request: Request) {
   try {
@@ -9,9 +9,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { password } = await request.json().catch(() => ({}));
-    if (!password) {
-      return NextResponse.json({ error: "Password is required." }, { status: 400 });
+    const { confirm } = await request.json().catch(() => ({}));
+    if (confirm !== true) {
+      return NextResponse.json({ error: "Deletion confirmation is required." }, { status: 400 });
     }
 
     // Fetch the user from the database including the hashed password
@@ -21,12 +21,6 @@ export async function DELETE(request: Request) {
 
     if (!dbUser) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
-    }
-
-    // Verify the password
-    const isPasswordCorrect = await verifyPassword(password, dbUser.password);
-    if (!isPasswordCorrect) {
-      return NextResponse.json({ error: "Incorrect password." }, { status: 400 });
     }
 
     // Delete the user from the database.

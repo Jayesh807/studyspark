@@ -59,6 +59,7 @@ interface MeResponse {
 
 interface ProfileResponse {
   profile: Profile;
+  user?: { id: string; username: string; email?: string | null };
 }
 
 interface AnalyticsResponse {
@@ -79,6 +80,7 @@ const DEFAULT_PROFILE: Profile = {
 };
 
 interface FormState {
+  username: string;
   bio: string;
   goal: string;
   targetHours: number;
@@ -314,7 +316,8 @@ interface EditDialogProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   profile: Profile;
-  onSaved: (p: Profile) => void;
+  username: string;
+  onSaved: (p: Profile, username?: string) => void;
 }
 
 type SaveState = "idle" | "saving" | "success";
@@ -323,14 +326,17 @@ type SaveState = "idle" | "saving" | "success";
  * initializes from the current profile (avoids set-state-in-effect). */
 function EditProfileForm({
   profile,
+  username,
   onSaved,
   onCloseAfterSuccess,
 }: {
   profile: Profile;
-  onSaved: (p: Profile) => void;
+  username: string;
+  onSaved: (p: Profile, username?: string) => void;
   onCloseAfterSuccess: () => void;
 }) {
   const [form, setForm] = useState<FormState>({
+    username,
     bio: profile.bio ?? "",
     goal: profile.goal ?? "",
     targetHours: profile.targetHours ?? 6,
@@ -403,6 +409,13 @@ function EditProfileForm({
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
+    const trimmedUsername = form.username.trim();
+    if (trimmedUsername.length < 3)
+      e.username = "Username must be at least 3 characters";
+    if (trimmedUsername.length > 20)
+      e.username = "Username must be at most 20 characters";
+    if (trimmedUsername && !/^[a-zA-Z0-9_]+$/.test(trimmedUsername))
+      e.username = "Only letters, numbers, and underscores allowed";
     if (form.bio.length > 500) e.bio = "Bio must be 500 characters or less";
     if (form.goal.length > 200) e.goal = "Goal must be 200 characters or less";
     if (
@@ -430,6 +443,7 @@ function EditProfileForm({
       const data = await apiFetch<ProfileResponse>("/api/profile", {
         method: "PUT",
         body: JSON.stringify({
+          username: form.username.trim(),
           bio: form.bio.trim(),
           goal: form.goal.trim(),
           targetHours: Number(form.targetHours),
@@ -439,7 +453,7 @@ function EditProfileForm({
           avatar: form.avatar.trim(),
         }),
       });
-      onSaved(data.profile);
+      onSaved(data.profile, data.user?.username ?? form.username.trim());
       setSaveState("success");
       toast.success("Profile updated!");
       setTimeout(() => {
@@ -472,6 +486,25 @@ function EditProfileForm({
       </DialogHeader>
 
       <div className="space-y-4 py-2">
+        {/* Username */}
+        <div className="space-y-2">
+          <Label htmlFor="edit-username">Username</Label>
+          <div className="relative">
+            <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="edit-username"
+              placeholder="3-20 chars, letters/numbers/_"
+              value={form.username}
+              onChange={(e) => update("username", e.target.value.slice(0, 20))}
+              className="pl-9"
+              aria-invalid={!!errors.username}
+            />
+          </div>
+          {errors.username && (
+            <p className="text-xs text-destructive">{errors.username}</p>
+          )}
+        </div>
+
         {/* Profile Photo Upload */}
         <div className="space-y-2">
           <Label>Profile Photo</Label>
@@ -479,7 +512,6 @@ function EditProfileForm({
             {/* Preview */}
             <div className="relative shrink-0 h-16 w-16 rounded-full border-2 border-border shadow-sm overflow-hidden bg-muted flex items-center justify-center">
               {form.avatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={form.avatar}
                   alt="Avatar preview"
@@ -706,6 +738,7 @@ function EditProfileDialog({
   open,
   onOpenChange,
   profile,
+  username,
   onSaved,
 }: EditDialogProps) {
   return (
@@ -713,6 +746,7 @@ function EditProfileDialog({
       <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto scrollbar-thin border-border/50">
         <EditProfileForm
           profile={profile}
+          username={username}
           onSaved={onSaved}
           onCloseAfterSuccess={() => onOpenChange(false)}
         />
@@ -871,10 +905,14 @@ export function ProfilePage() {
     void load();
   }, [load]);
 
-  const handleSaved = (p: Profile) => {
+  const handleSaved = (p: Profile, updatedUsername?: string) => {
     setProfile(p);
     if (user) {
-      useAppStore.getState().setUser({ ...user, avatar: p.avatar || undefined });
+      useAppStore.getState().setUser({
+        ...user,
+        username: updatedUsername ?? user.username,
+        avatar: p.avatar || undefined,
+      });
     }
   };
 
@@ -883,6 +921,7 @@ export function ProfilePage() {
   const totalFocusHours = stats?.totalFocusHours ?? 0;
   const targetHours = safeProfile.targetHours ?? 6;
   const semester = safeProfile.semester ?? 1;
+  const currentUsername = user?.username ?? "";
 
   return (
     <PageTransition>
@@ -922,7 +961,7 @@ export function ProfilePage() {
             <StaggerItem>
               <ProfileHero
                 profile={safeProfile}
-                username={user?.username}
+                username={currentUsername}
                 memberSince={memberSince}
                 loading={loading}
                 onEdit={() => setEditOpen(true)}
@@ -1018,6 +1057,7 @@ export function ProfilePage() {
         open={editOpen}
         onOpenChange={setEditOpen}
         profile={safeProfile}
+        username={currentUsername}
         onSaved={handleSaved}
       />
     </PageTransition>

@@ -106,14 +106,14 @@ export function useAuth() {
   );
 
   const signup = useCallback(
-    async (username: string, password: string) => {
+    async (username: string, email: string, password: string) => {
       try {
         const data = await apiFetch<AuthResponse>("/api/auth/signup", {
           method: "POST",
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ username, email, password }),
         });
-        setUser({ ...data.user, avatar: data.profile?.avatar || undefined });
-        setView("dashboard");
+        setUser(null);
+        setView("landing");
         return data.user;
       } catch (error) {
         if (error instanceof ApiError) {

@@ -4,6 +4,15 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 
 const profileSchema = z.object({
+  username: z
+    .string()
+    .min(3, "Username must be at least 3 characters")
+    .max(20, "Username must be at most 20 characters")
+    .regex(
+      /^[a-zA-Z0-9_]+$/,
+      "Username can only contain letters, numbers and underscores"
+    )
+    .optional(),
   bio: z.string().max(500).optional(),
   goal: z.string().max(200).optional(),
   targetHours: z.number().int().min(1).max(24).optional(),
@@ -44,13 +53,40 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const profile = await db.profile.upsert({
-      where: { userId: user.id },
-      update: parsed.data,
-      create: { userId: user.id, ...parsed.data },
-    });
+    const { username, ...profileData } = parsed.data;
 
-    return NextResponse.json({ profile });
+    if (username && username !== user.username) {
+      const existing = await db.user.findUnique({ where: { username } });
+      if (existing && existing.id !== user.id) {
+        return NextResponse.json(
+          { error: "Username already taken" },
+          { status: 409 }
+        );
+      }
+    }
+
+    const [updatedUser, profile] = await db.$transaction([
+      username
+        ? db.user.update({
+            where: { id: user.id },
+            data: { username },
+            select: { id: true, username: true, email: true },
+          })
+        : db.user.findUniqueOrThrow({
+            where: { id: user.id },
+            select: { id: true, username: true, email: true },
+          }),
+      db.profile.upsert({
+        where: { userId: user.id },
+        update: profileData,
+        create: { userId: user.id, ...profileData },
+      }),
+    ]);
+
+    return NextResponse.json({
+      user: updatedUser,
+      profile,
+    });
   } catch (error) {
     console.error("Profile update error:", error);
     return NextResponse.json(

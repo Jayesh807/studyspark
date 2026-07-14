@@ -65,9 +65,9 @@ export function Navbar() {
 
   return (
     <m.header
-      initial={{ y: -8, opacity: 0 }}
+      initial={{ y: -24, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-3 sm:pt-4"
     >
       <nav

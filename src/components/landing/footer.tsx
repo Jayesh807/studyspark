@@ -1,6 +1,6 @@
 "use client";
 
-import { Instagram, Linkedin, Heart } from "lucide-react";
+import { Instagram, Linkedin, Heart, Youtube } from "lucide-react";
 import { Logo } from "./logo";
 import { scrollToSection } from "./scroll-helpers";
 
@@ -27,8 +27,13 @@ const COLUMNS: FooterColumn[] = [];
 
 const SOCIALS = [
   { icon: Instagram, label: "Instagram", href: "https://www.instagram.com/studysparks.cloud/" },
+  { icon: Youtube, label: "YouTube", href: "https://www.youtube.com/channel/UCpygC2ZTTUE8RKpt9SuA9Ow" },
   { icon: XIcon, label: "X", href: "https://x.com/Jayesho1" },
-  { icon: Linkedin, label: "LinkedIn", href: "#" },
+  {
+    icon: Linkedin,
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/in/jayesh-malviya-b30229318/",
+  },
 ];
 
 export function Footer() {
