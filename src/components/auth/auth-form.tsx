@@ -6,7 +6,6 @@ import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTheme } from "next-themes";
 import {
   Sparkles,
   Eye,
@@ -94,14 +93,12 @@ declare global {
 
 function GoogleAuthButton({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
-  const { resolvedTheme } = useTheme();
   const setUser = useAppStore((s) => s.setUser);
   const setView = useAppStore((s) => s.setView);
   const tokenClientRef = useRef<GoogleTokenClient | null>(null);
   const [loading, setLoading] = useState(false);
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [clientId, setClientId] = useState("");
-  const isDark = resolvedTheme === "dark";
 
   useEffect(() => {
     let cancelled = false;
@@ -253,12 +250,7 @@ function GoogleAuthButton({ mode }: { mode: "login" | "signup" }) {
       type="button"
       disabled={configured === null || loading}
       onClick={startGoogleAuth}
-      className={cn(
-        "flex h-11 w-full items-center justify-center gap-3 rounded-lg text-sm font-semibold transition-colors disabled:cursor-wait disabled:opacity-80",
-        isDark
-          ? "bg-zinc-900 text-zinc-100 hover:bg-zinc-800"
-          : "bg-zinc-100 text-zinc-900 hover:bg-zinc-200"
-      )}
+      className="flex h-11 w-full items-center justify-center gap-3 rounded-lg bg-zinc-100 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-80 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
     >
       {loading || configured === null ? (
         <Loader2 className="size-4 animate-spin" />
