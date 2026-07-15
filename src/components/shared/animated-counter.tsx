@@ -23,17 +23,17 @@ export function AnimatedCounter({
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-50px" });
   const [display, setDisplay] = useState(0);
-  const animatedRef = useRef(false);
+  const hasStartedRef = useRef(false);
   const motionValue = useMotionValue(0);
   const spring = useSpring(motionValue, {
     duration: duration * 1000,
     bounce: 0,
   });
 
-  // Animate when in view (or fallback after 2s)
+  // Start when in view, then keep responding to async data updates.
   useEffect(() => {
-    if (inView && !animatedRef.current) {
-      animatedRef.current = true;
+    if (inView || hasStartedRef.current) {
+      hasStartedRef.current = true;
       motionValue.set(value);
     }
   }, [inView, value, motionValue]);
@@ -41,8 +41,8 @@ export function AnimatedCounter({
   // Fallback: if IntersectionObserver hasn't fired after 2s, animate anyway
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!animatedRef.current) {
-        animatedRef.current = true;
+      if (!hasStartedRef.current) {
+        hasStartedRef.current = true;
         motionValue.set(value);
       }
     }, 2000);

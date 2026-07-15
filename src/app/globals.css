@@ -59,7 +59,7 @@
   --radius: 10px;
 
   /* Soft pastel premium light theme */
-  --background: oklch(0.99 0.003 240);
+  --background: oklch(96.143% 0.00143 285.233);
   --foreground: oklch(0.21 0.02 265);
 
   --card: oklch(1 0 0);
