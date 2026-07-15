@@ -47,7 +47,7 @@ import { formatDistanceToNow, isToday, isThisWeek, isThisMonth, subDays, format,
 
 import { apiFetch, handleError } from "@/lib/api";
 import { FocusSession } from "@/lib/types";
-import { useAppStore } from "@/lib/store";
+import { type FocusTimerMode, useAppStore } from "@/lib/store";
 import {
   PageTransition,
   GlassCard,
@@ -63,7 +63,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type TimerMode = "focus" | "short" | "long";
+type TimerMode = FocusTimerMode;
 
 // === Pomodoro completion bell (Web Audio API, no external files) ===
 // Lazily creates an AudioContext on first user interaction (the timer is started by a
@@ -226,19 +226,32 @@ export function FocusTimerPage() {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
   const soundEnabled = useAppStore((s) => s.soundEnabled);
   const setSoundEnabled = useAppStore((s) => s.setSoundEnabled);
+  const mode = useAppStore((s) => s.focusTimerMode);
+  const durations = useAppStore((s) => s.focusTimerDurations);
+  const remaining = useAppStore((s) => s.focusTimerRemaining);
+  const isRunning = useAppStore((s) => s.focusTimerRunning);
+  const subject = useAppStore((s) => s.focusTimerSubject);
+  const autoBreak = useAppStore((s) => s.focusTimerAutoBreak);
+  const completedFocusCount = useAppStore((s) => s.focusTimerCompletedCount);
+  const cycleId = useAppStore((s) => s.focusTimerCycleId);
+  const handledCycleId = useAppStore((s) => s.focusTimerHandledCycleId);
+  const syncFocusTimer = useAppStore((s) => s.syncFocusTimer);
+  const startFocusTimer = useAppStore((s) => s.startFocusTimer);
+  const pauseFocusTimer = useAppStore((s) => s.pauseFocusTimer);
+  const resetFocusTimer = useAppStore((s) => s.resetFocusTimer);
+  const skipFocusTimer = useAppStore((s) => s.skipFocusTimer);
+  const switchFocusTimerMode = useAppStore((s) => s.switchFocusTimerMode);
+  const setFocusTimerDuration = useAppStore((s) => s.setFocusTimerDuration);
+  const setFocusTimerSubject = useAppStore((s) => s.setFocusTimerSubject);
+  const setFocusTimerAutoBreak = useAppStore((s) => s.setFocusTimerAutoBreak);
+  const incrementFocusTimerCompletedCount = useAppStore(
+    (s) => s.incrementFocusTimerCompletedCount
+  );
+  const markFocusTimerCompletionHandled = useAppStore(
+    (s) => s.markFocusTimerCompletionHandled
+  );
 
   // === Timer state ===
-  const [mode, setMode] = useState<TimerMode>("focus");
-  const [durations, setDurations] = useState<Record<TimerMode, number>>({
-    focus: 25,
-    short: 5,
-    long: 15,
-  });
-  const [remaining, setRemaining] = useState<number>(durations.focus * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [subject, setSubject] = useState("");
-  const [autoBreak, setAutoBreak] = useState(true);
-  const [completedFocusCount, setCompletedFocusCount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [stretchDismissed, setStretchDismissed] = useState(false);
   const [hydrateDismissed, setHydrateDismissed] = useState(false);
@@ -324,26 +337,23 @@ export function FocusTimerPage() {
     fetchSessions();
   }, [fetchSessions]);
 
+  useEffect(() => {
+    syncFocusTimer();
+  }, [syncFocusTimer]);
+
   // === Tick interval ===
   useEffect(() => {
     if (!isRunning) return;
-    const id = setInterval(() => {
-      setRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(id);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    const id = setInterval(syncFocusTimer, 1000);
     return () => clearInterval(id);
-  }, [isRunning]);
+  }, [isRunning, syncFocusTimer]);
 
   // === Handle completion ===
   useEffect(() => {
     if (remaining !== 0) return;
-    if (loggedRef.current) return;
+    if (handledCycleId === cycleId || loggedRef.current) return;
     loggedRef.current = true;
+    markFocusTimerCompletionHandled();
 
     const finishedMode = mode;
     const elapsedMinutes = durations[finishedMode];
@@ -359,7 +369,7 @@ export function FocusTimerPage() {
         icon: <Coffee className="h-4 w-4" />,
       });
 
-      setCompletedFocusCount((c) => c + 1);
+      incrementFocusTimerCompletedCount();
       // POST focus record
       setSaving(true);
       apiFetch<{ session: FocusSession }>("/api/focus-session", {
@@ -382,8 +392,6 @@ export function FocusTimerPage() {
         const nextMode: TimerMode =
           (completedFocusCount + 1) % 4 === 0 ? "long" : "short";
         setTimeout(() => switchMode(nextMode, true), 600);
-      } else {
-        setIsRunning(false);
       }
     } else {
       toast.success("Break over — back to focus!", {
@@ -406,43 +414,48 @@ export function FocusTimerPage() {
         .finally(() => setSaving(false));
       setTimeout(() => switchMode("focus", true), 600);
     }
-  }, [remaining, soundEnabled, subject, autoBreak, completedFocusCount, durations, mode]);
+  }, [
+    remaining,
+    soundEnabled,
+    subject,
+    autoBreak,
+    completedFocusCount,
+    cycleId,
+    handledCycleId,
+    durations,
+    mode,
+    incrementFocusTimerCompletedCount,
+    markFocusTimerCompletionHandled,
+  ]);
 
   // === Mode switching ===
   const switchMode = useCallback(
     (next: TimerMode, autoStart = false) => {
-      setMode(next);
-      setRemaining(durations[next] * 60);
-      setIsRunning(autoStart);
+      switchFocusTimerMode(next, autoStart);
       loggedRef.current = false;
     },
-    [durations]
+    [switchFocusTimerMode]
   );
 
   // === Set custom duration ===
   const setDuration = (minutes: number) => {
     const safe = Math.max(1, Math.min(180, Math.round(minutes)));
-    setDurations((prev) => ({ ...prev, [mode]: safe }));
-    if (!isRunning) {
-      setRemaining(safe * 60);
-    }
+    setFocusTimerDuration(safe);
     loggedRef.current = false;
   };
 
   // === Controls ===
   const handleStart = () => {
-    if (remaining === 0) setRemaining(durations[mode] * 60);
     loggedRef.current = false;
-    setIsRunning(true);
+    startFocusTimer();
   };
-  const handlePause = () => setIsRunning(false);
+  const handlePause = () => pauseFocusTimer();
   const handleReset = () => {
-    setIsRunning(false);
-    setRemaining(durations[mode] * 60);
+    resetFocusTimer();
     loggedRef.current = false;
   };
   const handleSkip = () => {
-    setRemaining(0);
+    skipFocusTimer();
   };
 
   // === Rotating break tip ===
@@ -819,7 +832,7 @@ export function FocusTimerPage() {
                     type="text"
                     placeholder="e.g. Mathematics"
                     value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
+                    onChange={(e) => setFocusTimerSubject(e.target.value)}
                     className="bg-background/60"
                   />
                 </div>
@@ -831,7 +844,10 @@ export function FocusTimerPage() {
                         Switch automatically when focus ends
                       </p>
                     </div>
-                    <Switch checked={autoBreak} onCheckedChange={setAutoBreak} />
+                    <Switch
+                      checked={autoBreak}
+                      onCheckedChange={setFocusTimerAutoBreak}
+                    />
                   </div>
                 </div>
               </div>
