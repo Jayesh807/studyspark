@@ -6,6 +6,9 @@ import { db } from "./db";
 const JWT_SECRET =
   process.env.JWT_SECRET || "studyspark-super-secret-key-change-in-production";
 const TOKEN_NAME = "studyspark_token";
+const AUTH_SESSION_EXPIRES_IN = "30d";
+const AUTH_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+const GOOGLE_PENDING_MAX_AGE_SECONDS = 60 * 15;
 export const GOOGLE_OAUTH_STATE_COOKIE = "studyspark_google_oauth_state";
 export const GOOGLE_PENDING_COOKIE = "studyspark_google_pending";
 
@@ -29,7 +32,9 @@ export async function verifyPassword(
 }
 
 export function signToken(userId: string): string {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "30d" });
+  return jwt.sign({ userId }, JWT_SECRET, {
+    expiresIn: AUTH_SESSION_EXPIRES_IN,
+  });
 }
 
 export function signGooglePending(profile: GooglePendingProfile): string {
@@ -84,6 +89,9 @@ export async function getCurrentUser() {
     where: { id: payload.userId },
     select: { id: true, username: true, email: true, createdAt: true },
   });
+  if (user) {
+    await setAuthCookie(user.id);
+  }
   return user;
 }
 
@@ -94,7 +102,7 @@ export async function setAuthCookie(userId: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: AUTH_SESSION_MAX_AGE_SECONDS,
     path: "/",
   });
 }
@@ -106,7 +114,7 @@ export async function setGooglePendingCookie(profile: GooglePendingProfile) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 15,
+    maxAge: GOOGLE_PENDING_MAX_AGE_SECONDS,
     path: "/",
   });
 }
