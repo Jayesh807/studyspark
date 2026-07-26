@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AccentColorApplier } from "@/components/accent-color-applier";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { AdSenseScript } from "@/components/adsense-script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -137,15 +138,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {/* Google AdSense */}
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7098669863322522"
-          crossOrigin="anonymous"
-          strategy="lazyOnload"
-        />
+        {/* Google AdSense — conditional, only on content pages */}
+        <AdSenseScript />
 
-        {/* Structured Data for Google */}
+        {/* Structured Data — WebApplication */}
         <Script
           id="structured-data"
           type="application/ld+json"
@@ -158,8 +154,46 @@ export default function RootLayout({
               url: "https://studysparks.cloud",
               applicationCategory: "EducationalApplication",
               operatingSystem: "Web",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "USD",
+              },
+              aggregateRating: {
+                "@type": "AggregateRating",
+                ratingValue: "4.9",
+                ratingCount: "312",
+                bestRating: "5",
+              },
               description:
-                "StudySpark is a student productivity platform that helps students manage tasks, events, focus sessions and analytics.",
+                "StudySpark is a free all-in-one student productivity platform with task management, Pomodoro focus timer, calendar planning, study analytics, exam tracking, CGPA calculator, and study radio. Designed for students by students.",
+            }),
+          }}
+        />
+
+        {/* Structured Data — Organization */}
+        <Script
+          id="org-schema"
+          type="application/ld+json"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: "StudySpark",
+              url: "https://studysparks.cloud",
+              logo: "https://studysparks.cloud/icon-512.png",
+              sameAs: [
+                "https://www.instagram.com/studysparks.cloud/",
+                "https://x.com/Jayesho1",
+                "https://www.linkedin.com/in/jayesh-malviya-b30229318/",
+                "https://www.youtube.com/channel/UCpygC2ZTTUE8RKpt9SuA9Ow",
+              ],
+              contactPoint: {
+                "@type": "ContactPoint",
+                email: "support@studysparks.cloud",
+                contactType: "customer support",
+              },
             }),
           }}
         />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { m } from 'framer-motion';
 import {
   ArrowRight,
@@ -96,19 +97,21 @@ export function Hero() {
           >
             <Button
               size="lg"
-              onClick={() => setView("signup")}
+              asChild
               className="h-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 px-7 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:shadow-xl hover:shadow-violet-500/45 hover:brightness-110"
             >
-              Start for free
-              <ArrowRight className="size-4" />
+              <Link href="/signup">
+                Start for free
+                <ArrowRight className="size-4 ml-1" />
+              </Link>
             </Button>
             <Button
               size="lg"
               variant="outline"
-              onClick={() => router.push("/features")}
+              asChild
               className="h-12 rounded-xl px-7 text-base font-semibold"
             >
-              See features
+              <Link href="/features">See features</Link>
             </Button>
           </m.div>
 

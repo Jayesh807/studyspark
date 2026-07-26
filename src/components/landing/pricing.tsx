@@ -1,10 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import {  m  } from 'framer-motion';
 import { Check, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "./section-heading";
-import { useAppStore } from "@/lib/store";
+import { useRouter } from "next/navigation";
 
 const INCLUDED = [
   "Unlimited tasks, subjects & events",
@@ -18,7 +19,7 @@ const INCLUDED = [
 ];
 
 export function Pricing() {
-  const setView = useAppStore((s) => s.setView);
+  const router = useRouter();
 
   return (
     <section
@@ -59,11 +60,13 @@ export function Pricing() {
 
               <Button
                 size="lg"
-                onClick={() => setView("signup")}
+                asChild
                 className="mt-5 h-11 w-full rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-base font-semibold text-white shadow-lg shadow-violet-500/30 transition-all hover:shadow-xl hover:shadow-violet-500/45 hover:brightness-110"
               >
-                Get started free
-                <ArrowRight className="size-4" />
+                <Link href="/signup">
+                  Get started free
+                  <ArrowRight className="size-4 ml-1" />
+                </Link>
               </Button>
 
               <ul className="mt-6 space-y-2.5">
