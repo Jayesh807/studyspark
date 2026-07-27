@@ -45,10 +45,15 @@ import {
   Flag,
   Inbox,
   ListTodo,
+  Layers3,
+  BookOpenCheck,
+  NotebookPen,
+  RefreshCw,
   Sparkles,
   AlertTriangle,
   X,
   ArrowUpDown,
+  Target,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -200,6 +205,42 @@ const PRIORITY_ORDER: Record<Priority, number> = {
   high: 0,
   medium: 1,
   low: 2,
+};
+
+const CATEGORY_ICON_CONFIG: Record<
+  TodoCategory,
+  { icon: React.ElementType; soft: string; text: string; ring: string }
+> = {
+  general: {
+    icon: Layers3,
+    soft: "bg-slate-500/10",
+    text: "text-slate-600 dark:text-slate-300",
+    ring: "ring-slate-500/15",
+  },
+  study: {
+    icon: BookOpenCheck,
+    soft: "bg-blue-500/10",
+    text: "text-blue-600 dark:text-blue-400",
+    ring: "ring-blue-500/15",
+  },
+  assignment: {
+    icon: NotebookPen,
+    soft: "bg-violet-500/10",
+    text: "text-violet-600 dark:text-violet-400",
+    ring: "ring-violet-500/15",
+  },
+  revision: {
+    icon: RefreshCw,
+    soft: "bg-cyan-500/10",
+    text: "text-cyan-600 dark:text-cyan-400",
+    ring: "ring-cyan-500/15",
+  },
+  exam: {
+    icon: Target,
+    soft: "bg-rose-500/10",
+    text: "text-rose-600 dark:text-rose-400",
+    ring: "ring-rose-500/15",
+  },
 };
 
 // ---------- Main page ----------
@@ -412,6 +453,26 @@ export function TodosPage() {
       // Revert
       setTodos((prev) => [snapshot, ...prev]);
       handleError(err, "Failed to delete task");
+    }
+  };
+
+  const handleClearCompleted = async () => {
+    const completedTodos = todos.filter((t) => t.status === "completed");
+    if (completedTodos.length === 0) return;
+
+    setTodos((prev) => prev.filter((t) => t.status !== "completed"));
+    try {
+      await Promise.all(
+        completedTodos.map((todo) =>
+          apiFetch<{ success: boolean }>(`/api/todos/${todo.id}`, {
+            method: "DELETE",
+          })
+        )
+      );
+      toast.success("Completed tasks cleared");
+    } catch (err) {
+      setTodos((prev) => [...completedTodos, ...prev]);
+      handleError(err, "Failed to clear completed tasks");
     }
   };
 
@@ -724,6 +785,9 @@ export function TodosPage() {
                   onToggleComplete={handleToggleComplete}
                   onEdit={handleEdit}
                   onDelete={(t) => setDeleting(t)}
+                  onClearCompleted={
+                    col.id === "completed" ? handleClearCompleted : undefined
+                  }
                 />
               ))}
             </div>
@@ -868,12 +932,14 @@ function BoardColumn({
   onToggleComplete,
   onEdit,
   onDelete,
+  onClearCompleted,
 }: {
   column: ColumnDef;
   todos: Todo[];
   onToggleComplete: (todo: Todo) => void;
   onEdit: (todo: Todo) => void;
   onDelete: (todo: Todo) => void;
+  onClearCompleted?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const Icon = column.icon;
@@ -907,6 +973,18 @@ function BoardColumn({
             {todos.length}
           </Badge>
         </div>
+        {onClearCompleted && todos.length > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClearCompleted}
+            className="h-8 rounded-[5px] px-2.5 text-xs text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Clear all
+          </Button>
+        )}
       </div>
 
       {/* Column body */}
@@ -1202,6 +1280,12 @@ function TaskFormDialog({
     subject: editing?.subject ?? "",
     dueDate: editing ? toDateInput(editing.dueDate) : "",
   }));
+  const selectedCategory = CATEGORY_ICON_CONFIG[form.category];
+  const SelectedCategoryIcon = selectedCategory.icon;
+  const fieldClass =
+    "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+  const selectClass = cn("w-full h-11 px-3", fieldClass);
+  const labelClass = "text-sm font-semibold text-foreground/90";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1221,25 +1305,29 @@ function TaskFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin border-border/50">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
+      <DialogContent
+        onPointerDownOutside={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+        className="sm:max-w-[600px] rounded-[14px] max-h-[90vh] overflow-y-auto scrollbar-thin border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90"
+      >
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/18 to-fuchsia-500/14 text-violet-600 ring-1 ring-violet-500/15 dark:text-violet-300">
               {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </span>
             {isEdit ? "Edit Task" : "New Task"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
             {isEdit
               ? "Update the details of your task below."
               : "Fill in the details below to create a new task."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Title */}
-          <div className="space-y-1.5">
-            <Label htmlFor="task-title" className="text-sm font-medium">
+          <div className="space-y-2">
+            <Label htmlFor="task-title" className={labelClass}>
               Title <span className="text-rose-500">*</span>
             </Label>
             <Input
@@ -1248,7 +1336,8 @@ function TaskFormDialog({
               onChange={(e) => update("title", e.target.value)}
               placeholder="What needs to be done?"
               className={cn(
-                "rounded-xl",
+                "h-11 px-4",
+                fieldClass,
                 error && "border-rose-500 focus-visible:ring-rose-500/30"
               )}
               autoFocus
@@ -1262,8 +1351,8 @@ function TaskFormDialog({
           </div>
 
           {/* Description */}
-          <div className="space-y-1.5">
-            <Label htmlFor="task-desc" className="text-sm font-medium">
+          <div className="space-y-2">
+            <Label htmlFor="task-desc" className={labelClass}>
               Description
             </Label>
             <Textarea
@@ -1272,22 +1361,22 @@ function TaskFormDialog({
               onChange={(e) => update("description", e.target.value)}
               placeholder="Add more details (optional)"
               rows={3}
-              className="rounded-xl resize-none scrollbar-thin"
+              className={cn("min-h-24 resize-none px-4 py-3 scrollbar-thin", fieldClass)}
             />
           </div>
 
           {/* Grid: Priority, Category, Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Priority</Label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label className={labelClass}>Priority</Label>
               <Select
                 value={form.priority}
                 onValueChange={(v) => update("priority", v as Priority)}
               >
-                <SelectTrigger className="w-full rounded-xl">
+                <SelectTrigger className={selectClass}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[5px] border-border/60 bg-popover/95 p-1 shadow-xl backdrop-blur-xl">
                   <SelectItem value="high">
                     <span className="inline-flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-rose-500" />
@@ -1310,65 +1399,105 @@ function TaskFormDialog({
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Category</Label>
+            <div className="space-y-2">
+              <Label className={labelClass}>Category</Label>
               <Select
                 value={form.category}
                 onValueChange={(v) => update("category", v as TodoCategory)}
               >
-                <SelectTrigger className="w-full rounded-xl">
-                  <SelectValue />
+                <SelectTrigger className={selectClass}>
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span
+                      className={cn(
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] ring-1",
+                        selectedCategory.soft,
+                        selectedCategory.text,
+                        selectedCategory.ring
+                      )}
+                    >
+                      <SelectedCategoryIcon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="truncate">{CATEGORY_CONFIG[form.category].label}</span>
+                  </span>
                 </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(CATEGORY_CONFIG) as TodoCategory[]).map((c) => (
-                    <SelectItem key={c} value={c}>
-                      <span className="inline-flex items-center gap-2">
-                        <span>{CATEGORY_CONFIG[c].icon}</span>
-                        {CATEGORY_CONFIG[c].label}
-                      </span>
-                    </SelectItem>
-                  ))}
+                <SelectContent className="rounded-[5px] border-border/60 bg-popover/95 p-1 shadow-xl backdrop-blur-xl">
+                  {(Object.keys(CATEGORY_CONFIG) as TodoCategory[]).map((c) => {
+                    const categoryUi = CATEGORY_ICON_CONFIG[c];
+                    const CategoryIcon = categoryUi.icon;
+                    return (
+                      <SelectItem key={c} value={c} className="rounded-[5px] py-2">
+                        <span className="inline-flex items-center gap-2.5">
+                          <span
+                            className={cn(
+                              "flex h-6 w-6 items-center justify-center rounded-[5px] ring-1",
+                              categoryUi.soft,
+                              categoryUi.text,
+                              categoryUi.ring
+                            )}
+                          >
+                            <CategoryIcon className="h-3.5 w-3.5" />
+                          </span>
+                          {CATEGORY_CONFIG[c].label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Status</Label>
+            <div className="space-y-2">
+              <Label className={labelClass}>Status</Label>
               <Select
                 value={form.status}
                 onValueChange={(v) => update("status", v as TodoStatus)}
               >
-                <SelectTrigger className="w-full rounded-xl">
+                <SelectTrigger className={selectClass}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todo">To Do</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                <SelectContent className="rounded-[5px] border-border/60 bg-popover/95 p-1 shadow-xl backdrop-blur-xl">
+                  <SelectItem value="todo" className="rounded-[5px]">
+                    <span className="inline-flex items-center gap-2">
+                      <CircleDashed className="h-3.5 w-3.5 text-slate-500" />
+                      To Do
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="in-progress" className="rounded-[5px]">
+                    <span className="inline-flex items-center gap-2">
+                      <ClipboardList className="h-3.5 w-3.5 text-amber-500" />
+                      In Progress
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="completed" className="rounded-[5px]">
+                    <span className="inline-flex items-center gap-2">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                      Completed
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           {/* Grid: Subject, Due date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Subject</Label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label className={labelClass}>Subject</Label>
               <Select
                 value={form.subject || "__none__"}
                 onValueChange={(v) =>
                   update("subject", v === "__none__" ? "" : v)
                 }
               >
-                <SelectTrigger className="w-full rounded-xl">
+                <SelectTrigger className={selectClass}>
                   <SelectValue placeholder="None" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">
+                <SelectContent className="rounded-[5px] border-border/60 bg-popover/95 p-1 shadow-xl backdrop-blur-xl">
+                  <SelectItem value="__none__" className="rounded-[5px]">
                     <span className="text-muted-foreground">None</span>
                   </SelectItem>
                   {subjects.map((s) => (
-                    <SelectItem key={s.id} value={s.name}>
+                    <SelectItem key={s.id} value={s.name} className="rounded-[5px]">
                       <span className="inline-flex items-center gap-2">
                         <span
                           className={cn(
@@ -1384,8 +1513,8 @@ function TaskFormDialog({
               </Select>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="task-due" className="text-sm font-medium">
+            <div className="space-y-2">
+              <Label htmlFor="task-due" className={labelClass}>
                 Due date
               </Label>
               <Input
@@ -1393,18 +1522,18 @@ function TaskFormDialog({
                 type="date"
                 value={form.dueDate}
                 onChange={(e) => update("dueDate", e.target.value)}
-                className="rounded-xl"
+                className={cn("h-11 px-4", fieldClass)}
               />
             </div>
           </div>
         </form>
 
-        <DialogFooter>
+        <DialogFooter className="pt-1">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl"
+            className="h-11 rounded-[5px] border-border/60 bg-background/70 px-5 shadow-sm hover:bg-muted/60"
             disabled={saving}
           >
             Cancel
@@ -1413,7 +1542,7 @@ function TaskFormDialog({
             type="button"
             onClick={handleSubmit}
             disabled={saving || !form.title.trim()}
-            className="rounded-xl accent-gradient text-white min-w-[100px]"
+            className="h-11 min-w-[118px] rounded-[5px] accent-gradient px-5 text-white shadow-lg shadow-violet-500/20 transition-all hover:shadow-violet-500/30"
           >
             {saving ? (
               <>

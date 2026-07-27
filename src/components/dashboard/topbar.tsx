@@ -14,8 +14,10 @@ import {
   AlertTriangle,
   BookOpen,
   Target,
+  AlarmClock,
   Calculator as CalculatorIcon,
   Music,
+  Trash2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAppStore, type AppView } from "@/lib/store";
@@ -38,6 +40,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CalculatorWidget } from "./calculator";
 import { LofiPlayer } from "./lofi-player";
+import { ReminderWidget } from "./reminder-widget";
 import { PWA_INSTALL_REQUEST_EVENT } from "@/components/pwa-install-prompt";
 
 /* -------------------------------------------------------------------------- */
@@ -56,6 +59,7 @@ interface SmartNotification {
 }
 
 const FIVE_MINUTES = 5 * 60 * 1000;
+const DISMISSED_NOTIFICATIONS_KEY_PREFIX = "studyspark:dismissed-notifications:";
 
 interface CachedData {
   todos: Todo[];
@@ -219,11 +223,30 @@ function NotificationPopover({
   const [notifications, setNotifications] = useState<SmartNotification[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,
     [notifications]
   );
+
+  const dismissedStorageKey = user
+    ? `${DISMISSED_NOTIFICATIONS_KEY_PREFIX}${user.id}`
+    : null;
+
+  useEffect(() => {
+    if (!dismissedStorageKey) {
+      setDismissedIds(new Set());
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(dismissedStorageKey);
+      const ids = raw ? (JSON.parse(raw) as string[]) : [];
+      setDismissedIds(new Set(ids));
+    } catch {
+      setDismissedIds(new Set());
+    }
+  }, [dismissedStorageKey]);
 
   const loadNotifications = useCallback(async () => {
     if (!user) return;
@@ -233,30 +256,25 @@ function NotificationPopover({
       const computed = computeNotifications(data);
       // Preserve read state from current state
       setNotifications((prev) =>
-        computed.map((n) => {
-          const existing = prev.find((p) => p.id === n.id);
-          return existing ? { ...n, read: existing.read } : n;
-        })
+        computed
+          .filter((n) => !dismissedIds.has(n.id))
+          .map((n) => {
+            const existing = prev.find((p) => p.id === n.id);
+            return existing ? { ...n, read: existing.read } : n;
+          })
       );
     } catch {
       // Silently fail — notifications are non-critical
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, dismissedIds]);
 
   useEffect(() => {
     if (user && open) {
       loadNotifications();
     }
   }, [user, open, loadNotifications]);
-
-  // Initial load when user logs in
-  useEffect(() => {
-    if (user) {
-      loadNotifications();
-    }
-  }, [user, loadNotifications]);
 
   const handleNotificationClick = (notification: SmartNotification) => {
     setNotifications((prev) =>
@@ -268,6 +286,24 @@ function NotificationPopover({
 
   const markAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
+
+  const clearAll = () => {
+    if (notifications.length === 0) return;
+    const next = new Set(dismissedIds);
+    notifications.forEach((n) => next.add(n.id));
+    setDismissedIds(next);
+    setNotifications([]);
+    if (dismissedStorageKey) {
+      try {
+        window.localStorage.setItem(
+          dismissedStorageKey,
+          JSON.stringify(Array.from(next))
+        );
+      } catch {
+        // Local persistence is best-effort.
+      }
+    }
   };
 
   return (
@@ -298,7 +334,7 @@ function NotificationPopover({
         className="w-80 rounded-2xl border-border/60 bg-background/80 p-0 shadow-2xl backdrop-blur-xl"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 border-b border-border/40 px-4 py-3">
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-semibold">Notifications</h4>
             {unreadCount > 0 && (
@@ -307,14 +343,26 @@ function NotificationPopover({
               </span>
             )}
           </div>
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllRead}
-              className="text-[11px] font-medium text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-            >
-              Mark all read
-            </button>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                className="text-[11px] font-medium text-violet-500 transition-colors hover:text-violet-600 dark:hover:text-violet-400"
+              >
+                Mark all read
+              </button>
+            )}
+            {notifications.length > 0 && (
+              <button
+                onClick={clearAll}
+                className="inline-flex h-7 items-center gap-1 rounded-[5px] border border-border/50 bg-background/65 px-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400"
+                aria-label="Clear all notifications"
+              >
+                <Trash2 className="h-3 w-3" />
+                Clear all
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Body */}
@@ -408,6 +456,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
   const { currentView, setMobileSidebarOpen, user } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [calcOpen, setCalcOpen] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
   const [desktopRadioOpen, setDesktopRadioOpen] = useState(false);
   const [mobileRadioOpen, setMobileRadioOpen] = useState(false);
   const [isRadioPlaying, setIsRadioPlaying] = useState(false);
@@ -517,6 +566,27 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
         </Tooltip>
       </TooltipProvider>
 
+      {/* Reminder toggle */}
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setReminderOpen(true)}
+              className={cn(
+                "relative hidden h-9 w-9 rounded-xl md:inline-flex",
+                reminderOpen && "bg-violet-500/10 text-violet-500"
+              )}
+              aria-label="Open reminders"
+            >
+              <AlarmClock className="h-[18px] w-[18px]" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Reminders</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
       {/* Calculator toggle */}
       <TooltipProvider delayDuration={0}>
         <Tooltip>
@@ -619,6 +689,20 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="sm"
               onClick={() => {
+                setReminderOpen(true);
+                setMobileActionsOpen(false);
+              }}
+              className="h-11 justify-start gap-3 rounded-xl px-3"
+              aria-label="Open reminders"
+            >
+              <AlarmClock className="h-[18px] w-[18px]" />
+              <span>Reminders</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
                 setCalcOpen(true);
                 setMobileActionsOpen(false);
               }}
@@ -697,6 +781,11 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
       )}
 
       <CalculatorWidget open={calcOpen} onOpenChange={setCalcOpen} />
+      <ReminderWidget
+        open={reminderOpen}
+        onOpenChange={setReminderOpen}
+        userId={user?.id}
+      />
     </header>
   );
 }

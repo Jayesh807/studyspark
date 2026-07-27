@@ -36,6 +36,21 @@ export function DashboardRedirect() {
     }
   }, [authLoading, user, setView]);
 
+  useEffect(() => {
+    if (!showDashboard) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [showDashboard]);
+
   // Global listener: when apiFetch detects a 401 on a protected endpoint,
   // it dispatches this event. We log out and redirect to login.
   useEffect(() => {

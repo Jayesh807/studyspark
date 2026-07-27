@@ -1608,47 +1608,140 @@ function AIInsightsPanel({
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Dashboard cache                                                            */
+/* -------------------------------------------------------------------------- */
+
+interface DashboardHomeCache {
+  analytics: Analytics | null;
+  todos: Todo[];
+  focusSessions: FocusSession[];
+}
+
+const DASHBOARD_HOME_CACHE_PREFIX = "studyspark:dashboard-home:";
+
+function dashboardCacheKey(userId?: string): string | null {
+  return userId ? `${DASHBOARD_HOME_CACHE_PREFIX}${userId}` : null;
+}
+
+function readDashboardCache(userId?: string): DashboardHomeCache | null {
+  const key = dashboardCacheKey(userId);
+  if (!key || typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as DashboardHomeCache) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDashboardCache(
+  userId: string | undefined,
+  cache: DashboardHomeCache
+) {
+  const key = dashboardCacheKey(userId);
+  if (!key || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(cache));
+  } catch {
+    // Cache is a performance boost only; ignore storage failures.
+  }
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Main component                                                             */
 /* -------------------------------------------------------------------------- */
 
 export function DashboardHome() {
   const user = useAppStore((s) => s.user);
   const setView = useAppStore((s) => s.setView);
+  const initialCache = useMemo(() => readDashboardCache(user?.id), [user?.id]);
 
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState<Analytics | null>(
+    () => initialCache?.analytics ?? null
+  );
+  const [todos, setTodos] = useState<Todo[]>(() => initialCache?.todos ?? []);
+  const [focusSessions, setFocusSessions] = useState<FocusSession[]>(
+    () => initialCache?.focusSessions ?? []
+  );
+  const [loading, setLoading] = useState(() => !initialCache?.analytics);
 
   useEffect(() => {
     let active = true;
-    (async () => {
+
+    const cached = readDashboardCache(user?.id);
+    if (cached) {
+      setAnalytics(cached.analytics);
+      setTodos(cached.todos);
+      setFocusSessions(cached.focusSessions);
+      setLoading(!cached.analytics);
+    } else {
+      setAnalytics(null);
+      setTodos([]);
+      setFocusSessions([]);
       setLoading(true);
-      try {
-        const [a, t, fs] = await Promise.all([
-          apiFetch<Analytics>("/api/analytics"),
-          apiFetch<{ todos: Todo[] }>("/api/todos")
-            .then((r) => r.todos ?? [])
-            .catch(() => [] as Todo[]),
-          apiFetch<{ sessions: FocusSession[] }>("/api/focus-session")
-            .then((r) => r.sessions ?? [])
-            .catch(() => [] as FocusSession[]),
-        ]);
+    }
+
+    const nextCache: DashboardHomeCache = cached ?? {
+      analytics: null,
+      todos: [],
+      focusSessions: [],
+    };
+
+    apiFetch<Analytics>("/api/analytics")
+      .then((a) => {
         if (!active) return;
+        nextCache.analytics = a;
         setAnalytics(a);
-        setTodos(t);
-        setFocusSessions(fs);
-      } catch (err) {
-        handleError(err, "Failed to load dashboard");
-        toast.error("Could not load your dashboard. Please try again.");
-      } finally {
+        writeDashboardCache(user?.id, nextCache);
+      })
+      .catch((err) => {
+        if (!active) return;
+        handleError(err, "Failed to load dashboard analytics");
+        if (!cached?.analytics) {
+          toast.error("Could not load your dashboard. Please try again.");
+        }
+      })
+      .finally(() => {
         if (active) setLoading(false);
-      }
-    })();
+      });
+
+    apiFetch<{ todos: Todo[] }>("/api/todos")
+      .then((r) => {
+        if (!active) return;
+        const nextTodos = r.todos ?? [];
+        nextCache.todos = nextTodos;
+        setTodos(nextTodos);
+        writeDashboardCache(user?.id, nextCache);
+      })
+      .catch(() => {
+        // Keep cached or empty tasks; analytics remains the main dashboard gate.
+      });
+
+    apiFetch<{ sessions: FocusSession[] }>("/api/focus-session")
+      .then((r) => {
+        if (!active) return;
+        const nextSessions = r.sessions ?? [];
+        nextCache.focusSessions = nextSessions;
+        setFocusSessions(nextSessions);
+        writeDashboardCache(user?.id, nextCache);
+      })
+      .catch(() => {
+        // Keep cached or empty focus sessions.
+      });
+
     return () => {
       active = false;
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!analytics) return;
+    writeDashboardCache(user?.id, {
+      analytics,
+      todos,
+      focusSessions,
+    });
+  }, [analytics, focusSessions, todos, user?.id]);
 
   const username = user?.username ?? "there";
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
+  type LucideIcon,
   Plus,
   Trash2,
   Clock,
@@ -64,6 +65,13 @@ import {
 import { EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 
+const FORM_FIELD_CLASS =
+  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+const FORM_SELECT_CLASS = cn("h-11 w-full px-3", FORM_FIELD_CLASS);
+const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
+const FORM_DIALOG_CLASS =
+  "max-h-[90vh] overflow-y-auto scrollbar-thin rounded-[14px] sm:max-w-lg border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -91,16 +99,15 @@ const TIME_SLOTS: { key: TimeSlot; label: string; icon: typeof Sunrise; hours: s
   { key: "night", label: "Night", icon: Moon, hours: "21:00 – 24:00" },
 ];
 
-const BLOCK_TYPES: { key: StudyBlockType; label: string; icon: string; color: string }[] = [
-  { key: "study", label: "Study", icon: "📚", color: "violet" },
-  { key: "revision", label: "Revision", icon: "🔄", color: "blue" },
-  { key: "assignment", label: "Assignment", icon: "✍️", color: "amber" },
-  { key: "exam-prep", label: "Exam Prep", icon: "🎯", color: "rose" },
-  { key: "break", label: "Break", icon: "☕", color: "green" },
+const BLOCK_TYPES: { key: StudyBlockType; label: string; icon: LucideIcon; color: string }[] = [
+  { key: "study", label: "Study", icon: BookOpen, color: "violet" },
+  { key: "revision", label: "Revision", icon: Zap, color: "blue" },
+  { key: "assignment", label: "Assignment", icon: Pencil, color: "amber" },
+  { key: "exam-prep", label: "Exam Prep", icon: Target, color: "rose" },
+  { key: "break", label: "Break", icon: Coffee, color: "green" },
 ];
 
-const BLOCK_TYPE_MAP: Record<StudyBlockType, { label: string; icon: string; color: string }> =
-  Object.fromEntries(BLOCK_TYPES.map((b) => [b.key, b])) as never;
+const BLOCK_TYPE_MAP: Record<StudyBlockType, { label: string; icon: LucideIcon; color: string }> =  Object.fromEntries(BLOCK_TYPES.map((b) => [b.key, b])) as never;
 
 // Local storage key
 const STORAGE_KEY = "studyspark_planner_blocks";
@@ -220,21 +227,24 @@ function BlockDialog({
     onOpenChange(false);
   };
 
+  const selectedBlockType = BLOCK_TYPE_MAP[form.type];
+  const SelectedBlockTypeIcon = selectedBlockType.icon;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg border-border/50"
+        className={FORM_DIALOG_CLASS}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/90 via-fuchsia-500/90 to-sky-500/80 text-white shadow-sm">
               <CalendarRange className="h-4 w-4" />
             </span>
             {initial ? "Edit Study Block" : "Add Study Block"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
             {initial
               ? "Update this study block in your weekly plan."
               : "Plan a focused study session in your weekly schedule."}
@@ -244,13 +254,14 @@ function BlockDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Day */}
           <div className="space-y-1.5">
-            <Label>Day</Label>
+            <Label className={FORM_LABEL_CLASS}>Day</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-full justify-start text-left font-normal",
+                    FORM_SELECT_CLASS,
+                    "justify-start text-left font-normal",
                     !form.day && "text-muted-foreground"
                   )}
                 >
@@ -258,7 +269,7 @@ function BlockDialog({
                   {form.day ? format(parseISO(form.day), "EEE, MMM d") : "Pick a date"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto rounded-[8px] border-border/60 p-0 shadow-xl" align="start">
                 <Calendar
                   mode="single"
                   selected={form.day ? parseISO(form.day) : undefined}
@@ -273,15 +284,15 @@ function BlockDialog({
           {/* Time Slot + Type */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Time Slot</Label>
+              <Label className={FORM_LABEL_CLASS}>Time Slot</Label>
               <Select
                 value={form.timeSlot}
                 onValueChange={(v) => update("timeSlot", v as TimeSlot)}
               >
-                <SelectTrigger>
+                <SelectTrigger className={FORM_SELECT_CLASS}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[8px]">
                   {TIME_SLOTS.map((slot) => (
                     <SelectItem key={slot.key} value={slot.key}>
                       {slot.label}
@@ -291,20 +302,33 @@ function BlockDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Block Type</Label>
+              <Label className={FORM_LABEL_CLASS}>Block Type</Label>
               <Select
                 value={form.type}
                 onValueChange={(v) => update("type", v as StudyBlockType)}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className={FORM_SELECT_CLASS}>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] bg-muted text-violet-500 ring-1 ring-border/60">
+                      <SelectedBlockTypeIcon className="h-3.5 w-3.5" />
+                    </span>
+                    <span className="truncate">{selectedBlockType.label}</span>
+                  </span>
                 </SelectTrigger>
-                <SelectContent>
-                  {BLOCK_TYPES.map((bt) => (
-                    <SelectItem key={bt.key} value={bt.key}>
-                      {bt.icon} {bt.label}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="rounded-[8px]">
+                  {BLOCK_TYPES.map((bt) => {
+                    const BlockTypeIcon = bt.icon;
+                    return (
+                      <SelectItem key={bt.key} value={bt.key}>
+                        <span className="flex items-center gap-2">
+                          <span className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-muted text-violet-500 ring-1 ring-border/60">
+                            <BlockTypeIcon className="h-3.5 w-3.5" />
+                          </span>
+                          {bt.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -312,13 +336,13 @@ function BlockDialog({
 
           {/* Subject */}
           <div className="space-y-1.5">
-            <Label>Subject</Label>
+            <Label className={FORM_LABEL_CLASS}>Subject</Label>
             {subjects.length > 0 ? (
               <Select value={form.subject} onValueChange={(v) => update("subject", v)}>
-                <SelectTrigger>
+                <SelectTrigger className={FORM_SELECT_CLASS}>
                   <SelectValue placeholder="Choose a subject" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[8px]">
                   {subjects.map((s) => (
                     <SelectItem key={s.id} value={s.name}>
                       <span className="flex items-center gap-2">
@@ -336,13 +360,14 @@ function BlockDialog({
                 placeholder="e.g. Mathematics"
                 value={form.subject}
                 onChange={(e) => update("subject", e.target.value)}
+                className={FORM_FIELD_CLASS}
               />
             )}
           </div>
 
           {/* Title */}
           <div className="space-y-1.5">
-            <Label>
+            <Label className={FORM_LABEL_CLASS}>
               Title <span className="text-rose-500">*</span>
             </Label>
             <Input
@@ -350,13 +375,14 @@ function BlockDialog({
               value={form.title}
               onChange={(e) => update("title", e.target.value)}
               aria-invalid={!!errors.title}
+              className={FORM_FIELD_CLASS}
             />
             {errors.title && <p className="text-xs text-rose-500">{errors.title}</p>}
           </div>
 
           {/* Duration */}
           <div className="space-y-1.5">
-            <Label>Duration (minutes)</Label>
+            <Label className={FORM_LABEL_CLASS}>Duration (minutes)</Label>
             <div className="flex items-center gap-2">
               {[25, 45, 60, 90, 120].map((d) => (
                 <Button
@@ -365,7 +391,7 @@ function BlockDialog({
                   size="sm"
                   variant={form.duration === d ? "default" : "outline"}
                   className={cn(
-                    "rounded-lg text-xs",
+                    "rounded-[5px] text-xs",
                     form.duration === d &&
                       "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
                   )}
@@ -380,7 +406,7 @@ function BlockDialog({
                 max={480}
                 value={form.duration}
                 onChange={(e) => update("duration", Math.max(5, parseInt(e.target.value) || 5))}
-                className="w-20"
+                className={cn(FORM_FIELD_CLASS, "w-20")}
               />
             </div>
             {errors.duration && <p className="text-xs text-rose-500">{errors.duration}</p>}
@@ -388,22 +414,23 @@ function BlockDialog({
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label>Notes</Label>
+            <Label className={FORM_LABEL_CLASS}>Notes</Label>
             <Textarea
               placeholder="Topics, resources, goals…"
               value={form.notes}
               onChange={(e) => update("notes", e.target.value)}
               rows={2}
+              className={cn(FORM_FIELD_CLASS, "resize-none")}
             />
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-11 rounded-[5px] px-6">
               Cancel
             </Button>
             <Button
               type="submit"
-              className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
             >
               <Sparkles className="mr-1.5 h-4 w-4" />
               {initial ? "Save changes" : "Add block"}
@@ -431,6 +458,7 @@ function StudyBlockCard({
   onDelete: () => void;
 }) {
   const bt = BLOCK_TYPE_MAP[block.type];
+  const BlockTypeIcon = bt.icon;
   const c = colorOf(block.color);
 
   return (
@@ -473,7 +501,9 @@ function StudyBlockCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs">{bt.icon}</span>
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] bg-muted text-violet-500 ring-1 ring-border/60">
+              <BlockTypeIcon className="h-3 w-3" />
+            </span>
             <span
               className={cn(
                 "text-sm font-semibold truncate",

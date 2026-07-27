@@ -91,6 +91,11 @@ interface FormState {
 }
 
 const ACCENT_HUE = "var(--accent-color)";
+const FORM_FIELD_CLASS =
+  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
+const FORM_DIALOG_CLASS =
+  "sm:max-w-[600px] rounded-[14px] max-h-[90vh] overflow-y-auto scrollbar-thin border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
 
 function getInitial(username: string | undefined): string {
   if (!username) return "S";
@@ -468,19 +473,19 @@ function EditProfileForm({
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2 text-xl">
+      <DialogHeader className="space-y-2">
+        <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
           <span
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-[5px] text-white shadow-sm"
             style={{
               background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
             }}
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className="h-4 w-4" />
           </span>
           Edit Profile
         </DialogTitle>
-        <DialogDescription>
+        <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
           Update your personal info, study goal, and avatar.
         </DialogDescription>
       </DialogHeader>
@@ -488,7 +493,7 @@ function EditProfileForm({
       <div className="space-y-4 py-2">
         {/* Username */}
         <div className="space-y-2">
-          <Label htmlFor="edit-username">Username</Label>
+          <Label htmlFor="edit-username" className={FORM_LABEL_CLASS}>Username</Label>
           <div className="relative">
             <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -496,7 +501,7 @@ function EditProfileForm({
               placeholder="3-20 chars, letters/numbers/_"
               value={form.username}
               onChange={(e) => update("username", e.target.value.slice(0, 20))}
-              className="pl-9"
+              className={cn(FORM_FIELD_CLASS, "pl-9")}
               aria-invalid={!!errors.username}
             />
           </div>
@@ -507,7 +512,7 @@ function EditProfileForm({
 
         {/* Profile Photo Upload */}
         <div className="space-y-2">
-          <Label>Profile Photo</Label>
+          <Label className={FORM_LABEL_CLASS}>Profile Photo</Label>
           <div className="flex items-center gap-4">
             {/* Preview */}
             <div className="relative shrink-0 h-16 w-16 rounded-full border-2 border-border shadow-sm overflow-hidden bg-muted flex items-center justify-center">
@@ -544,7 +549,7 @@ function EditProfileForm({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-2"
+                className="gap-2 rounded-[5px]"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-3.5 w-3.5" />
@@ -562,7 +567,7 @@ function EditProfileForm({
 
         {/* Bio */}
         <div className="space-y-2">
-          <Label htmlFor="edit-bio">
+          <Label htmlFor="edit-bio" className={FORM_LABEL_CLASS}>
             Bio
             <span className="ml-2 text-xs font-normal text-muted-foreground">
               {form.bio.length}/500
@@ -575,6 +580,7 @@ function EditProfileForm({
             value={form.bio}
             onChange={(e) => update("bio", e.target.value.slice(0, 500))}
             aria-invalid={!!errors.bio}
+            className={cn(FORM_FIELD_CLASS, "resize-none")}
           />
           {errors.bio && (
             <p className="text-xs text-destructive">{errors.bio}</p>
@@ -583,7 +589,7 @@ function EditProfileForm({
 
         {/* Goal */}
         <div className="space-y-2">
-          <Label htmlFor="edit-goal">
+          <Label htmlFor="edit-goal" className={FORM_LABEL_CLASS}>
             Study Goal
             <span className="ml-2 text-xs font-normal text-muted-foreground">
               {form.goal.length}/200
@@ -595,6 +601,7 @@ function EditProfileForm({
             value={form.goal}
             onChange={(e) => update("goal", e.target.value.slice(0, 200))}
             aria-invalid={!!errors.goal}
+            className={FORM_FIELD_CLASS}
           />
           {errors.goal && (
             <p className="text-xs text-destructive">{errors.goal}</p>
@@ -604,7 +611,7 @@ function EditProfileForm({
         {/* Two column row */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="edit-target">Target hours / day</Label>
+            <Label htmlFor="edit-target" className={FORM_LABEL_CLASS}>Target hours / day</Label>
             <Input
               id="edit-target"
               type="number"
@@ -615,6 +622,7 @@ function EditProfileForm({
                 update("targetHours", parseInt(e.target.value || "0", 10))
               }
               aria-invalid={!!errors.targetHours}
+              className={FORM_FIELD_CLASS}
             />
             {errors.targetHours && (
               <p className="text-xs text-destructive">{errors.targetHours}</p>
@@ -632,6 +640,7 @@ function EditProfileForm({
                 update("semester", parseInt(e.target.value || "0", 10))
               }
               aria-invalid={!!errors.semester}
+              className={FORM_FIELD_CLASS}
             />
             {errors.semester && (
               <p className="text-xs text-destructive">{errors.semester}</p>
@@ -641,27 +650,29 @@ function EditProfileForm({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="edit-college">College</Label>
+            <Label htmlFor="edit-college" className={FORM_LABEL_CLASS}>College</Label>
             <Input
               id="edit-college"
               placeholder="e.g. Stanford University"
               value={form.college}
               onChange={(e) => update("college", e.target.value.slice(0, 100))}
+              className={FORM_FIELD_CLASS}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit-course">Course</Label>
+            <Label htmlFor="edit-course" className={FORM_LABEL_CLASS}>Course</Label>
             <Input
               id="edit-course"
               placeholder="e.g. Computer Science"
               value={form.course}
               onChange={(e) => update("course", e.target.value.slice(0, 100))}
+              className={FORM_FIELD_CLASS}
             />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="edit-avatar">Avatar URL (optional)</Label>
+          <Label htmlFor="edit-avatar" className={FORM_LABEL_CLASS}>Avatar URL (optional)</Label>
           <Input
             id="edit-avatar"
             type="url"
@@ -669,6 +680,7 @@ function EditProfileForm({
             value={form.avatar}
             onChange={(e) => update("avatar", e.target.value.slice(0, 500))}
             aria-invalid={!!errors.avatar}
+            className={FORM_FIELD_CLASS}
           />
           {errors.avatar && (
             <p className="text-xs text-destructive">{errors.avatar}</p>
@@ -678,14 +690,14 @@ function EditProfileForm({
 
       <DialogFooter className="gap-2">
         <DialogClose asChild>
-          <Button variant="outline" disabled={saveState !== "idle"}>
+          <Button variant="outline" disabled={saveState !== "idle"} className="h-11 rounded-[5px] px-6">
             Cancel
           </Button>
         </DialogClose>
         <Button
           onClick={handleSave}
           disabled={saveState !== "idle"}
-          className="relative min-w-[140px] text-white"
+          className="relative h-11 min-w-[150px] rounded-[5px] px-6 text-white shadow-lg shadow-violet-500/20"
           style={{
             background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
           }}
@@ -743,7 +755,11 @@ function EditProfileDialog({
 }: EditDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto scrollbar-thin border-border/50">
+      <DialogContent
+        className={FORM_DIALOG_CLASS}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <EditProfileForm
           profile={profile}
           username={username}

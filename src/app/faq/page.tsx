@@ -52,12 +52,12 @@ export default function StandaloneFaqPage() {
               Our support team is happy to help you with your account or feedback.
             </p>
             <div className="mt-6">
-              <Link
-                href="/contact"
+              <a
+                href="mailto:support@studysparks.cloud"
                 className="inline-flex items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg hover:brightness-110 transition-all"
               >
                 Contact Support Team
-              </Link>
+              </a>
             </div>
           </div>
         </div>

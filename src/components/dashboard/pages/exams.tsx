@@ -96,6 +96,13 @@ import { AnimatedCounter } from "@/components/shared/animated-counter";
 // Helpers
 // ---------------------------------------------------------------------------
 
+const FORM_FIELD_CLASS =
+  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+const FORM_SELECT_CLASS = cn("h-11 w-full px-3", FORM_FIELD_CLASS);
+const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
+const FORM_DIALOG_CLASS =
+  "max-h-[90vh] overflow-y-auto scrollbar-thin rounded-[14px] sm:max-w-lg border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+
 interface CountdownParts {
   days: number;
   hours: number;
@@ -548,18 +555,18 @@ function ExamDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg border-border/50"
+        className={FORM_DIALOG_CLASS}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/90 via-fuchsia-500/90 to-sky-500/80 text-white shadow-sm">
               <ClipboardList className="h-4 w-4" />
             </span>
             {initial ? "Edit Exam" : "Add New Exam"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
             {initial
               ? "Update the details for this exam."
               : "Track an upcoming exam with a live countdown and prep progress."}
@@ -569,16 +576,16 @@ function ExamDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Subject */}
           <div className="space-y-1.5">
-            <Label htmlFor="exam-subject">Subject</Label>
+            <Label htmlFor="exam-subject" className={FORM_LABEL_CLASS}>Subject</Label>
             {subjects.length > 0 ? (
               <Select
                 value={form.subject}
                 onValueChange={(v) => update("subject", v)}
               >
-                <SelectTrigger id="exam-subject" className="w-full">
+                <SelectTrigger id="exam-subject" className={FORM_SELECT_CLASS}>
                   <SelectValue placeholder="Choose a subject" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[8px]">
                   {subjects.map((s) => (
                     <SelectItem key={s.id} value={s.name}>
                       <span className="flex items-center gap-2">
@@ -600,13 +607,14 @@ function ExamDialog({
                 placeholder="e.g. Mathematics"
                 value={form.subject}
                 onChange={(e) => update("subject", e.target.value)}
+                className={FORM_FIELD_CLASS}
               />
             )}
           </div>
 
           {/* Exam name */}
           <div className="space-y-1.5">
-            <Label htmlFor="exam-name">
+            <Label htmlFor="exam-name" className={FORM_LABEL_CLASS}>
               Exam Name <span className="text-rose-500">*</span>
             </Label>
             <Input
@@ -615,6 +623,7 @@ function ExamDialog({
               value={form.examName}
               onChange={(e) => update("examName", e.target.value)}
               aria-invalid={!!errors.examName}
+              className={FORM_FIELD_CLASS}
             />
             {errors.examName && (
               <p className="text-xs text-rose-500">{errors.examName}</p>
@@ -624,7 +633,7 @@ function ExamDialog({
           {/* Date + Time */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="exam-date">
+              <Label htmlFor="exam-date" className={FORM_LABEL_CLASS}>
                 Date <span className="text-rose-500">*</span>
               </Label>
               <Popover>
@@ -633,7 +642,8 @@ function ExamDialog({
                     id="exam-date"
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-normal",
+                      FORM_SELECT_CLASS,
+                      "justify-start text-left font-normal",
                       !form.date && "text-muted-foreground"
                     )}
                     aria-invalid={!!errors.date}
@@ -644,7 +654,7 @@ function ExamDialog({
                       : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto rounded-[8px] border-border/60 p-0 shadow-xl" align="start">
                   <Calendar
                     mode="single"
                     selected={form.date ? parseISO(form.date) : undefined}
@@ -660,12 +670,13 @@ function ExamDialog({
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="exam-time">Time</Label>
+              <Label htmlFor="exam-time" className={FORM_LABEL_CLASS}>Time</Label>
               <Input
                 id="exam-time"
                 type="time"
                 value={form.time}
                 onChange={(e) => update("time", e.target.value)}
+                className={FORM_FIELD_CLASS}
               />
             </div>
           </div>
@@ -673,24 +684,25 @@ function ExamDialog({
           {/* Location + Priority */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="exam-location">Location</Label>
+              <Label htmlFor="exam-location" className={FORM_LABEL_CLASS}>Location</Label>
               <Input
                 id="exam-location"
                 placeholder="e.g. Hall A, Room 204"
                 value={form.location}
                 onChange={(e) => update("location", e.target.value)}
+                className={FORM_FIELD_CLASS}
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Priority</Label>
+              <Label className={FORM_LABEL_CLASS}>Priority</Label>
               <Select
                 value={form.priority}
                 onValueChange={(v) => update("priority", v as Priority)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className={FORM_SELECT_CLASS}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[8px]">
                   {(Object.keys(PRIORITY_CONFIG) as Priority[]).map((p) => (
                     <SelectItem key={p} value={p}>
                       <span className="flex items-center gap-2">
@@ -712,7 +724,7 @@ function ExamDialog({
           {/* Progress */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Preparation progress</Label>
+              <Label className={FORM_LABEL_CLASS}>Preparation progress</Label>
               <span className="text-sm font-semibold tabular-nums">
                 {form.progress}%
               </span>
@@ -728,13 +740,14 @@ function ExamDialog({
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="exam-notes">Notes</Label>
+            <Label htmlFor="exam-notes" className={FORM_LABEL_CLASS}>Notes</Label>
             <Textarea
               id="exam-notes"
               placeholder="Topics to revise, materials to bring, anything…"
               value={form.notes}
               onChange={(e) => update("notes", e.target.value)}
               rows={3}
+              className={cn(FORM_FIELD_CLASS, "resize-none")}
             />
           </div>
 
@@ -744,13 +757,14 @@ function ExamDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={submitting}
+              className="h-11 rounded-[5px] px-6"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
             >
               {submitting ? (
                 <>

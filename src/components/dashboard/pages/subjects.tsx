@@ -72,6 +72,12 @@ import { AnimatedCounter } from "@/components/shared/animated-counter";
 // Constants
 // ---------------------------------------------------------------------------
 
+const FORM_FIELD_CLASS =
+  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
+const FORM_DIALOG_CLASS =
+  "max-h-[90vh] overflow-y-auto scrollbar-thin rounded-[14px] sm:max-w-lg border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+
 const COLOR_SWATCHES: EventColor[] = [
   "violet",
   "blue",
@@ -505,15 +511,19 @@ function SubjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl sm:max-w-lg border-border/50">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
+      <DialogContent
+        className={FORM_DIALOG_CLASS}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/90 via-fuchsia-500/90 to-sky-500/80 text-white shadow-sm">
               <BookOpen className="h-4 w-4" />
             </span>
             {initial ? "Edit Subject" : "Add New Subject"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
             {initial
               ? "Update the details for this subject."
               : "Organize your courses with attendance, progress, and notes."}
@@ -523,7 +533,7 @@ function SubjectDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Name */}
           <div className="space-y-1.5">
-            <Label htmlFor="subject-name">
+            <Label htmlFor="subject-name" className={FORM_LABEL_CLASS}>
               Subject Name <span className="text-rose-500">*</span>
             </Label>
             <Input
@@ -532,6 +542,7 @@ function SubjectDialog({
               value={form.name}
               onChange={(e) => update("name", e.target.value)}
               aria-invalid={!!errors.name}
+              className={FORM_FIELD_CLASS}
             />
             {errors.name && (
               <p className="text-xs text-rose-500">{errors.name}</p>
@@ -541,12 +552,13 @@ function SubjectDialog({
           {/* Teacher + Credits */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="subject-teacher">Teacher</Label>
+              <Label htmlFor="subject-teacher" className={FORM_LABEL_CLASS}>Teacher</Label>
               <Input
                 id="subject-teacher"
                 placeholder="e.g. Dr. Smith"
                 value={form.teacher}
                 onChange={(e) => update("teacher", e.target.value)}
+                className={FORM_FIELD_CLASS}
               />
             </div>
             <div className="space-y-1.5">
@@ -561,6 +573,7 @@ function SubjectDialog({
                   update("credits", Number(e.target.value) || 0)
                 }
                 aria-invalid={!!errors.credits}
+                className={FORM_FIELD_CLASS}
               />
               {errors.credits && (
                 <p className="text-xs text-rose-500">{errors.credits}</p>
@@ -570,7 +583,7 @@ function SubjectDialog({
 
           {/* Color picker */}
           <div className="space-y-2">
-            <Label>Color</Label>
+            <Label className={FORM_LABEL_CLASS}>Color</Label>
             <div className="flex flex-wrap items-center gap-2">
               {COLOR_SWATCHES.map((c) => {
                 const isActive = form.color === c;
@@ -583,7 +596,7 @@ function SubjectDialog({
                     aria-label={`Color ${c}`}
                     aria-pressed={isActive}
                     className={cn(
-                      "relative h-9 w-9 rounded-xl ring-2 ring-offset-2 ring-offset-background transition-all",
+                      "relative h-9 w-9 rounded-[5px] ring-2 ring-offset-2 ring-offset-background shadow-sm transition-all",
                       cm.bg,
                       isActive
                         ? "scale-110 ring-foreground/40"
@@ -608,7 +621,7 @@ function SubjectDialog({
           {/* Attendance */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Attendance</Label>
+              <Label className={FORM_LABEL_CLASS}>Attendance</Label>
               <span className="text-sm font-semibold tabular-nums">
                 {form.attendance}%
               </span>
@@ -625,7 +638,7 @@ function SubjectDialog({
           {/* Progress */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Course progress</Label>
+              <Label className={FORM_LABEL_CLASS}>Course progress</Label>
               <span className="text-sm font-semibold tabular-nums">
                 {form.progress}%
               </span>
@@ -641,13 +654,14 @@ function SubjectDialog({
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label htmlFor="subject-notes">Notes</Label>
+            <Label htmlFor="subject-notes" className={FORM_LABEL_CLASS}>Notes</Label>
             <Textarea
               id="subject-notes"
               placeholder="Syllabus, key topics, anything important…"
               value={form.notes}
               onChange={(e) => update("notes", e.target.value)}
               rows={3}
+              className={cn(FORM_FIELD_CLASS, "resize-none")}
             />
           </div>
 
@@ -657,13 +671,14 @@ function SubjectDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={submitting}
+              className="h-11 rounded-[5px] px-6"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
             >
               {submitting ? (
                 <>

@@ -83,6 +83,11 @@ type CalendarView = "month" | "week" | "day";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const COLOR_KEYS: EventColor[] = ["violet", "blue", "green", "amber", "rose", "cyan"];
+const FORM_FIELD_CLASS =
+  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
+const FORM_DIALOG_CLASS =
+  "sm:max-w-[560px] rounded-[14px] max-h-[90vh] overflow-y-auto scrollbar-thin border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
 
 // ---------- Helpers ----------
 function eventOnDay(event: Event, day: Date): boolean {
@@ -1421,15 +1426,19 @@ function EventFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin border-border/50">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
+      <DialogContent
+        className={FORM_DIALOG_CLASS}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <DialogHeader className="space-y-2">
+          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 text-violet-600 shadow-sm ring-1 ring-violet-500/15 dark:text-violet-300">
               {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </span>
             {isEdit ? "Edit Event" : "New Event"}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
             {isEdit
               ? "Update the details of your event below."
               : "Add a new event to your calendar."}
@@ -1439,7 +1448,7 @@ function EventFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Title */}
           <div className="space-y-1.5">
-            <Label htmlFor="event-title" className="text-sm font-medium">
+            <Label htmlFor="event-title" className={FORM_LABEL_CLASS}>
               Title <span className="text-rose-500">*</span>
             </Label>
             <Input
@@ -1448,7 +1457,7 @@ function EventFormDialog({
               onChange={(e) => update("title", e.target.value)}
               placeholder="e.g. Calculus midterm review"
               className={cn(
-                "rounded-xl",
+                FORM_FIELD_CLASS,
                 error && !form.title.trim() && "border-rose-500 focus-visible:ring-rose-500/30"
               )}
               autoFocus
@@ -1464,7 +1473,7 @@ function EventFormDialog({
           {/* Date + time */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="event-date" className="text-sm font-medium">
+              <Label htmlFor="event-date" className={FORM_LABEL_CLASS}>
                 Date <span className="text-rose-500">*</span>
               </Label>
               <Input
@@ -1473,13 +1482,13 @@ function EventFormDialog({
                 value={form.date}
                 onChange={(e) => update("date", e.target.value)}
                 className={cn(
-                  "rounded-xl",
+                  FORM_FIELD_CLASS,
                   error && !form.date && "border-rose-500"
                 )}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="event-time" className="text-sm font-medium">
+              <Label htmlFor="event-time" className={FORM_LABEL_CLASS}>
                 Time
               </Label>
               <Input
@@ -1487,14 +1496,14 @@ function EventFormDialog({
                 type="time"
                 value={form.time}
                 onChange={(e) => update("time", e.target.value)}
-                className="rounded-xl"
+                className={FORM_FIELD_CLASS}
               />
             </div>
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <Label htmlFor="event-desc" className="text-sm font-medium">
+            <Label htmlFor="event-desc" className={FORM_LABEL_CLASS}>
               Description
             </Label>
             <Textarea
@@ -1503,13 +1512,13 @@ function EventFormDialog({
               onChange={(e) => update("description", e.target.value)}
               placeholder="Add notes or details (optional)"
               rows={3}
-              className="rounded-xl resize-none scrollbar-thin"
+              className={cn(FORM_FIELD_CLASS, "resize-none scrollbar-thin")}
             />
           </div>
 
           {/* Color picker */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Color</Label>
+            <Label className={FORM_LABEL_CLASS}>Color</Label>
             <div className="flex items-center gap-2 flex-wrap">
               {COLOR_KEYS.map((color) => {
                 const c = colorOf(color);
@@ -1520,7 +1529,7 @@ function EventFormDialog({
                     type="button"
                     onClick={() => update("color", color)}
                     className={cn(
-                      "relative h-9 w-9 rounded-xl transition-all",
+                      "relative h-9 w-9 rounded-[5px] shadow-sm transition-all",
                       "hover:scale-110",
                       selected && "ring-2 ring-offset-2 ring-offset-background scale-110",
                       c.bg
@@ -1559,12 +1568,12 @@ function EventFormDialog({
           </div>
         </form>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 pt-2">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-xl"
+            className="h-11 rounded-[5px] px-6"
             disabled={saving}
           >
             Cancel
@@ -1573,7 +1582,7 @@ function EventFormDialog({
             type="button"
             onClick={handleSubmit}
             disabled={saving || !form.title.trim() || !form.date}
-            className="rounded-xl accent-gradient text-white min-w-[100px]"
+            className="h-11 min-w-[120px] rounded-[5px] accent-gradient px-6 text-white shadow-lg shadow-violet-500/20"
           >
             {saving ? (
               <>
