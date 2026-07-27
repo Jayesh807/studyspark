@@ -24,6 +24,7 @@ import {
   Sparkles,
   LogOut,
   CalendarRange,
+  BookOpenCheck,
   type LucideIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -122,6 +123,7 @@ function PaletteInner({ onOpenChange }: { onOpenChange: (open: boolean) => void 
       { id: "nav-planner", label: "Study Planner", subtitle: "Weekly study plan", icon: CalendarRange, group: "Navigate", keywords: "planner schedule weekly plan", run: () => navigate("planner") },
       { id: "nav-subjects", label: "Subjects", subtitle: "Your courses", icon: BookOpen, group: "Navigate", keywords: "courses classes", run: () => navigate("subjects") },
       { id: "nav-exams", label: "Upcoming Exams", subtitle: "Exam tracker", icon: GraduationCap, group: "Navigate", keywords: "test quiz", run: () => navigate("exams") },
+      { id: "nav-revision", label: "Revision Plan", subtitle: "Exam revision roadmap", icon: BookOpenCheck, group: "Navigate", keywords: "exam revision topics roadmap study plan", run: () => navigate("revision") },
       { id: "nav-focus", label: "Focus Timer", subtitle: "Pomodoro timer", icon: Timer, group: "Navigate", keywords: "pomodoro study timer", run: () => navigate("focus") },
       { id: "nav-analytics", label: "Analytics", subtitle: "Study insights", icon: BarChart3, group: "Navigate", keywords: "charts stats insights", run: () => navigate("analytics") },
       { id: "nav-profile", label: "Profile", subtitle: "Your profile", icon: User, group: "Navigate", keywords: "account me", run: () => navigate("profile") },

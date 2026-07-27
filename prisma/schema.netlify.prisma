@@ -157,8 +157,25 @@ model Exam {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revisionTopics ExamRevisionTopic[]
 
   @@index([userId])
+}
+
+model ExamRevisionTopic {
+  id              String   @id @default(cuid())
+  examId          String
+  title           String
+  status          String   @default("not-started") // not-started, in-progress, revised, mastered
+  targetDate      DateTime?
+  estimatedMinutes Int     @default(45)
+  order           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([examId])
 }
 
 model FocusSession {

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { apiFetch, handleError } from "@/lib/api";
+import { readPageCache, writePageCache } from "@/lib/page-cache";
 import {
   Subject,
   EventColor,
@@ -25,6 +26,7 @@ import {
   colorOf,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/lib/store";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +88,10 @@ const COLOR_SWATCHES: EventColor[] = [
   "rose",
   "cyan",
 ];
+
+function isOptimisticSubject(subject: Subject) {
+  return subject.id.startsWith("temp-");
+}
 
 // ---------------------------------------------------------------------------
 // Stat card
@@ -228,15 +234,21 @@ interface SubjectCardProps {
 
 function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardProps) {
   const color = colorOf(subject.color);
+  const saving = isOptimisticSubject(subject);
 
   return (
     <GlassCard hover className="group relative overflow-hidden px-5 pb-6 pt-4 sm:px-6 sm:pb-7 sm:pt-5">
       {/* Make the main area clickable to open the detail drawer */}
       <button
         type="button"
-        onClick={() => onOpenDetail(subject)}
+        onClick={() => {
+          if (!saving) onOpenDetail(subject);
+        }}
         aria-label={`View details for ${subject.name}`}
-        className="absolute inset-0 z-0 cursor-pointer rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50"
+        className={cn(
+          "absolute inset-0 z-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50",
+          saving ? "cursor-default" : "cursor-pointer"
+        )}
       />
       {/* Left accent bar */}
       <div
@@ -270,12 +282,14 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
           <Button
             variant="ghost"
             size="icon"
+            disabled={saving}
             className="h-8 w-8 -mt-1.5 shrink-0 opacity-60 transition-opacity hover:opacity-100"
             aria-label="Open subject details"
             onClick={() => onOpenDetail(subject)}
           >
             <Sparkles className="h-4 w-4" />
           </Button>
+          {!saving && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -312,11 +326,20 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </div>
 
       {/* Badges */}
       <div className="relative mt-3 flex flex-wrap items-center gap-2">
+        {saving && (
+          <Badge
+            className="border-transparent bg-violet-500/10 text-violet-600 dark:text-violet-400"
+            variant="default"
+          >
+            Saving
+          </Badge>
+        )}
         <Badge
           className={cn("border-transparent text-white", color.bg)}
           variant="default"
@@ -500,8 +523,8 @@ function SubjectDialog({
     if (!validate()) return;
     setSubmitting(true);
     try {
-      await onSubmit(form);
       onOpenChange(false);
+      await onSubmit(form);
     } catch (err) {
       handleError(err, "Failed to save subject");
     } finally {
@@ -704,8 +727,15 @@ function SubjectDialog({
 // ---------------------------------------------------------------------------
 
 export function SubjectsPage() {
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [loading, setLoading] = useState(true);
+  const userId = useAppStore((s) => s.user?.id);
+  const initialCache = useMemo(
+    () => readPageCache<{ subjects: Subject[] }>("subjects", userId),
+    [userId]
+  );
+  const [subjects, setSubjects] = useState<Subject[]>(
+    () => initialCache?.subjects ?? []
+  );
+  const [loading, setLoading] = useState(() => !initialCache);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Subject | null>(null);
   const [deleting, setDeleting] = useState<Subject | null>(null);
@@ -713,20 +743,44 @@ export function SubjectsPage() {
   const [detailOpen, setDetailOpen] = useState(false);
 
   const loadSubjects = useCallback(async () => {
-    setLoading(true);
+    const cached = readPageCache<{ subjects: Subject[] }>("subjects", userId);
+    if (cached) {
+      setSubjects(cached.subjects);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const res = await apiFetch<{ subjects: Subject[] }>("/api/subjects");
       setSubjects(res.subjects ?? []);
+      writePageCache("subjects", userId, { subjects: res.subjects ?? [] });
     } catch (err) {
       handleError(err, "Failed to load subjects");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     void loadSubjects();
   }, [loadSubjects]);
+
+  useEffect(() => {
+    if (!loading) {
+      writePageCache("subjects", userId, { subjects });
+    }
+  }, [loading, subjects, userId]);
+
+  const commitSubjects = useCallback(
+    (updater: (current: Subject[]) => Subject[]) => {
+      setSubjects((current) => {
+        const next = updater(current);
+        writePageCache("subjects", userId, { subjects: next });
+        return next;
+      });
+    },
+    [userId]
+  );
 
   const stats = useMemo(() => {
     const total = subjects.length;
@@ -766,14 +820,16 @@ export function SubjectsPage() {
   const confirmDelete = async () => {
     if (!deleting) return;
     const target = deleting;
+    const previousSubjects = subjects;
     setDeleting(null);
-    setSubjects((prev) => prev.filter((s) => s.id !== target.id));
+    commitSubjects((prev) => prev.filter((s) => s.id !== target.id));
     try {
       await apiFetch(`/api/subjects/${target.id}`, { method: "DELETE" });
       toast.success("Subject deleted");
     } catch (err) {
       handleError(err, "Failed to delete subject");
-      setSubjects((prev) => [...prev, target]);
+      setSubjects(previousSubjects);
+      writePageCache("subjects", userId, { subjects: previousSubjects });
     }
   };
 
@@ -789,37 +845,63 @@ export function SubjectsPage() {
     };
 
     if (editing) {
-      const prev = subjects;
-      setSubjects((list) =>
-        list.map((s) => (s.id === editing.id ? { ...s, ...payload } : s))
+      const previousSubjects = subjects;
+      const editingId = editing.id;
+      commitSubjects((list) =>
+        list.map((s) => (s.id === editingId ? { ...s, ...payload } : s))
       );
-      try {
-        const res = await apiFetch<{ subject: Subject }>(
-          `/api/subjects/${editing.id}`,
-          {
-            method: "PUT",
-            body: JSON.stringify(payload),
-          }
-        );
-        setSubjects((list) =>
-          list.map((s) => (s.id === editing.id ? res.subject : s))
-        );
-        toast.success("Subject updated");
-      } catch (err) {
-        handleError(err, "Failed to update subject");
-        setSubjects(prev);
-      }
+      setEditing(null);
+      void (async () => {
+        try {
+          const res = await apiFetch<{ subject: Subject }>(
+            `/api/subjects/${editingId}`,
+            {
+              method: "PUT",
+              body: JSON.stringify(payload),
+            }
+          );
+          commitSubjects((list) =>
+            list.map((s) => (s.id === editingId ? res.subject : s))
+          );
+          toast.success("Subject updated");
+        } catch (err) {
+          handleError(err, "Failed to update subject");
+          setSubjects(previousSubjects);
+          writePageCache("subjects", userId, { subjects: previousSubjects });
+        }
+      })();
     } else {
-      try {
-        const res = await apiFetch<{ subject: Subject }>("/api/subjects", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        setSubjects((list) => [...list, res.subject]);
-        toast.success("Subject added 🎉");
-      } catch (err) {
-        handleError(err, "Failed to add subject");
-      }
+      const previousSubjects = subjects;
+      const now = new Date().toISOString();
+      const optimisticSubject: Subject = {
+        id: `temp-${Date.now()}`,
+        userId: userId ?? "",
+        ...payload,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      commitSubjects((list) => [...list, optimisticSubject]);
+      setEditing(null);
+      void (async () => {
+        try {
+          const res = await apiFetch<{ subject: Subject }>("/api/subjects", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          commitSubjects((list) =>
+            list.map((s) =>
+              s.id === optimisticSubject.id ? res.subject : s
+            )
+          );
+          toast.success("Subject added");
+        } catch (err) {
+          handleError(err, "Failed to add subject");
+          setSubjects(previousSubjects);
+          writePageCache("subjects", userId, { subjects: previousSubjects });
+        }
+      })();
+      return;
     }
   };
 

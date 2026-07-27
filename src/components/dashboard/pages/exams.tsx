@@ -22,6 +22,7 @@ import {
 import { format, isAfter, isToday, parseISO } from "date-fns";
 
 import { apiFetch, handleError } from "@/lib/api";
+import { readPageCache, writePageCache } from "@/lib/page-cache";
 import {
   Exam,
   Subject,
@@ -143,6 +144,10 @@ function examDate(exam: Exam): Date {
     }
   }
   return base;
+}
+
+function isOptimisticExam(exam: Exam) {
+  return exam.id.startsWith("temp-");
 }
 
 // ---------------------------------------------------------------------------
@@ -289,6 +294,7 @@ interface ExamCardProps {
 function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
   const target = useMemo(() => examDate(exam), [exam]);
   const date = target;
+  const saving = isOptimisticExam(exam);
 
   // Map subject name → color from subjects list (fallback violet)
   const matchedSubject = subjects.find((s) => s.name === exam.subject);
@@ -317,6 +323,7 @@ function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
             {priority.label} priority
           </Badge>
         </div>
+        {!saving && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -352,10 +359,19 @@ function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        )}
       </div>
 
       {/* Exam name */}
       <div className="relative">
+        {saving && (
+          <Badge
+            className="mb-2 border-transparent bg-violet-500/10 text-violet-600 dark:text-violet-400"
+            variant="default"
+          >
+            Saving
+          </Badge>
+        )}
         <h3 className="text-lg font-bold leading-tight tracking-tight sm:text-xl">
           {exam.examName}
         </h3>
@@ -543,8 +559,8 @@ function ExamDialog({
     if (!validate()) return;
     setSubmitting(true);
     try {
-      await onSubmit(form);
       onOpenChange(false);
+      await onSubmit(form);
     } catch (err) {
       handleError(err, "Failed to save exam");
     } finally {
@@ -810,9 +826,16 @@ function ExamCardSkeleton() {
 // ---------------------------------------------------------------------------
 
 export function ExamsPage() {
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [loading, setLoading] = useState(true);
+  const userId = useAppStore((s) => s.user?.id);
+  const initialCache = useMemo(
+    () => readPageCache<{ exams: Exam[]; subjects: Subject[] }>("exams", userId),
+    [userId]
+  );
+  const [exams, setExams] = useState<Exam[]>(() => initialCache?.exams ?? []);
+  const [subjects, setSubjects] = useState<Subject[]>(
+    () => initialCache?.subjects ?? []
+  );
+  const [loading, setLoading] = useState(() => !initialCache);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Exam | null>(null);
   const [deleting, setDeleting] = useState<Exam | null>(null);
@@ -821,7 +844,17 @@ export function ExamsPage() {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
+    const cached = readPageCache<{ exams: Exam[]; subjects: Subject[] }>(
+      "exams",
+      userId
+    );
+    if (cached) {
+      setExams(cached.exams);
+      setSubjects(cached.subjects);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const [examsRes, subjectsRes] = await Promise.all([
         apiFetch<{ exams: Exam[] }>("/api/exams"),
@@ -831,16 +864,37 @@ export function ExamsPage() {
       ]);
       setExams(examsRes.exams ?? []);
       setSubjects(subjectsRes.subjects ?? []);
+      writePageCache("exams", userId, {
+        exams: examsRes.exams ?? [],
+        subjects: subjectsRes.subjects ?? [],
+      });
     } catch (err) {
       handleError(err, "Failed to load exams");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!loading) {
+      writePageCache("exams", userId, { exams, subjects });
+    }
+  }, [exams, loading, subjects, userId]);
+
+  const commitExams = useCallback(
+    (updater: (current: Exam[]) => Exam[]) => {
+      setExams((current) => {
+        const next = updater(current);
+        writePageCache("exams", userId, { exams: next, subjects });
+        return next;
+      });
+    },
+    [subjects, userId]
+  );
 
   useEffect(() => {
     // Request desktop notification permission on mount
@@ -891,16 +945,16 @@ export function ExamsPage() {
   const confirmDelete = async () => {
     if (!deleting) return;
     const target = deleting;
+    const previousExams = exams;
     setDeleting(null);
-    // Optimistic remove
-    setExams((prev) => prev.filter((e) => e.id !== target.id));
+    commitExams((prev) => prev.filter((e) => e.id !== target.id));
     try {
       await apiFetch(`/api/exams/${target.id}`, { method: "DELETE" });
       toast.success("Exam deleted");
     } catch (err) {
       handleError(err, "Failed to delete exam");
-      // Roll back
-      setExams((prev) => [...prev, target]);
+      setExams(previousExams);
+      writePageCache("exams", userId, { exams: previousExams, subjects });
     }
   };
 
@@ -917,28 +971,63 @@ export function ExamsPage() {
     };
 
     if (editing) {
-      // Optimistic update
-      const prev = exams;
-      setExams((list) =>
-        list.map((e) => (e.id === editing.id ? { ...e, ...payload } : e))
+      const previousExams = exams;
+      const editingId = editing.id;
+      commitExams((list) =>
+        list.map((e) => (e.id === editingId ? { ...e, ...payload } : e))
       );
-      try {
-        const res = await apiFetch<{ exam: Exam }>(
-          `/api/exams/${editing.id}`,
-          {
-            method: "PUT",
-            body: JSON.stringify(payload),
-          }
-        );
-        setExams((list) =>
-          list.map((e) => (e.id === editing.id ? res.exam : e))
-        );
-        toast.success("Exam updated");
-      } catch (err) {
-        handleError(err, "Failed to update exam");
-        setExams(prev);
-      }
+      setEditing(null);
+      void (async () => {
+        try {
+          const res = await apiFetch<{ exam: Exam }>(
+            `/api/exams/${editingId}`,
+            {
+              method: "PUT",
+              body: JSON.stringify(payload),
+            }
+          );
+          commitExams((list) =>
+            list.map((e) => (e.id === editingId ? res.exam : e))
+          );
+          toast.success("Exam updated");
+        } catch (err) {
+          handleError(err, "Failed to update exam");
+          setExams(previousExams);
+          writePageCache("exams", userId, { exams: previousExams, subjects });
+        }
+      })();
     } else {
+      const previousExams = exams;
+      const now = new Date().toISOString();
+      const optimisticExam: Exam = {
+        id: `temp-${Date.now()}`,
+        userId: userId ?? "",
+        ...payload,
+        createdAt: now,
+        updatedAt: now,
+        revisionTopics: [],
+      };
+
+      commitExams((list) => [...list, optimisticExam]);
+      setEditing(null);
+      void (async () => {
+        try {
+          const res = await apiFetch<{ exam: Exam }>("/api/exams", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
+          commitExams((list) =>
+            list.map((e) => (e.id === optimisticExam.id ? res.exam : e))
+          );
+          toast.success("Exam added");
+        } catch (err) {
+          handleError(err, "Failed to add exam");
+          setExams(previousExams);
+          writePageCache("exams", userId, { exams: previousExams, subjects });
+        }
+      })();
+      return;
+
       try {
         const res = await apiFetch<{ exam: Exam }>("/api/exams", {
           method: "POST",

@@ -37,6 +37,7 @@ import {
   YAxis,
 } from "recharts";
 import { apiFetch, handleError } from "@/lib/api";
+import { readPageCache, writePageCache } from "@/lib/page-cache";
 import { Analytics, colorOf } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
 import {
@@ -106,15 +107,28 @@ function ChartTooltip({ active, payload, label, suffix = "" }: ChartTooltipProps
 export function AnalyticsPage() {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
   const userId = useAppStore((s) => s.user?.id);
-  const [data, setData] = useState<Analytics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialCache = useMemo(
+    () => readPageCache<{ data: Analytics }>("analytics", userId),
+    [userId]
+  );
+  const [data, setData] = useState<Analytics | null>(
+    () => initialCache?.data ?? null
+  );
+  const [loading, setLoading] = useState(() => !initialCache);
   const [period, setPeriod] = useState<Period>("weekly");
 
   const fetchAnalytics = useCallback(async () => {
-    setLoading(true);
+    const cached = readPageCache<{ data: Analytics }>("analytics", userId);
+    if (cached) {
+      setData(cached.data);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const res = await apiFetch<Analytics>("/api/analytics");
       setData(res);
+      writePageCache("analytics", userId, { data: res });
     } catch (err) {
       handleError(err, "Failed to load analytics");
     } finally {

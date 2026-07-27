@@ -91,6 +91,25 @@ export interface Exam {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  revisionTopics?: ExamRevisionTopic[];
+}
+
+export type RevisionTopicStatus =
+  | "not-started"
+  | "in-progress"
+  | "revised"
+  | "mastered";
+
+export interface ExamRevisionTopic {
+  id: string;
+  examId: string;
+  title: string;
+  status: RevisionTopicStatus;
+  targetDate: string | null;
+  estimatedMinutes: number;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FocusSession {

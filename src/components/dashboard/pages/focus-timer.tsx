@@ -46,6 +46,7 @@ import {
 import { formatDistanceToNow, isToday, isThisWeek, isThisMonth, subDays, format, startOfDay } from "date-fns";
 
 import { apiFetch, handleError } from "@/lib/api";
+import { readPageCache, writePageCache } from "@/lib/page-cache";
 import { FocusSession } from "@/lib/types";
 import { type FocusTimerMode, useAppStore } from "@/lib/store";
 import {
@@ -224,6 +225,7 @@ function ChartTooltip({ active, payload, label }: FocusChartTooltipProps) {
 
 export function FocusTimerPage() {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
+  const userId = useAppStore((s) => s.user?.id);
   const soundEnabled = useAppStore((s) => s.soundEnabled);
   const setSoundEnabled = useAppStore((s) => s.setSoundEnabled);
   const mode = useAppStore((s) => s.focusTimerMode);
@@ -310,8 +312,14 @@ export function FocusTimerPage() {
   };
 
   // === Data state ===
-  const [sessions, setSessions] = useState<FocusSession[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialCache = useMemo(
+    () => readPageCache<{ sessions: FocusSession[] }>("focus-timer", userId),
+    [userId]
+  );
+  const [sessions, setSessions] = useState<FocusSession[]>(
+    () => initialCache?.sessions ?? []
+  );
+  const [loading, setLoading] = useState(() => !initialCache);
 
   const totalSeconds = durations[mode] * 60;
   const progress = totalSeconds === 0 ? 0 : (totalSeconds - remaining) / totalSeconds;
@@ -322,20 +330,36 @@ export function FocusTimerPage() {
 
   // === Fetch sessions ===
   const fetchSessions = useCallback(async () => {
-    setLoading(true);
+    const cached = readPageCache<{ sessions: FocusSession[] }>(
+      "focus-timer",
+      userId
+    );
+    if (cached) {
+      setSessions(cached.sessions);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const data = await apiFetch<{ sessions: FocusSession[] }>("/api/focus-session");
       setSessions(data.sessions ?? []);
+      writePageCache("focus-timer", userId, { sessions: data.sessions ?? [] });
     } catch (err) {
       handleError(err, "Failed to load focus sessions");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchSessions();
   }, [fetchSessions]);
+
+  useEffect(() => {
+    if (!loading) {
+      writePageCache("focus-timer", userId, { sessions });
+    }
+  }, [loading, sessions, userId]);
 
   useEffect(() => {
     syncFocusTimer();

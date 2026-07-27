@@ -166,6 +166,10 @@
     scroll-behavior: smooth;
   }
 
+  * {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "cv11", "ss01";
@@ -375,6 +379,7 @@
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: oklch(0.8 0 0) transparent;
+    scroll-behavior: smooth;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -422,6 +427,13 @@
 
   100% {
     background-position: 0% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html,
+  * {
+    scroll-behavior: auto !important;
   }
 }
 

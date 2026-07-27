@@ -71,6 +71,8 @@ import {
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { apiFetch, handleError } from "@/lib/api";
+import { readPageCache, writePageCache } from "@/lib/page-cache";
+import { useAppStore } from "@/lib/store";
 import {
   Event,
   EventColor,
@@ -111,10 +113,19 @@ function sortEvents(list: Event[]): Event[] {
   });
 }
 
+function isOptimisticEvent(event: Event) {
+  return event.id.startsWith("temp-");
+}
+
 // ---------- Main page ----------
 export function CalendarPage() {
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const userId = useAppStore((s) => s.user?.id);
+  const initialCache = useMemo(
+    () => readPageCache<{ events: Event[] }>("calendar", userId),
+    [userId]
+  );
+  const [events, setEvents] = useState<Event[]>(() => initialCache?.events ?? []);
+  const [loading, setLoading] = useState(() => !initialCache);
 
   const [view, setView] = useState<CalendarView>("month");
   const [cursor, setCursor] = useState<Date>(new Date());
@@ -128,20 +139,33 @@ export function CalendarPage() {
   const [dayDetail, setDayDetail] = useState<Date | null>(null);
 
   const fetchEvents = useCallback(async () => {
-    setLoading(true);
+    const cached = readPageCache<{ events: Event[] }>("calendar", userId);
+    if (cached) {
+      setEvents(cached.events);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const res = await apiFetch<{ events: Event[] }>("/api/events");
       setEvents(res.events);
+      writePageCache("calendar", userId, { events: res.events });
     } catch (err) {
       handleError(err, "Failed to load events");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
+
+  useEffect(() => {
+    if (!loading) {
+      writePageCache("calendar", userId, { events });
+    }
+  }, [events, loading, userId]);
 
   const sortedEvents = useMemo(() => sortEvents(events), [events]);
 
@@ -180,6 +204,7 @@ export function CalendarPage() {
   };
 
   const handleEdit = (event: Event) => {
+    if (isOptimisticEvent(event)) return;
     setEditing(event);
     try {
       setFormDate(parseISO(event.date));
@@ -210,18 +235,50 @@ export function CalendarPage() {
         );
         toast.success("Event updated");
       } else {
-        const created = await apiFetch<{ event: Event }>("/api/events", {
-          method: "POST",
-          body: JSON.stringify({
-            title: data.title,
-            date: data.date,
-            time: data.time,
-            description: data.description,
-            color: data.color,
-          }),
-        });
-        setEvents((prev) => [...prev, created.event]);
-        toast.success("Event created");
+        const previousEvents = events;
+        const now = new Date().toISOString();
+        const optimisticEvent: Event = {
+          id: `temp-${Date.now()}`,
+          userId: userId ?? "",
+          title: data.title.trim(),
+          date: data.date,
+          time: data.time,
+          description: data.description,
+          color: data.color,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        setEvents((prev) => [...prev, optimisticEvent]);
+        setFormOpen(false);
+        setEditing(null);
+
+        void (async () => {
+          try {
+            const created = await apiFetch<{ event: Event }>("/api/events", {
+              method: "POST",
+              body: JSON.stringify({
+                title: data.title,
+                date: data.date,
+                time: data.time,
+                description: data.description,
+                color: data.color,
+              }),
+            });
+            setEvents((prev) =>
+              prev.map((event) =>
+                event.id === optimisticEvent.id ? created.event : event
+              )
+            );
+            toast.success("Event created");
+          } catch (err) {
+            setEvents(previousEvents);
+            writePageCache("calendar", userId, { events: previousEvents });
+            handleError(err, "Failed to save event");
+          }
+        })();
+
+        return;
       }
       setFormOpen(false);
       setEditing(null);
@@ -252,6 +309,7 @@ export function CalendarPage() {
     async (eventId: string, newDate: string) => {
       const target = events.find((e) => e.id === eventId);
       if (!target) return;
+      if (isOptimisticEvent(target)) return;
 
       // Skip no-op move (same day)
       let originalDate = "";
@@ -831,11 +889,13 @@ function DayCell({
         {visible.map((event) => {
           const c = colorOf(event.color);
           const isThisDragging = draggingEventId === event.id;
+          const saving = isOptimisticEvent(event);
           return (
             <button
               key={event.id}
-              draggable
+              draggable={!saving}
               onDragStart={(e) => {
+                if (saving) return;
                 e.dataTransfer.setData("text/plain", event.id);
                 e.dataTransfer.effectAllowed = "move";
                 // Update both lifted state (visual feedback) and the ref
@@ -850,12 +910,14 @@ function DayCell({
               }}
               onClick={(e) => {
                 e.stopPropagation();
+                if (saving) return;
                 onEventClick(event);
               }}
               className={cn(
                 "flex items-center gap-1 w-full text-left rounded-md px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium leading-tight truncate transition-colors hover:brightness-110 cursor-grab active:cursor-grabbing",
                 c.soft,
                 c.text,
+                saving && "cursor-default opacity-70",
                 isThisDragging && "event-dragging"
               )}
               title={`${event.title}${event.time ? ` · ${event.time}` : ""} · Drag to move to another day`}
@@ -997,11 +1059,13 @@ function WeekView({
                 dayEvents.map((event) => {
                   const c = colorOf(event.color);
                   const isThisDragging = draggingEventId === event.id;
+                  const saving = isOptimisticEvent(event);
                   return (
                     <button
                       key={event.id}
-                      draggable
+                      draggable={!saving}
                       onDragStart={(e) => {
+                        if (saving) return;
                         e.dataTransfer.setData("text/plain", event.id);
                         e.dataTransfer.effectAllowed = "move";
                         setDraggingEventId(event.id);
@@ -1013,11 +1077,13 @@ function WeekView({
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (saving) return;
                         onEventClick(event);
                       }}
                       className={cn(
                         "flex flex-col gap-0.5 w-full text-left rounded-lg px-2 py-1.5 text-xs transition-colors hover:brightness-110 cursor-grab active:cursor-grabbing",
                         c.soft,
+                        saving && "cursor-default opacity-70",
                         isThisDragging && "event-dragging"
                       )}
                       title={`${event.title}${event.time ? ` · ${event.time}` : ""} · Drag to move to another day`}
@@ -1146,14 +1212,18 @@ function DayEventRow({
   onClick: () => void;
 }) {
   const c = colorOf(event.color);
+  const saving = isOptimisticEvent(event);
   return (
     <motion.button
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.25, delay: index * 0.05 }}
-      onClick={onClick}
+      onClick={() => {
+        if (!saving) onClick();
+      }}
       className={cn(
-        "flex w-full items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3.5 text-left transition-all hover:border-violet-500/30 hover:shadow-md group"
+        "flex w-full items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3.5 text-left transition-all hover:border-violet-500/30 hover:shadow-md group",
+        saving && "cursor-default opacity-70"
       )}
     >
       <span
@@ -1165,6 +1235,14 @@ function DayEventRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h4 className="font-semibold text-sm">{event.title}</h4>
+          {saving && (
+            <Badge
+              variant="secondary"
+              className="rounded-md h-5 px-1.5 text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400"
+            >
+              Saving
+            </Badge>
+          )}
           {event.time && (
             <Badge
               variant="secondary"
@@ -1197,6 +1275,7 @@ function UpcomingItem({
   onClick: () => void;
 }) {
   const c = colorOf(event.color);
+  const saving = isOptimisticEvent(event);
   let dateStr = "";
   let timeStr = "";
   try {
@@ -1212,8 +1291,13 @@ function UpcomingItem({
       initial={{ opacity: 0, x: 6 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.25, delay: index * 0.05 }}
-      onClick={onClick}
-      className="flex w-full items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3 text-left transition-all hover:border-violet-500/30 hover:shadow-md group"
+      onClick={() => {
+        if (!saving) onClick();
+      }}
+      className={cn(
+        "flex w-full items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3 text-left transition-all hover:border-violet-500/30 hover:shadow-md group",
+        saving && "cursor-default opacity-70"
+      )}
     >
       <span
         className={cn(
@@ -1224,7 +1308,19 @@ function UpcomingItem({
         <span className={cn("h-2.5 w-2.5 rounded-full", c.dot)} />
       </span>
       <div className="flex-1 min-w-0">
-        <h4 className="font-semibold text-sm truncate">{event.title}</h4>
+        <div className="flex items-center gap-2">
+          <h4 className="min-w-0 flex-1 truncate text-sm font-semibold">
+            {event.title}
+          </h4>
+          {saving && (
+            <Badge
+              variant="secondary"
+              className="h-5 rounded-md px-1.5 text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400"
+            >
+              Saving
+            </Badge>
+          )}
+        </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-[11px] text-muted-foreground">{dateStr}</span>
           {timeStr && (

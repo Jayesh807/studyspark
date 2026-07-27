@@ -202,6 +202,7 @@ const VIEW_TITLES: Record<AppView, { title: string; subtitle: string }> = {
   calendar: { title: "Calendar", subtitle: "Your events and schedule" },
   subjects: { title: "Subjects", subtitle: "Manage your courses" },
   exams: { title: "Upcoming Exams", subtitle: "Stay ahead of your exams" },
+  revision: { title: "Revision Plan", subtitle: "Your exam revision roadmap" },
   focus: { title: "Focus Timer", subtitle: "Pomodoro focus sessions" },
   planner: { title: "Study Planner", subtitle: "Plan your weekly study sessions" },
   settings: { title: "Settings", subtitle: "Customize your experience" },

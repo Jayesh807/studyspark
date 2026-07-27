@@ -25,6 +25,7 @@ import {
 import { format, addDays, startOfWeek, isSameDay, parseISO } from "date-fns";
 
 import { apiFetch, handleError } from "@/lib/api";
+import { readPageCache, writePageCache } from "@/lib/page-cache";
 import { type Subject, type Event, colorOf } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
@@ -126,6 +127,18 @@ function saveBlocks(blocks: StudyBlock[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(blocks));
 }
 
+function scheduleSaveBlocks(blocks: StudyBlock[]) {
+  if (typeof window === "undefined") return () => {};
+
+  const save = () => saveBlocks(blocks);
+  if ("requestIdleCallback" in window) {
+    const id = window.requestIdleCallback(save, { timeout: 1000 });
+    return () => window.cancelIdleCallback(id);
+  }
+  const id = globalThis.setTimeout(save, 0);
+  return () => globalThis.clearTimeout(id);
+}
+
 // ---------------------------------------------------------------------------
 // Form Dialog
 // ---------------------------------------------------------------------------
@@ -223,8 +236,8 @@ function BlockDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    onSubmit(form);
     onOpenChange(false);
+    onSubmit(form);
   };
 
   const selectedBlockType = BLOCK_TYPE_MAP[form.type];
@@ -562,34 +575,46 @@ function StudyBlockCard({
 // ---------------------------------------------------------------------------
 
 export function PlannerPage() {
-  const [blocks, setBlocks] = useState<StudyBlock[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const userId = useAppStore((s) => s.user?.id);
+  const initialSubjectCache = useMemo(
+    () => readPageCache<{ subjects: Subject[] }>("planner", userId),
+    [userId]
+  );
+  const [blocks, setBlocks] = useState<StudyBlock[]>(() => loadBlocks());
+  const [subjects, setSubjects] = useState<Subject[]>(
+    () => initialSubjectCache?.subjects ?? []
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<StudyBlock | null>(null);
   const [defaultDay, setDefaultDay] = useState<string>("");
   const [defaultTimeSlot, setDefaultTimeSlot] = useState<TimeSlot>("morning");
   const [weekOffset, setWeekOffset] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Load data
   useEffect(() => {
     (async () => {
+      const cached = readPageCache<{ subjects: Subject[] }>("planner", userId);
+      if (cached) {
+        setSubjects(cached.subjects);
+      }
       try {
         const subRes = await apiFetch<{ subjects: Subject[] }>("/api/subjects");
         if (subRes && subRes.subjects) {
           setSubjects(subRes.subjects);
+          writePageCache("planner", userId, { subjects: subRes.subjects });
         }
       } catch {
         // ignore
       }
-      setBlocks(loadBlocks());
       setLoading(false);
     })();
-  }, []);
+  }, [userId]);
 
   // Save to localStorage whenever blocks change
   useEffect(() => {
-    if (!loading) saveBlocks(blocks);
+    if (loading) return;
+    return scheduleSaveBlocks(blocks);
   }, [blocks, loading]);
 
   // Current week days

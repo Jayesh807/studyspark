@@ -49,6 +49,11 @@ export async function PUT(
         ...data,
         date: date ? new Date(date) : undefined,
       },
+      include: {
+        revisionTopics: {
+          orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+        },
+      },
     });
 
     return NextResponse.json({ exam });

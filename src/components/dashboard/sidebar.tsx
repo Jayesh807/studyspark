@@ -19,6 +19,7 @@ import {
   X,
   Trophy,
   CalendarRange,
+  BookOpenCheck,
 } from "lucide-react";
 import { useAppStore, type AppView } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
@@ -48,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   { view: "planner", label: "Study Planner", icon: CalendarRange, description: "Weekly study plan" },
   { view: "subjects", label: "Subjects", icon: BookOpen, description: "Your courses" },
   { view: "exams", label: "Upcoming Exams", icon: GraduationCap, description: "Exam tracker" },
+  { view: "revision", label: "Revision Plan", icon: BookOpenCheck, description: "Exam revision roadmap" },
   { view: "focus", label: "Focus Timer", icon: Timer, description: "Pomodoro timer", shortcut: "F" },
   { view: "analytics", label: "Analytics", icon: BarChart3, description: "Study insights" },
   { view: "profile", label: "Profile", icon: User, description: "Your profile" },

@@ -1,7 +1,7 @@
 "use client";
 
 import "@/styles/dashboard.css";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppStore } from "@/lib/store";
@@ -94,6 +94,9 @@ const CalendarPage = dynamic(() => import("./pages/calendar").then((m) => m.Cale
 const ExamsPage = dynamic(() => import("./pages/exams").then((m) => m.ExamsPage), {
   loading: () => <PageLoader />
 });
+const RevisionPlanPage = dynamic(() => import("./pages/revision-plan").then((m) => m.RevisionPlanPage), {
+  loading: () => <PageLoader />
+});
 const SubjectsPage = dynamic(() => import("./pages/subjects").then((m) => m.SubjectsPage), {
   loading: () => <PageLoader />
 });
@@ -118,6 +121,14 @@ const PlannerPage = dynamic(() => import("./pages/planner").then((m) => m.Planne
 function PageRouter() {
   const currentView = useAppStore((s) => s.currentView);
   const reduceMotion = useAppStore((s) => s.reduceMotion);
+  const scrollRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: 0,
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  }, [currentView, reduceMotion]);
 
   const renderPage = () => {
     switch (currentView) {
@@ -129,6 +140,8 @@ function PageRouter() {
         return <CalendarPage />;
       case "exams":
         return <ExamsPage />;
+      case "revision":
+        return <RevisionPlanPage />;
       case "subjects":
         return <SubjectsPage />;
       case "focus":
@@ -147,7 +160,7 @@ function PageRouter() {
   };
 
   return (
-    <main className="flex-1 overflow-y-auto scrollbar-thin scroll-smooth">
+    <main ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin scroll-smooth">
       <div className="mx-auto w-full max-w-[1400px] p-4 sm:p-6 lg:p-8">
         <AnimatePresence mode="wait">
           <motion.div

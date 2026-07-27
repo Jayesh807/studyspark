@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
 import {
@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { useAppStore, type AccentColor } from "@/lib/store";
 import { useAuth } from "@/hooks/use-auth";
 import { apiFetch, handleError } from "@/lib/api";
+import { readPageCache, writePageCache } from "@/lib/page-cache";
 import { replayTour } from "@/components/dashboard/onboarding-tour";
 import type { Todo, Subject, Event, Exam } from "@/lib/types";
 
@@ -729,9 +730,21 @@ export function SettingsPage() {
   } = useAppStore();
   const { logout } = useAuth();
 
-  const [memberSince, setMemberSince] = useState<string>("Recently");
-  const [accountEmail, setAccountEmail] = useState("");
-  const [loading, setLoading] = useState(true);
+  const initialCache = useMemo(
+    () =>
+      readPageCache<{ memberSince: string; accountEmail: string }>(
+        "settings",
+        user?.id
+      ),
+    [user?.id]
+  );
+  const [memberSince, setMemberSince] = useState<string>(
+    () => initialCache?.memberSince ?? "Recently"
+  );
+  const [accountEmail, setAccountEmail] = useState(
+    () => initialCache?.accountEmail ?? ""
+  );
+  const [loading, setLoading] = useState(() => !initialCache);
   const [loggingOut, setLoggingOut] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
 
@@ -739,6 +752,17 @@ export function SettingsPage() {
 
   useEffect(() => {
     let active = true;
+    const cached = readPageCache<{ memberSince: string; accountEmail: string }>(
+      "settings",
+      user?.id
+    );
+    if (cached) {
+      setMemberSince(cached.memberSince);
+      setAccountEmail(cached.accountEmail);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     (async () => {
       try {
         const me = await apiFetch<{
@@ -750,22 +774,27 @@ export function SettingsPage() {
           } | null;
         }>("/api/auth/me");
         if (!active) return;
-        setAccountEmail(me.user?.email || "");
+        const nextEmail = me.user?.email || "";
+        let nextMemberSince = "Recently";
+        setAccountEmail(nextEmail);
         if (me.user?.createdAt) {
           try {
             const d = new Date(me.user.createdAt);
             if (!isNaN(d.getTime())) {
-              setMemberSince(
-                d.toLocaleDateString("en-US", {
+              nextMemberSince = d.toLocaleDateString("en-US", {
                   month: "long",
                   year: "numeric",
-                })
-              );
+                });
+              setMemberSince(nextMemberSince);
             }
           } catch {
             /* ignore */
           }
         }
+        writePageCache("settings", user?.id, {
+          memberSince: nextMemberSince,
+          accountEmail: nextEmail,
+        });
       } catch {
         /* ignore */
       } finally {
@@ -775,7 +804,7 @@ export function SettingsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.id]);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -804,6 +833,10 @@ export function SettingsPage() {
         body: JSON.stringify({ email: accountEmail }),
       });
       setAccountEmail(data.user.email || "");
+      writePageCache("settings", user?.id, {
+        memberSince,
+        accountEmail: data.user.email || "",
+      });
       if (user) {
         setUser({ ...user, email: data.user.email || null });
       }

@@ -14,6 +14,7 @@ export type AppView =
   | "calendar"
   | "subjects"
   | "exams"
+  | "revision"
   | "focus"
   | "planner"
   | "settings";

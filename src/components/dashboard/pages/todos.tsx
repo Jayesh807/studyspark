@@ -107,6 +107,7 @@ import {
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { apiFetch, handleError } from "@/lib/api";
+import { readPageCache, writePageCache } from "@/lib/page-cache";
 import { useAppStore } from "@/lib/store";
 import {
   Todo,
@@ -243,12 +244,22 @@ const CATEGORY_ICON_CONFIG: Record<
   },
 };
 
+function isOptimisticTodo(todo: Todo) {
+  return todo.id.startsWith("temp-");
+}
+
 // ---------- Main page ----------
 export function TodosPage() {
   const userId = useAppStore((s) => s.user?.id);
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initialCache = useMemo(
+    () => readPageCache<{ todos: Todo[]; subjects: Subject[] }>("todos", userId),
+    [userId]
+  );
+  const [todos, setTodos] = useState<Todo[]>(() => initialCache?.todos ?? []);
+  const [subjects, setSubjects] = useState<Subject[]>(
+    () => initialCache?.subjects ?? []
+  );
+  const [loading, setLoading] = useState(() => !initialCache);
 
   // Toolbar state
   const [search, setSearch] = useState("");
@@ -269,7 +280,17 @@ export function TodosPage() {
   );
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    const cached = readPageCache<{ todos: Todo[]; subjects: Subject[] }>(
+      "todos",
+      userId
+    );
+    if (cached) {
+      setTodos(cached.todos);
+      setSubjects(cached.subjects);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const [todosRes, subjectsRes] = await Promise.all([
         apiFetch<{ todos: Todo[] }>("/api/todos"),
@@ -277,6 +298,10 @@ export function TodosPage() {
       ]);
       setTodos(todosRes.todos);
       setSubjects(subjectsRes.subjects);
+      writePageCache("todos", userId, {
+        todos: todosRes.todos,
+        subjects: subjectsRes.subjects,
+      });
     } catch (err) {
       handleError(err, "Failed to load tasks");
     } finally {
@@ -287,6 +312,12 @@ export function TodosPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!loading) {
+      writePageCache("todos", userId, { todos, subjects });
+    }
+  }, [loading, subjects, todos, userId]);
 
   // ---------- Derived: filtered & sorted todos per column ----------
   const filteredSortedTodos = useMemo(() => {
@@ -387,22 +418,56 @@ export function TodosPage() {
         );
         toast.success("Task updated");
       } else {
-        // POST
-        const created = await apiFetch<{ todo: Todo }>("/api/todos", {
-          method: "POST",
-          body: JSON.stringify({
-            title: data.title,
-            description: data.description,
-            priority: data.priority,
-            category: data.category,
-            status: data.status,
-            subject: data.subject,
-            dueDate: data.dueDate ? data.dueDate : null,
-            order: 0,
-          }),
-        });
-        setTodos((prev) => [created.todo, ...prev]);
-        toast.success("Task created");
+        const previousTodos = todos;
+        const now = new Date().toISOString();
+        const optimisticTodo: Todo = {
+          id: `temp-${Date.now()}`,
+          userId: userId ?? "",
+          title: data.title.trim(),
+          description: data.description,
+          priority: data.priority,
+          category: data.category,
+          status: data.status,
+          subject: data.subject,
+          dueDate: data.dueDate ? data.dueDate : null,
+          order: 0,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        setTodos((prev) => [optimisticTodo, ...prev]);
+        setFormOpen(false);
+        setEditing(null);
+
+        void (async () => {
+          try {
+            const created = await apiFetch<{ todo: Todo }>("/api/todos", {
+              method: "POST",
+              body: JSON.stringify({
+                title: data.title,
+                description: data.description,
+                priority: data.priority,
+                category: data.category,
+                status: data.status,
+                subject: data.subject,
+                dueDate: data.dueDate ? data.dueDate : null,
+                order: 0,
+              }),
+            });
+            setTodos((prev) =>
+              prev.map((todo) =>
+                todo.id === optimisticTodo.id ? created.todo : todo
+              )
+            );
+            toast.success("Task created");
+          } catch (err) {
+            setTodos(previousTodos);
+            writePageCache("todos", userId, { todos: previousTodos, subjects });
+            handleError(err, "Failed to save task");
+          }
+        })();
+
+        return;
       }
       setFormOpen(false);
       setEditing(null);
@@ -1031,6 +1096,7 @@ function SortableTaskCard({
   onEdit: (todo: Todo) => void;
   onDelete: (todo: Todo) => void;
 }) {
+  const saving = isOptimisticTodo(todo);
   const {
     attributes,
     listeners,
@@ -1038,7 +1104,7 @@ function SortableTaskCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: todo.id });
+  } = useSortable({ id: todo.id, disabled: saving });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -1098,6 +1164,7 @@ function TaskCardInner({
   const overdue = isOverdue(todo.dueDate, todo.status);
   const dueStr = formatDueDate(todo.dueDate);
   const completed = todo.status === "completed";
+  const saving = isOptimisticTodo(todo);
 
   return (
     <div
@@ -1129,6 +1196,7 @@ function TaskCardInner({
           >
             <Checkbox
               checked={completed}
+              disabled={saving}
               onCheckedChange={() => onToggleComplete?.(todo)}
               className={cn(
                 "h-5 w-5 rounded-md data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-100",
@@ -1153,7 +1221,7 @@ function TaskCardInner({
             )}
           </div>
 
-          {!overlay && (
+          {!overlay && !saving && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -1192,6 +1260,14 @@ function TaskCardInner({
 
         {/* Tags row */}
         <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pl-7">
+          {saving && (
+            <Badge
+              variant="secondary"
+              className="rounded-md h-5 px-1.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400"
+            >
+              Saving
+            </Badge>
+          )}
           <Badge
             variant="secondary"
             className={cn(

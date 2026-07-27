@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Flame,
@@ -26,6 +26,7 @@ import { toast } from "sonner";
 
 import { useAppStore } from "@/lib/store";
 import { apiFetch, handleError } from "@/lib/api";
+import { readPageCache, writePageCache } from "@/lib/page-cache";
 import type { Profile, Analytics } from "@/lib/types";
 
 import {
@@ -443,32 +444,44 @@ function EditProfileForm({
 
   const handleSave = async () => {
     if (!validate()) return;
+    const updatedUsername = form.username.trim();
+    const optimisticProfile: Profile = {
+      ...profile,
+      bio: form.bio.trim(),
+      goal: form.goal.trim(),
+      targetHours: Number(form.targetHours),
+      college: form.college.trim(),
+      course: form.course.trim(),
+      semester: Number(form.semester),
+      avatar: form.avatar.trim(),
+    };
+
     setSaveState("saving");
-    try {
-      const data = await apiFetch<ProfileResponse>("/api/profile", {
-        method: "PUT",
-        body: JSON.stringify({
-          username: form.username.trim(),
-          bio: form.bio.trim(),
-          goal: form.goal.trim(),
-          targetHours: Number(form.targetHours),
-          college: form.college.trim(),
-          course: form.course.trim(),
-          semester: Number(form.semester),
-          avatar: form.avatar.trim(),
-        }),
-      });
-      onSaved(data.profile, data.user?.username ?? form.username.trim());
-      setSaveState("success");
-      toast.success("Profile updated!");
-      setTimeout(() => {
-        onCloseAfterSuccess();
-        setSaveState("idle");
-      }, 1100);
-    } catch (error) {
-      setSaveState("idle");
-      handleError(error, "Failed to update profile");
-    }
+    onSaved(optimisticProfile, updatedUsername);
+    onCloseAfterSuccess();
+
+    void (async () => {
+      try {
+        const data = await apiFetch<ProfileResponse>("/api/profile", {
+          method: "PUT",
+          body: JSON.stringify({
+            username: updatedUsername,
+            bio: optimisticProfile.bio,
+            goal: optimisticProfile.goal,
+            targetHours: optimisticProfile.targetHours,
+            college: optimisticProfile.college,
+            course: optimisticProfile.course,
+            semester: optimisticProfile.semester,
+            avatar: optimisticProfile.avatar,
+          }),
+        });
+        onSaved(data.profile, data.user?.username ?? updatedUsername);
+        toast.success("Profile updated");
+      } catch (error) {
+        onSaved(profile, username);
+        handleError(error, "Failed to update profile");
+      }
+    })();
   };
 
   return (
@@ -891,31 +904,68 @@ function ProfileHero({
 
 export function ProfilePage() {
   const user = useAppStore((s) => s.user);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [stats, setStats] = useState<Analytics["stats"] | null>(null);
-  const [memberSince, setMemberSince] = useState<string>("Recently");
-  const [loading, setLoading] = useState(true);
+  const initialCache = useMemo(
+    () =>
+      readPageCache<{
+        profile: Profile;
+        stats: Analytics["stats"] | null;
+        memberSince: string;
+      }>("profile", user?.id),
+    [user?.id]
+  );
+  const [profile, setProfile] = useState<Profile | null>(
+    () => initialCache?.profile ?? null
+  );
+  const [stats, setStats] = useState<Analytics["stats"] | null>(
+    () => initialCache?.stats ?? null
+  );
+  const [memberSince, setMemberSince] = useState<string>(
+    () => initialCache?.memberSince ?? "Recently"
+  );
+  const [loading, setLoading] = useState(() => !initialCache);
   const [error, setError] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const cached = readPageCache<{
+      profile: Profile;
+      stats: Analytics["stats"] | null;
+      memberSince: string;
+    }>("profile", user?.id);
+    if (cached) {
+      setProfile(cached.profile);
+      setStats(cached.stats);
+      setMemberSince(cached.memberSince);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setError(false);
     try {
       const [meRes, analyticsRes] = await Promise.all([
         apiFetch<MeResponse>("/api/auth/me"),
         apiFetch<AnalyticsResponse>("/api/analytics").catch(() => null),
       ]);
-      if (meRes.user) setMemberSince(formatMemberSince(meRes.user.createdAt));
-      setProfile(meRes.profile ?? DEFAULT_PROFILE);
-      if (analyticsRes) setStats(analyticsRes.stats);
+      const nextMemberSince = meRes.user
+        ? formatMemberSince(meRes.user.createdAt)
+        : "Recently";
+      const nextProfile = meRes.profile ?? DEFAULT_PROFILE;
+      const nextStats = analyticsRes?.stats ?? null;
+      setMemberSince(nextMemberSince);
+      setProfile(nextProfile);
+      setStats(nextStats);
+      writePageCache("profile", user?.id, {
+        profile: nextProfile,
+        stats: nextStats,
+        memberSince: nextMemberSince,
+      });
     } catch (err) {
       handleError(err, "Failed to load profile");
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     void load();
@@ -923,6 +973,11 @@ export function ProfilePage() {
 
   const handleSaved = (p: Profile, updatedUsername?: string) => {
     setProfile(p);
+    writePageCache("profile", user?.id, {
+      profile: p,
+      stats,
+      memberSince,
+    });
     if (user) {
       useAppStore.getState().setUser({
         ...user,

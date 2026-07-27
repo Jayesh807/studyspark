@@ -22,6 +22,11 @@ export async function GET() {
 
   const exams = await db.exam.findMany({
     where: { userId: user.id },
+    include: {
+      revisionTopics: {
+        orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      },
+    },
     orderBy: { date: "asc" },
   });
 
@@ -49,6 +54,11 @@ export async function POST(req: NextRequest) {
         ...parsed.data,
         date: new Date(parsed.data.date),
         userId: user.id,
+      },
+      include: {
+        revisionTopics: {
+          orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+        },
       },
     });
 
