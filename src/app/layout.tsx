@@ -9,6 +9,8 @@ import { AccentColorApplier } from "@/components/accent-color-applier";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { AdSenseScript } from "@/components/adsense-script";
 
+const GOOGLE_ANALYTICS_ID = "G-G3PFDZL17W";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -138,6 +140,24 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
+        <Script
+          async
+          src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`}
+          strategy="beforeInteractive"
+        />
+        <Script
+          id="google-analytics"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+
+              gtag('config', '${GOOGLE_ANALYTICS_ID}');
+            `,
+          }}
+        />
         {/* Google AdSense — conditional, only on content pages */}
         <AdSenseScript />
 
