@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { apiFetch } from "@/lib/api";
+import { celebrateBurst, celebrateTrophy } from "@/lib/confetti";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
@@ -29,6 +30,13 @@ import {
 } from "@/components/shared/motion";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import {
   Select,
@@ -81,6 +89,16 @@ interface SubmitLeaderboardResponse {
   unavailable?: boolean;
 }
 
+interface CompletionCelebration {
+  rank?: number;
+  score: number;
+  wpm: number;
+  accuracy: number;
+  mistakes: number;
+  durationSec: number;
+  isNewBest: boolean;
+}
+
 const STORAGE_PREFIX = "studyspark:typing-best:";
 
 const PROMPTS: TypingPrompt[] = [
@@ -88,73 +106,73 @@ const PROMPTS: TypingPrompt[] = [
     id: "easy-1",
     difficulty: "easy",
     title: "Morning Focus",
-    text: "Small steps every day can turn a difficult subject into something familiar and friendly.",
+    text: "Small steps every day can turn a difficult subject into something familiar and friendly. Choose one simple goal, finish it with care, and let that progress build your confidence.",
   },
   {
     id: "easy-2",
     difficulty: "easy",
     title: "Clean Notes",
-    text: "Good notes are short, clear, and easy to review before a test or class discussion.",
+    text: "Good notes are short, clear, and easy to review before a test or class discussion. Write the main idea first, add one example, and leave space for questions.",
   },
   {
     id: "easy-3",
     difficulty: "easy",
     title: "Calm Practice",
-    text: "Read the line, keep your hands steady, and type each word with a calm rhythm.",
+    text: "Read the line, keep your hands steady, and type each word with a calm rhythm. Accuracy matters more than rushing, so breathe slowly and stay relaxed.",
   },
   {
     id: "easy-4",
     difficulty: "easy",
     title: "Daily Habit",
-    text: "A little practice after class can make tomorrow feel easier and more organized.",
+    text: "A little practice after class can make tomorrow feel easier and more organized. Review what you learned, mark one weak point, and prepare your next step.",
   },
   {
     id: "medium-1",
     difficulty: "medium",
     title: "Study Rhythm",
-    text: "A focused study session works best when you remove distractions, choose one target, and review what you learned before moving on.",
+    text: "A focused study session works best when you remove distractions, choose one target, and review what you learned before moving on. Keep your phone away, open only the material you need, and write a short summary after the session. That small reflection helps your brain store the lesson instead of letting it fade.",
   },
   {
     id: "medium-2",
     difficulty: "medium",
     title: "Revision Loop",
-    text: "Revision becomes easier when you test yourself first, correct mistakes carefully, and return to weak topics after a short break.",
+    text: "Revision becomes easier when you test yourself first, correct mistakes carefully, and return to weak topics after a short break. Try solving a question without looking at notes, then compare your answer with the correct method. Mistakes are useful when you use them to decide what to study next.",
   },
   {
     id: "medium-3",
     difficulty: "medium",
     title: "Assignment Flow",
-    text: "Strong assignments usually begin with a clear outline, reliable sources, careful examples, and a final pass for grammar and structure.",
+    text: "Strong assignments usually begin with a clear outline, reliable sources, careful examples, and a final pass for grammar and structure. Draft the main points before writing full paragraphs, then check whether each section supports the topic. A clean structure makes the final work easier to read and grade.",
   },
   {
     id: "medium-4",
     difficulty: "medium",
     title: "Class Prep",
-    text: "Before class starts, skim yesterday's notes, mark confusing points, and prepare one useful question for the next discussion.",
+    text: "Before class starts, skim yesterday's notes, mark confusing points, and prepare one useful question for the next discussion. Arriving with context helps you follow the lecture and notice important details. Even five minutes of preparation can make a long class feel more manageable.",
   },
   {
     id: "hard-1",
     difficulty: "hard",
     title: "Deep Practice",
-    text: "Mastery grows when deliberate practice, patient feedback, and consistent reflection turn confusing material into patterns you can recognize quickly.",
+    text: "Mastery grows when deliberate practice, patient feedback, and consistent reflection turn confusing material into patterns you can recognize quickly. Instead of reading the same chapter again and again, create problems that force you to retrieve ideas from memory. Track the mistakes that repeat, study their causes, and return to them after a delay. Deep practice is slower at first, but it creates stronger understanding.",
   },
   {
     id: "hard-2",
     difficulty: "hard",
     title: "Exam Momentum",
-    text: "Before an important exam, the strongest preparation combines timed practice, spaced revision, calm rest, and honest tracking of unfinished chapters.",
+    text: "Before an important exam, the strongest preparation combines timed practice, spaced revision, calm rest, and honest tracking of unfinished chapters. Plan difficult topics earlier in the week, leave lighter reviews for the final evening, and avoid pretending that passive reading is enough. A strong plan balances pressure with recovery, because tired attention can turn familiar questions into confusing ones.",
   },
   {
     id: "hard-3",
     difficulty: "hard",
     title: "Research Discipline",
-    text: "Careful research requires comparing evidence, questioning assumptions, recording sources precisely, and explaining conclusions without exaggerating certainty.",
+    text: "Careful research requires comparing evidence, questioning assumptions, recording sources precisely, and explaining conclusions without exaggerating certainty. When sources disagree, do not rush to choose the one that sounds most confident. Look for methods, dates, sample sizes, and hidden incentives. Good academic work shows not only what you believe, but why the evidence deserves trust.",
   },
   {
     id: "hard-4",
     difficulty: "hard",
     title: "Complex Focus",
-    text: "When a topic feels overwhelming, separate definitions, formulas, examples, exceptions, and common mistakes into smaller review cycles.",
+    text: "When a topic feels overwhelming, separate definitions, formulas, examples, exceptions, and common mistakes into smaller review cycles. Start by naming the pieces you understand, then isolate the exact point where confusion begins. Complex subjects become less frightening when you convert them into testable parts, practice each part deliberately, and rebuild the full picture step by step.",
   },
 ];
 
@@ -274,6 +292,7 @@ function LeaderboardRow({
   rank?: number;
   compact?: boolean;
 }) {
+  const RankIcon = rank === 1 ? Trophy : rank && rank <= 3 ? Award : null;
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-background/70 p-3 ring-1 ring-border/50">
       <div
@@ -281,10 +300,20 @@ function LeaderboardRow({
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold",
           rank === 1
             ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+            : rank === 2
+              ? "bg-slate-500/15 text-slate-600 dark:text-slate-300"
+              : rank === 3
+                ? "bg-orange-500/15 text-orange-600 dark:text-orange-400"
             : "bg-violet-500/10 text-violet-600 dark:text-violet-400"
         )}
       >
-        {rank ? `#${rank}` : <Zap className="h-4 w-4" />}
+        {RankIcon ? (
+          <RankIcon className="h-4.5 w-4.5" />
+        ) : rank ? (
+          `#${rank}`
+        ) : (
+          <Zap className="h-4 w-4" />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
@@ -306,6 +335,8 @@ function PromptText({
   target: string;
   input: string;
 }) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const currentCharRef = useRef<HTMLSpanElement | null>(null);
   const words = useMemo(() => {
     const parts = target.match(/\S+\s*/g) ?? [target];
     return parts.map((word, index) => ({
@@ -314,9 +345,18 @@ function PromptText({
     }));
   }, [target]);
 
+  useEffect(() => {
+    currentCharRef.current?.scrollIntoView({
+      block: "center",
+      inline: "nearest",
+      behavior: "smooth",
+    });
+  }, [input.length, target]);
+
   return (
     <div
-      className="min-h-[300px] overflow-hidden rounded-[8px] bg-white p-3 font-mono text-[26px] font-medium leading-[58px] tracking-[0.16em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-zinc-200 sm:min-h-[380px] sm:p-4 sm:text-[34px] sm:leading-[72px] sm:tracking-[0.2em] dark:bg-zinc-950/85 dark:text-zinc-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:ring-zinc-800"
+      ref={panelRef}
+      className="h-[300px] overflow-y-auto rounded-[8px] bg-white p-3 font-mono text-[26px] font-medium leading-[58px] tracking-[0.16em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-zinc-200 sm:h-[380px] sm:p-4 sm:text-[34px] sm:leading-[72px] sm:tracking-[0.2em] dark:bg-zinc-950/85 dark:text-zinc-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:ring-zinc-800"
       style={{
         backgroundImage:
           "linear-gradient(to bottom, transparent calc(100% - 1px), hsl(var(--border) / 0.78) calc(100% - 1px))",
@@ -342,6 +382,7 @@ function PromptText({
                     : "wrong";
               return (
                 <span
+                  ref={isCurrent ? currentCharRef : undefined}
                   key={`${char}-${index}`}
                   className={cn(
                     "relative rounded-[5px] px-[3px]",
@@ -381,8 +422,10 @@ export function TypingChallengePage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardResponse | null>(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [savedRunKey, setSavedRunKey] = useState<string | null>(null);
+  const [completionCelebration, setCompletionCelebration] = useState<CompletionCelebration | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const celebrationKeyRef = useRef<string | null>(null);
 
   const prompts = useMemo(
     () => PROMPTS.filter((prompt) => prompt.difficulty === difficulty),
@@ -413,15 +456,18 @@ export function TypingChallengePage() {
           `/api/typing-leaderboard?difficulty=${difficulty}`
         );
         setLeaderboard(data);
+        return data;
       } catch (error) {
         console.error("Failed to load typing leaderboard:", error);
-        setLeaderboard({
+        const fallback = {
           top: [],
           recent: [],
           mine: null,
           serverTime: new Date().toISOString(),
           unavailable: true,
-        });
+        };
+        setLeaderboard(fallback);
+        return fallback;
       } finally {
         if (showLoading) setLeaderboardLoading(false);
       }
@@ -445,6 +491,27 @@ export function TypingChallengePage() {
       window.clearInterval(interval);
     };
   }, [loadLeaderboard]);
+
+  useEffect(() => {
+    if (!completionCelebration) return;
+
+    const celebrationKey = [
+      completionCelebration.score,
+      completionCelebration.wpm,
+      completionCelebration.accuracy,
+      completionCelebration.durationSec.toFixed(1),
+    ].join(":");
+
+    if (celebrationKeyRef.current === celebrationKey) return;
+    celebrationKeyRef.current = celebrationKey;
+
+    if (completionCelebration.rank === 1 || completionCelebration.isNewBest) {
+      celebrateTrophy();
+      return;
+    }
+
+    celebrateBurst();
+  }, [completionCelebration]);
 
   const playTypingSound = (kind: "key" | "backspace" | "button" = "key") => {
     if (!soundEnabled || typeof window === "undefined") return;
@@ -560,7 +627,7 @@ export function TypingChallengePage() {
       if (savedRunKey === result.runKey) return;
       setSavedRunKey(result.runKey);
       try {
-        await apiFetch<SubmitLeaderboardResponse>("/api/typing-leaderboard", {
+        const saved = await apiFetch<SubmitLeaderboardResponse>("/api/typing-leaderboard", {
           method: "POST",
           body: JSON.stringify({
             difficulty,
@@ -572,7 +639,26 @@ export function TypingChallengePage() {
             durationSec: result.durationSec,
           }),
         });
-        await loadLeaderboard(false);
+        const latest = await loadLeaderboard(false);
+        if (saved.result && latest && !latest.unavailable) {
+          const savedResult = saved.result;
+          const rank = latest.top.findIndex((entry) => entry.id === savedResult.id) + 1;
+          if (rank >= 1 && rank <= 10) {
+            setCompletionCelebration((current) =>
+              current
+                ? { ...current, rank }
+                : {
+                    rank,
+                    score: savedResult.score,
+                    wpm: savedResult.wpm,
+                    accuracy: savedResult.accuracy,
+                    mistakes: result.mistakes,
+                    durationSec: result.durationSec,
+                    isNewBest: false,
+                  }
+            );
+          }
+        }
       } catch (error) {
         setSavedRunKey(null);
         console.error("Failed to save typing score:", error);
@@ -596,6 +682,14 @@ export function TypingChallengePage() {
     setFinishedAt(doneAt);
     const betterThanBest = !bestScore || nextScore > bestScore.score;
     setNewBest(betterThanBest);
+    setCompletionCelebration({
+      score: nextScore,
+      wpm: nextWpm,
+      accuracy: nextAccuracy,
+      mistakes: nextMistakes,
+      durationSec: nextElapsed,
+      isNewBest: betterThanBest,
+    });
     if (!bestScore || nextScore > bestScore.score) {
       writeBestScore(userId, difficulty, {
         wpm: nextWpm,
@@ -639,6 +733,7 @@ export function TypingChallengePage() {
     setFinishedAt(null);
     setNewBest(false);
     setSavedRunKey(null);
+    setCompletionCelebration(null);
     window.setTimeout(() => inputRef.current?.focus(), 0);
   };
 
@@ -650,6 +745,7 @@ export function TypingChallengePage() {
     setFinishedAt(null);
     setNewBest(false);
     setSavedRunKey(null);
+    setCompletionCelebration(null);
     window.setTimeout(() => inputRef.current?.focus(), 0);
   };
 
@@ -662,10 +758,12 @@ export function TypingChallengePage() {
     setFinishedAt(null);
     setNewBest(false);
     setSavedRunKey(null);
+    setCompletionCelebration(null);
   };
 
   return (
-    <PageTransition className="space-y-6 sm:space-y-8">
+    <>
+      <PageTransition className="space-y-6 sm:space-y-8">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
           <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-700 ring-1 ring-cyan-500/20 dark:text-cyan-300">
@@ -861,7 +959,7 @@ export function TypingChallengePage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {leaderboard.top.slice(0, 5).map((result, index) => (
+                {leaderboard.top.slice(0, 10).map((result, index) => (
                   <LeaderboardRow
                     key={result.id}
                     result={result}
@@ -895,7 +993,7 @@ export function TypingChallengePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                {leaderboard.recent.slice(0, 4).map((result) => (
+                {leaderboard.recent.slice(0, 5).map((result) => (
                   <LeaderboardRow key={result.id} result={result} compact />
                 ))}
               </div>
@@ -986,7 +1084,96 @@ export function TypingChallengePage() {
           </GlassCard>
         </aside>
       </div>
-    </PageTransition>
+      </PageTransition>
+
+      <Dialog
+        open={Boolean(completionCelebration)}
+        onOpenChange={(open) => {
+          if (!open) setCompletionCelebration(null);
+        }}
+      >
+        <DialogContent className="overflow-hidden rounded-3xl border-violet-500/25 bg-background/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-md">
+          <div className="relative p-6 text-center sm:p-8">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-amber-500/20 via-violet-500/10 to-transparent" />
+            <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/25">
+              <Trophy className="h-8 w-8" />
+            </div>
+            <DialogHeader className="relative mt-5 text-center">
+              <DialogTitle className="text-2xl font-bold tracking-tight">
+                {completionCelebration?.rank === 1
+                  ? "You are #1!"
+                  : completionCelebration?.rank
+                    ? `Top ${completionCelebration.rank} rank!`
+                    : "Congratulations!"}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground">
+                {completionCelebration?.rank
+                  ? "Your typing score reached the leaderboard."
+                  : "You completed the typing test. Here is your final score."}
+              </DialogDescription>
+            </DialogHeader>
+
+            {completionCelebration && (
+              <div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="rounded-2xl bg-amber-500/10 p-3 ring-1 ring-amber-500/20">
+                  <p className="text-xl font-bold">
+                    {completionCelebration.rank ? `#${completionCelebration.rank}` : "-"}
+                  </p>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Rank
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-violet-500/10 p-3 ring-1 ring-violet-500/20">
+                  <p className="text-xl font-bold">{completionCelebration.score}</p>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Score
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-cyan-500/10 p-3 ring-1 ring-cyan-500/20">
+                  <p className="text-xl font-bold">{completionCelebration.wpm}</p>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    WPM
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-emerald-500/10 p-3 ring-1 ring-emerald-500/20">
+                  <p className="text-xl font-bold">{completionCelebration.accuracy}%</p>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Accuracy
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-rose-500/10 p-3 ring-1 ring-rose-500/20">
+                  <p className="text-xl font-bold">{completionCelebration.mistakes}</p>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Mistakes
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-blue-500/10 p-3 ring-1 ring-blue-500/20">
+                  <p className="text-xl font-bold">
+                    {completionCelebration.durationSec.toFixed(1)}s
+                  </p>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    Time
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {completionCelebration?.isNewBest && (
+              <div className="relative mt-4 rounded-2xl bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
+                New personal best!
+              </div>
+            )}
+
+            <Button
+              onClick={() => clickWithSound(() => setCompletionCelebration(null))}
+              className="relative mt-6 w-full rounded-[5px] bg-gradient-to-r from-violet-500 to-cyan-500 text-white"
+            >
+              Awesome
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

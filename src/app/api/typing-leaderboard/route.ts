@@ -15,6 +15,7 @@ const resultSchema = z.object({
 
 function serializeResult(result: {
   id: string;
+  userId: string;
   difficulty: string;
   promptTitle: string;
   wpm: number;
@@ -27,6 +28,7 @@ function serializeResult(result: {
 }) {
   return {
     id: result.id,
+    userId: result.userId,
     username: result.user.username,
     difficulty: result.difficulty,
     promptTitle: result.promptTitle,
@@ -37,6 +39,15 @@ function serializeResult(result: {
     durationSec: result.durationSec,
     createdAt: result.createdAt.toISOString(),
   };
+}
+
+function bestResultPerUser<T extends { userId: string }>(results: T[]) {
+  const seen = new Set<string>();
+  return results.filter((result) => {
+    if (seen.has(result.userId)) return false;
+    seen.add(result.userId);
+    return true;
+  });
 }
 
 export async function GET(req: NextRequest) {
@@ -56,17 +67,17 @@ export async function GET(req: NextRequest) {
 
     const where = difficulty ? { difficulty } : {};
 
-    const [top, recent, mine] = await Promise.all([
+    const [topCandidates, recent, mine] = await Promise.all([
       db.typingResult.findMany({
         where,
         orderBy: [{ score: "desc" }, { wpm: "desc" }, { createdAt: "asc" }],
-        take: 10,
+        take: 100,
         include: { user: { select: { username: true } } },
       }),
       db.typingResult.findMany({
         where,
         orderBy: { createdAt: "desc" },
-        take: 8,
+        take: 5,
         include: { user: { select: { username: true } } },
       }),
       db.typingResult.findFirst({
@@ -75,6 +86,7 @@ export async function GET(req: NextRequest) {
         include: { user: { select: { username: true } } },
       }),
     ]);
+    const top = bestResultPerUser(topCandidates).slice(0, 10);
 
     return NextResponse.json({
       top: top.map(serializeResult),
