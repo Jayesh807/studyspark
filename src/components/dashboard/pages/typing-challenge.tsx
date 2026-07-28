@@ -97,6 +97,18 @@ const PROMPTS: TypingPrompt[] = [
     text: "Good notes are short, clear, and easy to review before a test or class discussion.",
   },
   {
+    id: "easy-3",
+    difficulty: "easy",
+    title: "Calm Practice",
+    text: "Read the line, keep your hands steady, and type each word with a calm rhythm.",
+  },
+  {
+    id: "easy-4",
+    difficulty: "easy",
+    title: "Daily Habit",
+    text: "A little practice after class can make tomorrow feel easier and more organized.",
+  },
+  {
     id: "medium-1",
     difficulty: "medium",
     title: "Study Rhythm",
@@ -109,6 +121,18 @@ const PROMPTS: TypingPrompt[] = [
     text: "Revision becomes easier when you test yourself first, correct mistakes carefully, and return to weak topics after a short break.",
   },
   {
+    id: "medium-3",
+    difficulty: "medium",
+    title: "Assignment Flow",
+    text: "Strong assignments usually begin with a clear outline, reliable sources, careful examples, and a final pass for grammar and structure.",
+  },
+  {
+    id: "medium-4",
+    difficulty: "medium",
+    title: "Class Prep",
+    text: "Before class starts, skim yesterday's notes, mark confusing points, and prepare one useful question for the next discussion.",
+  },
+  {
     id: "hard-1",
     difficulty: "hard",
     title: "Deep Practice",
@@ -119,6 +143,18 @@ const PROMPTS: TypingPrompt[] = [
     difficulty: "hard",
     title: "Exam Momentum",
     text: "Before an important exam, the strongest preparation combines timed practice, spaced revision, calm rest, and honest tracking of unfinished chapters.",
+  },
+  {
+    id: "hard-3",
+    difficulty: "hard",
+    title: "Research Discipline",
+    text: "Careful research requires comparing evidence, questioning assumptions, recording sources precisely, and explaining conclusions without exaggerating certainty.",
+  },
+  {
+    id: "hard-4",
+    difficulty: "hard",
+    title: "Complex Focus",
+    text: "When a topic feels overwhelming, separate definitions, formulas, examples, exceptions, and common mistakes into smaller review cycles.",
   },
 ];
 
@@ -637,7 +673,7 @@ export function TypingChallengePage() {
             Skill game
           </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Typing Challenge
+            Test Typing Speed
           </h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
             Type the paragraph quickly and accurately. Build speed for notes, assignments, coding, and exam prep.
