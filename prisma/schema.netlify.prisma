@@ -37,6 +37,7 @@ model User {
   subjects      Subject[]
   exams         Exam[]
   focusSessions FocusSession[]
+  typingResults TypingResult[]
   badges        BadgeEarned[]
   passwordResetOtps PasswordResetOtp[]
 }
@@ -190,5 +191,24 @@ model FocusSession {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+}
+
+model TypingResult {
+  id          String   @id @default(cuid())
+  userId      String
+  difficulty  String
+  promptTitle String
+  wpm         Int
+  accuracy    Int
+  mistakes    Int
+  score       Int
+  durationSec Float
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([difficulty, score])
+  @@index([createdAt])
   @@index([userId])
 }

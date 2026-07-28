@@ -104,6 +104,10 @@ const FocusTimerPage = dynamic(() => import("./pages/focus-timer").then((m) => m
   loading: () => <PageLoader />,
   ssr: false
 });
+const TypingChallengePage = dynamic(() => import("./pages/typing-challenge").then((m) => m.TypingChallengePage), {
+  loading: () => <PageLoader />,
+  ssr: false
+});
 const AnalyticsPage = dynamic(() => import("./pages/analytics").then((m) => m.AnalyticsPage), {
   loading: () => <PageLoader />,
   ssr: false
@@ -146,6 +150,8 @@ function PageRouter() {
         return <SubjectsPage />;
       case "focus":
         return <FocusTimerPage />;
+      case "typing":
+        return <TypingChallengePage />;
       case "analytics":
         return <AnalyticsPage />;
       case "planner":

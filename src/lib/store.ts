@@ -16,6 +16,7 @@ export type AppView =
   | "exams"
   | "revision"
   | "focus"
+  | "typing"
   | "planner"
   | "settings";
 
