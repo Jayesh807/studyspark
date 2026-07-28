@@ -18,7 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import { celebrateBurst, celebrateTrophy } from "@/lib/confetti";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -64,6 +64,7 @@ interface BestScore {
 
 interface LeaderboardResult {
   id: string;
+  userId: string;
   username: string;
   difficulty: Difficulty;
   promptTitle: string;
@@ -307,10 +308,11 @@ function LeaderboardRow({
             : "bg-violet-500/10 text-violet-600 dark:text-violet-400"
         )}
       >
-        {RankIcon ? (
-          <RankIcon className="h-4.5 w-4.5" />
-        ) : rank ? (
-          `#${rank}`
+        {rank ? (
+          <span className="flex items-center gap-0.5">
+            {RankIcon && <RankIcon className="h-3.5 w-3.5" />}
+            <span>#{rank}</span>
+          </span>
         ) : (
           <Zap className="h-4 w-4" />
         )}
@@ -458,7 +460,9 @@ export function TypingChallengePage() {
         setLeaderboard(data);
         return data;
       } catch (error) {
-        console.error("Failed to load typing leaderboard:", error);
+        if (!(error instanceof ApiError && error.status === 401)) {
+          console.error("Failed to load typing leaderboard:", error);
+        }
         const fallback = {
           top: [],
           recent: [],
@@ -513,7 +517,7 @@ export function TypingChallengePage() {
     celebrateBurst();
   }, [completionCelebration]);
 
-  const playTypingSound = (kind: "key" | "backspace" | "button" = "key") => {
+  const playTypingSound = (kind: "key" | "wrong" | "backspace" | "button" = "key") => {
     if (!soundEnabled || typeof window === "undefined") return;
     try {
       const AudioContextClass =
@@ -532,10 +536,14 @@ export function TypingChallengePage() {
       const now = context.currentTime;
       const isBackspace = kind === "backspace";
       const isButton = kind === "button";
+      const isWrong = kind === "wrong";
+      const isKey = kind === "key";
+      const clickDuration = isWrong ? 0.006 : isBackspace ? 0.026 : isKey ? 0.028 : 0.018;
+      const lowDuration = isWrong ? 0.16 : isBackspace ? 0.045 : isKey ? 0.038 : 0.032;
 
       const clickBuffer = context.createBuffer(
         1,
-        Math.floor(context.sampleRate * (isBackspace ? 0.022 : 0.016)),
+        Math.floor(context.sampleRate * clickDuration),
         context.sampleRate
       );
       const clickData = clickBuffer.getChannelData(0);
@@ -550,57 +558,82 @@ export function TypingChallengePage() {
       clickSource.buffer = clickBuffer;
       clickFilter.type = "bandpass";
       clickFilter.frequency.setValueAtTime(
-        (isBackspace ? 1800 : 3000) + Math.random() * 550,
+        (isWrong ? 700 : isBackspace ? 2200 : isKey ? 3200 : 3600) + Math.random() * 650,
         now
       );
-      clickFilter.Q.setValueAtTime(isBackspace ? 1.1 : 1.8, now);
+      clickFilter.Q.setValueAtTime(isWrong ? 0.6 : isBackspace ? 1.2 : isKey ? 1.7 : 2.1, now);
       clickGain.gain.setValueAtTime(0.0001, now);
       clickGain.gain.exponentialRampToValueAtTime(
-        isButton ? 0.12 : isBackspace ? 0.14 : 0.13,
-        now + 0.002
+        isWrong ? 0.035 : isButton ? 0.2 : isBackspace ? 0.34 : isKey ? 0.3 : 0.32,
+        now + 0.001
       );
       clickGain.gain.exponentialRampToValueAtTime(
         0.0001,
-        now + (isBackspace ? 0.024 : 0.017)
+        now + clickDuration
       );
 
       const thock = context.createOscillator();
       const thockGain = context.createGain();
-      thock.type = "triangle";
+      thock.type = isWrong ? "sine" : "triangle";
       thock.frequency.setValueAtTime(
-        (isBackspace ? 82 : 120) + Math.random() * 30,
+        (isWrong ? 520 : isBackspace ? 92 : isKey ? 115 : 135) + Math.random() * 35,
         now
       );
       thock.frequency.exponentialRampToValueAtTime(
-        (isBackspace ? 58 : 76) + Math.random() * 18,
-        now + 0.032
+        (isWrong ? 330 : isBackspace ? 64 : isKey ? 72 : 82) + Math.random() * 18,
+        now + lowDuration
       );
       thockGain.gain.setValueAtTime(0.0001, now);
       thockGain.gain.exponentialRampToValueAtTime(
-        isBackspace ? 0.06 : 0.045,
-        now + 0.004
+        isWrong ? 0.26 : isBackspace ? 0.12 : isKey ? 0.11 : 0.095,
+        now + 0.002
       );
       thockGain.gain.exponentialRampToValueAtTime(
         0.0001,
-        now + (isBackspace ? 0.052 : 0.04)
+        now + lowDuration
       );
 
       const compressor = context.createDynamicsCompressor();
-      compressor.threshold.setValueAtTime(-18, now);
-      compressor.knee.setValueAtTime(8, now);
-      compressor.ratio.setValueAtTime(3, now);
+      compressor.threshold.setValueAtTime(-14, now);
+      compressor.knee.setValueAtTime(10, now);
+      compressor.ratio.setValueAtTime(4, now);
+      const masterGain = context.createGain();
+      masterGain.gain.setValueAtTime(isWrong ? 2.1 : isButton ? 1.5 : isKey ? 2.2 : 2, now);
 
       clickSource.connect(clickFilter);
       clickFilter.connect(clickGain);
       clickGain.connect(compressor);
       thock.connect(thockGain);
       thockGain.connect(compressor);
-      compressor.connect(context.destination);
+      compressor.connect(masterGain);
+      masterGain.connect(context.destination);
 
       clickSource.start(now);
-      clickSource.stop(now + (isBackspace ? 0.026 : 0.02));
+      clickSource.stop(now + clickDuration + 0.004);
       thock.start(now);
-      thock.stop(now + (isBackspace ? 0.06 : 0.048));
+      thock.stop(now + lowDuration + 0.006);
+
+      if (isWrong) {
+        const buzz = context.createOscillator();
+        const buzzGain = context.createGain();
+        const buzzFilter = context.createBiquadFilter();
+
+        buzz.type = "sine";
+        buzz.frequency.setValueAtTime(310, now);
+        buzz.frequency.exponentialRampToValueAtTime(180, now + 0.12);
+        buzzFilter.type = "bandpass";
+        buzzFilter.frequency.setValueAtTime(260, now);
+        buzzFilter.Q.setValueAtTime(1.1, now);
+        buzzGain.gain.setValueAtTime(0.0001, now);
+        buzzGain.gain.exponentialRampToValueAtTime(0.34, now + 0.055);
+        buzzGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.145);
+
+        buzz.connect(buzzFilter);
+        buzzFilter.connect(buzzGain);
+        buzzGain.connect(compressor);
+        buzz.start(now + 0.045);
+        buzz.stop(now + 0.15);
+      }
     } catch {
       // Typing sound is a small enhancement; ignore unsupported audio contexts.
     }
@@ -610,8 +643,6 @@ export function TypingChallengePage() {
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     if (event.key === "Backspace") {
       playTypingSound("backspace");
-    } else if (event.key.length === 1 || event.key === "Enter") {
-      playTypingSound("key");
     }
   };
 
@@ -642,7 +673,7 @@ export function TypingChallengePage() {
         const latest = await loadLeaderboard(false);
         if (saved.result && latest && !latest.unavailable) {
           const savedResult = saved.result;
-          const rank = latest.top.findIndex((entry) => entry.id === savedResult.id) + 1;
+          const rank = latest.top.findIndex((entry) => entry.userId === savedResult.userId) + 1;
           if (rank >= 1 && rank <= 10) {
             setCompletionCelebration((current) =>
               current
@@ -661,7 +692,9 @@ export function TypingChallengePage() {
         }
       } catch (error) {
         setSavedRunKey(null);
-        console.error("Failed to save typing score:", error);
+        if (!(error instanceof ApiError && error.status === 401)) {
+          console.error("Failed to save typing score:", error);
+        }
       }
     },
     [difficulty, loadLeaderboard, prompt.title, savedRunKey]
@@ -710,6 +743,12 @@ export function TypingChallengePage() {
   const handleInput = (value: string) => {
     if (status === "finished") return;
     const next = value.slice(0, prompt.text.length);
+    const typedForward = next.length > input.length;
+    if (typedForward) {
+      const typedChar = next[next.length - 1];
+      const expectedChar = prompt.text[next.length - 1];
+      playTypingSound(typedChar === expectedChar ? "key" : "wrong");
+    }
     if (status === "ready") {
       setStatus("typing");
       setStartedAt(Date.now());
@@ -972,7 +1011,7 @@ export function TypingChallengePage() {
             {leaderboard?.mine && (
               <div className="mt-4 rounded-2xl bg-cyan-500/10 p-3 ring-1 ring-cyan-500/20">
                 <p className="text-xs font-semibold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
-                  Your best
+                  Your total
                 </p>
                 <p className="mt-1 text-sm font-bold">
                   {leaderboard.mine.score} pts * {leaderboard.mine.wpm} WPM * {leaderboard.mine.accuracy}%

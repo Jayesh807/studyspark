@@ -41,21 +41,9 @@ function serializeResult(result: {
   };
 }
 
-function bestResultPerUser<T extends { userId: string }>(results: T[]) {
-  const seen = new Set<string>();
-  return results.filter((result) => {
-    if (seen.has(result.userId)) return false;
-    seen.add(result.userId);
-    return true;
-  });
-}
-
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const difficultyParam = req.nextUrl.searchParams.get("difficulty");
     const difficulty =
@@ -67,11 +55,11 @@ export async function GET(req: NextRequest) {
 
     const where = difficulty ? { difficulty } : {};
 
-    const [topCandidates, recent, mine] = await Promise.all([
+    const [allResults, recent] = await Promise.all([
       db.typingResult.findMany({
         where,
-        orderBy: [{ score: "desc" }, { wpm: "desc" }, { createdAt: "asc" }],
-        take: 100,
+        orderBy: { createdAt: "desc" },
+        take: 5000,
         include: { user: { select: { username: true } } },
       }),
       db.typingResult.findMany({
@@ -80,13 +68,44 @@ export async function GET(req: NextRequest) {
         take: 5,
         include: { user: { select: { username: true } } },
       }),
-      db.typingResult.findFirst({
-        where: { ...where, userId: user.id },
-        orderBy: [{ score: "desc" }, { wpm: "desc" }, { createdAt: "asc" }],
-        include: { user: { select: { username: true } } },
-      }),
     ]);
-    const top = bestResultPerUser(topCandidates).slice(0, 10);
+
+    const totals = new Map<
+      string,
+      {
+        latest: (typeof allResults)[number];
+        score: number;
+        attempts: number;
+      }
+    >();
+
+    for (const result of allResults) {
+      const existing = totals.get(result.userId);
+      if (existing) {
+        existing.score += result.score;
+        existing.attempts += 1;
+      } else {
+        totals.set(result.userId, {
+          latest: result,
+          score: result.score,
+          attempts: 1,
+        });
+      }
+    }
+
+    const totalResults = Array.from(totals.values()).map((entry) => ({
+      ...entry.latest,
+      id: `total-${entry.latest.userId}-${entry.latest.difficulty}`,
+      promptTitle: `${entry.attempts} ${entry.attempts === 1 ? "run" : "runs"}`,
+      score: entry.score,
+    }));
+
+    const top = totalResults
+      .sort((a, b) => b.score - a.score || b.wpm - a.wpm || a.createdAt.getTime() - b.createdAt.getTime())
+      .slice(0, 10);
+    const mine = user
+      ? totalResults.find((result) => result.userId === user.id) ?? null
+      : null;
 
     return NextResponse.json({
       top: top.map(serializeResult),
