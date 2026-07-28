@@ -7,7 +7,9 @@ import {
   Timer,
   BarChart3,
   CalendarDays,
+  BookOpenCheck,
   GraduationCap,
+  Keyboard,
   Music,
   Calculator,
   type LucideIcon,
@@ -70,6 +72,20 @@ const FEATURES: Feature[] = [
     gradient: "from-amber-500 to-yellow-500",
   },
   {
+    icon: BookOpenCheck,
+    title: "Revision Plan",
+    description:
+      "Build a clear exam revision roadmap with topics, priorities, progress states, and focused next steps for each subject.",
+    gradient: "from-cyan-500 to-blue-500",
+  },
+  {
+    icon: Keyboard,
+    title: "Speed Typing",
+    description:
+      "Practice typing with timed challenges, WPM tracking, accuracy feedback, realistic key sounds, and total-score leaderboards.",
+    gradient: "from-violet-500 to-cyan-500",
+  },
+  {
     icon: Music,
     title: "Study Radio",
     description:
@@ -97,7 +113,7 @@ export function Features() {
           eyebrow="Features"
           title="Everything you need to"
           highlight="study smarter"
-          description="Eight tightly integrated tools that replace the dozen apps you're juggling today. No setup, no clutter — just clarity."
+          description="Ten tightly integrated tools that replace the dozen apps you're juggling today. No setup, no clutter — just clarity."
         />
 
         <StaggerContainer className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

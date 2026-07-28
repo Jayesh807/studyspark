@@ -7,7 +7,9 @@ import {
   Timer,
   BarChart3,
   CalendarDays,
+  BookOpenCheck,
   GraduationCap,
+  Keyboard,
   Music,
   Calculator,
   StickyNote,
@@ -91,6 +93,19 @@ const FEATURE_DEEP_DIVES: FeatureDeep[] = [
     gradient: "from-cyan-500 to-blue-500",
   },
   {
+    icon: BookOpenCheck,
+    title: "Revision Plan - Turn Exam Prep Into a Roadmap",
+    description:
+      "Plan exam revision topic by topic instead of guessing what to study next. StudySpark helps you organize chapters, set priorities, mark progress, and keep weak areas visible until they are ready.",
+    details: [
+      "Create revision topics for each exam and subject",
+      "Prioritize difficult chapters before the exam gets close",
+      "Track each topic from not started to confident",
+      "Use a focused roadmap to decide what to revise next",
+    ],
+    gradient: "from-blue-500 to-indigo-500",
+  },
+  {
     icon: StickyNote,
     title: "Notes — Capture Ideas While You Study",
     description:
@@ -102,6 +117,19 @@ const FEATURE_DEEP_DIVES: FeatureDeep[] = [
       "Seamless integration with your task and subject system",
     ],
     gradient: "from-rose-500 to-fuchsia-500",
+  },
+  {
+    icon: Keyboard,
+    title: "Speed Typing - Practice WPM and Accuracy",
+    description:
+      "Build faster typing for notes, assignments, coding, and exams with a focused typing challenge. Practice by difficulty, hear responsive key feedback, track WPM and accuracy, and compete on a total-score leaderboard.",
+    details: [
+      "Easy, medium, and hard typing paragraphs",
+      "Live WPM, accuracy, mistakes, time, and score tracking",
+      "Mechanical key sounds with a separate wrong-key alert",
+      "Leaderboard ranking based on total accumulated score",
+    ],
+    gradient: "from-violet-500 to-cyan-500",
   },
   {
     icon: Calculator,

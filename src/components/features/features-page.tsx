@@ -8,7 +8,9 @@ import {
   Timer,
   BarChart3,
   CalendarDays,
+  BookOpenCheck,
   GraduationCap,
+  Keyboard,
   Music,
   Calculator,
   Sparkles,
@@ -167,6 +169,26 @@ const FEATURE_DETAILS: FeatureDetail[] = [
     ],
   },
   {
+    id: "revision-plan",
+    icon: BookOpenCheck,
+    title: "Revision Plan",
+    subtitle: "Turn exam prep into a clear topic-by-topic roadmap",
+    summary:
+      "Revision Plan helps students prepare for exams without guesswork. Add topics for each exam, set priorities, track progress, and keep weak chapters visible until they are ready.",
+    gradient: "from-blue-500 to-indigo-500",
+    keyPoints: [
+      "Create revision topics connected to exams and subjects",
+      "Track progress states for each chapter or concept",
+      "Prioritize weak topics before exam week pressure builds",
+      "Use one roadmap to decide what to revise next",
+    ],
+    useCases: [
+      "Breaking a large syllabus into manageable revision topics",
+      "Checking which chapters are still weak before a final exam",
+      "Planning focused review sessions across multiple subjects",
+    ],
+  },
+  {
     id: "study-radio",
     icon: Music,
     title: "Study Radio & Lo-Fi Player",
@@ -184,6 +206,26 @@ const FEATURE_DETAILS: FeatureDetail[] = [
       "Listening to relaxing lo-fi beats during late-night essay writing",
       "Playing rain soundscapes during intense problem-solving sessions",
       "Streaming custom study playlists directly inside your planner",
+    ],
+  },
+  {
+    id: "speed-typing",
+    icon: Keyboard,
+    title: "Speed Typing Practice",
+    subtitle: "Improve WPM, accuracy, and keyboard confidence",
+    summary:
+      "Speed Typing gives students a focused typing challenge for notes, assignments, coding, and exam prep. Practice by difficulty, get instant WPM and accuracy feedback, hear responsive key sounds, and compete through a total-score leaderboard.",
+    gradient: "from-violet-500 to-cyan-500",
+    keyPoints: [
+      "Easy, medium, and hard typing paragraphs",
+      "Live WPM, accuracy, mistakes, time, and score tracking",
+      "Soft mechanical keypress sounds with a negative wrong-key alert",
+      "Leaderboard ranking based on total accumulated score",
+    ],
+    useCases: [
+      "Improving typing speed for long notes and assignments",
+      "Practicing accuracy before coding or online tests",
+      "Competing with classmates through total score rankings",
     ],
   },
   {
@@ -385,6 +427,11 @@ export function FeaturesPage() {
                       <td className="p-4 font-medium text-foreground">Exam Countdown & Grade Tools</td>
                       <td className="p-4 text-emerald-600 dark:text-emerald-400 font-semibold">Built-in</td>
                       <td className="p-4">Requires third-party websites</td>
+                    </tr>
+                    <tr>
+                      <td className="p-4 font-medium text-foreground">Revision Planning & Typing Practice</td>
+                      <td className="p-4 text-emerald-600 dark:text-emerald-400 font-semibold">Built-in roadmap and WPM game</td>
+                      <td className="p-4">Requires separate apps or manual tracking</td>
                     </tr>
                     <tr>
                       <td className="p-4 font-medium text-foreground">Integrated Focus Music</td>

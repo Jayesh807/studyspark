@@ -4,7 +4,7 @@ import { FeaturesPage } from "@/components/features/features-page";
 export const metadata: Metadata = {
   title: "Features - StudySpark",
   description:
-    "Explore all the features of StudySpark: Smart tasks, focus timer, calendar, subject organization, and deep analytics designed specifically for students.",
+    "Explore StudySpark features: smart tasks, focus timer, calendar, revision plans, speed typing practice, exam tracking, and analytics for students.",
   alternates: {
     canonical: "https://studysparks.cloud/features",
   },

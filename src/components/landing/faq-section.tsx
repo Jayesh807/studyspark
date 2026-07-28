@@ -48,7 +48,7 @@ const FAQ_CATEGORIES: { title: string; items: FaqItem[] }[] = [
       {
         question: "What features are included in StudySpark?",
         answer:
-          "StudySpark includes a smart task manager with priorities and categories, a student calendar with event and deadline tracking, a Pomodoro-style focus timer with subject tagging, detailed study analytics with charts and trends, an exam tracker with countdowns, an integrated study radio with lo-fi beats, and a student toolbox with CGPA calculator, percentage calculator, age calculator, and unit converter.",
+          "StudySpark includes a smart task manager with priorities and categories, a student calendar with event and deadline tracking, a Pomodoro-style focus timer with subject tagging, detailed study analytics, an exam tracker with countdowns, a revision plan for topic-by-topic exam prep, a speed typing practice game with WPM tracking, an integrated study radio, and a student toolbox with CGPA calculator, percentage calculator, age calculator, and unit converter.",
       },
       {
         question: "How does the Pomodoro focus timer work?",
