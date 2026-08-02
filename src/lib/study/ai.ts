@@ -265,7 +265,9 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
     | null = null;
 
   for (const line of lines) {
-    const questionMatch = line.match(/^\d+[\).]\s+(.+)/);
+    const questionMatch = line.match(
+      /^(?:[-*]\s*)?(?:\*\*)?(?:question\s*)?(\d+)[\).:-]?\s*(?:\*\*)?\s*(.+)/i
+    );
     if (questionMatch) {
       if (current && (current.options.length === 4 || current.options.length === 2) && current.answer) {
         items.push({
@@ -276,16 +278,18 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
         });
       }
       current = {
-        question: questionMatch[1].trim(),
+        question: questionMatch[2].trim(),
         options: [],
         answer: "",
       };
       continue;
     }
 
-    const optionMatch = line.match(/^(?:[-*]\s*)?[A-D][\).:-]\s+(.+)/i);
+    const optionMatch = line.match(
+      /^(?:[-*]\s*)?(?:\*\*)?([A-D])[\).:-](?:\*\*)?\s*(.+)/i
+    );
     if (optionMatch && current) {
-      const rawOption = optionMatch[1].trim();
+      const rawOption = optionMatch[2].trim();
       const isAnswer =
         /✅|✔|correct answer|answer/i.test(rawOption) ||
         /\*\*/.test(rawOption);
@@ -330,13 +334,15 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
 
 function parseAnswerLineQuiz(text: string, questionCount: number): StudyQuizItem[] {
   const blocks = text
-    .split(/(?=^\s*\d+[\).]\s+)/m)
+    .split(/(?=^\s*(?:[-*]\s*)?(?:\*\*)?(?:question\s*)?\d+[\).:-]?\s*)/im)
     .map((block) => block.trim())
     .filter(Boolean);
 
   return blocks.flatMap((block) => {
-    const question = block.match(/^\s*\d+[\).]\s+(.+)/m)?.[1]?.trim();
-    const options = [...block.matchAll(/^\s*(?:[-*]\s*)?([A-D])[\).:-]\s+(.+)$/gim)].map(
+    const question = block
+      .match(/^\s*(?:[-*]\s*)?(?:\*\*)?(?:question\s*)?\d+[\).:-]?\s*(?:\*\*)?\s*(.+)/im)?.[1]
+      ?.trim();
+    const options = [...block.matchAll(/^\s*(?:[-*]\s*)?(?:\*\*)?([A-D])[\).:-](?:\*\*)?\s*(.+)$/gim)].map(
       (match) => cleanOption(match[2])
     );
     const answerText = block
@@ -397,7 +403,7 @@ function isUsableQuizItem(item: StudyQuizItem) {
 function cleanOption(value: string) {
   return value
     .trim()
-    .replace(/^[A-D][\).:-]\s*/i, "")
+    .replace(/^(?:[-*]\s*)?(?:\*\*)?[A-D][\).:-](?:\*\*)?\s*/i, "")
     .replace(/[\u2705\u2714]/g, "")
     .replace(/\*\*/g, "")
     .replace(/\s*\(correct\)\s*/i, "")
@@ -531,16 +537,44 @@ function cleanSentence(value: string) {
     .trim();
 }
 
+function splitLongStudyText(value: string) {
+  const words = cleanSentence(value).split(/\s+/).filter(Boolean);
+  const statements: string[] = [];
+  const windowSize = 32;
+  const overlap = 8;
+
+  for (let start = 0; start < words.length; start += windowSize - overlap) {
+    const statement = words.slice(start, start + windowSize).join(" ");
+    if (statement.length >= 45) statements.push(statement);
+    if (start + windowSize >= words.length) break;
+  }
+
+  return statements;
+}
+
 function extractFallbackSentences(context: string) {
   const seen = new Set<string>();
-  return context
+  const normalizedContext = context
     .replace(/\n+/g, " ")
-    .split(/(?<=[.!?])\s+/)
-    .map(cleanSentence)
-    .filter((sentence) => {
-      if (sentence.length < 60 || sentence.length > 240) return false;
-      if (!getStudyTextQuality(sentence).looksUseful) return false;
-      const key = sentence.toLowerCase().replace(/\W+/g, " ").slice(0, 90);
+    .replace(/\s+/g, " ")
+    .trim();
+  const rawSegments = normalizedContext
+    .split(/(?<=[.!?])\s+|;\s+|\s{2,}/)
+    .flatMap((segment) => {
+      const cleaned = cleanSentence(segment);
+      if (cleaned.length > 260) return splitLongStudyText(cleaned);
+      return [cleaned];
+    });
+
+  if (rawSegments.length < 8) {
+    rawSegments.push(...splitLongStudyText(normalizedContext));
+  }
+
+  return rawSegments
+    .filter((statement) => {
+      if (statement.length < 45 || statement.length > 320) return false;
+      if (!getStudyTextQuality(statement).looksUseful) return false;
+      const key = statement.toLowerCase().replace(/\W+/g, " ").slice(0, 90);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -548,57 +582,16 @@ function extractFallbackSentences(context: string) {
     .slice(0, 40);
 }
 
-function topicFromSentence(sentence: string, index: number) {
-  const stopWords = new Set([
-    "about",
-    "according",
-    "after",
-    "also",
-    "because",
-    "between",
-    "during",
-    "electric",
-    "from",
-    "have",
-    "into",
-    "that",
-    "their",
-    "there",
-    "these",
-    "this",
-    "through",
-    "when",
-    "where",
-    "which",
-    "with",
-  ]);
-  const words = sentence
-    .match(/[A-Za-z][A-Za-z-]{3,}/g)
-    ?.filter((word) => !stopWords.has(word.toLowerCase()))
-    .slice(0, 4);
-
-  return words?.length ? words.join(" ") : `concept ${index + 1}`;
-}
-
 function buildFallbackQuiz(context: string, questionCount: number): StudyQuizItem[] {
   const sentences = extractFallbackSentences(context);
-  if (sentences.length < 4) return [];
+  if (sentences.length === 0) return [];
 
-  return sentences.slice(0, questionCount).map((answer, index) => {
-    const distractors = sentences
-      .filter((sentence) => sentence !== answer)
-      .slice(index + 1)
-      .concat(sentences.filter((sentence) => sentence !== answer).slice(0, index + 1))
-      .slice(0, 3);
-    const options = [answer, ...distractors].slice(0, 4);
-    const rotateBy = index % options.length;
-    const rotatedOptions = options.slice(rotateBy).concat(options.slice(0, rotateBy));
-
+  return sentences.slice(0, questionCount).map((answer) => {
     return {
-      question: `According to the PDF, which statement is correct about ${topicFromSentence(answer, index)}?`,
-      options: rotatedOptions,
-      answer,
-      explanation: `The correct answer is directly supported by the PDF: ${answer}`,
+      question: `True or False: ${answer}`,
+      options: ["True", "False"],
+      answer: "True",
+      explanation: `This statement is directly supported by the PDF: ${answer}`,
     };
   });
 }

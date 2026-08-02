@@ -22,18 +22,18 @@ afterEach(() => {
 });
 
 describe("generateGroundedQuiz", () => {
+  const context = [
+    "Newton's first law states that an object remains at rest or in uniform motion unless acted upon by an external force.",
+    "Newton's second law states that force equals mass times acceleration.",
+    "Newton's third law states that every action has an equal and opposite reaction.",
+    "Momentum is the product of mass and velocity.",
+    "Work is done when a force causes displacement.",
+    "Energy is the capacity to do work.",
+  ].join(" ");
+
   test("accepts live markdown quizzes with bullet-prefixed options", async () => {
     process.env.GROQ_API_KEY = "test-key";
     process.env.GROQ_MODEL = "test-model";
-
-    const context = [
-      "Newton's first law states that an object remains at rest or in uniform motion unless acted upon by an external force.",
-      "Newton's second law states that force equals mass times acceleration.",
-      "Newton's third law states that every action has an equal and opposite reaction.",
-      "Momentum is the product of mass and velocity.",
-      "Work is done when a force causes displacement.",
-      "Energy is the capacity to do work.",
-    ].join(" ");
 
     const aiContent = [
       "1. What does Newton's first law state?",
@@ -89,5 +89,76 @@ describe("generateGroundedQuiz", () => {
     expect(questions[0].answer).toBe(
       "An object remains at rest or in uniform motion unless acted upon by an external force"
     );
+  });
+
+  test("accepts markdown quizzes with bold labels and no spaces after option markers", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    process.env.GROQ_MODEL = "test-model";
+
+    const aiContent = [
+      "**Question 1:** What does Newton's first law describe?",
+      "**A)**Objects staying at rest or uniform motion unless acted on by force",
+      "**B)**Force equals mass times acceleration",
+      "**C)**Every action has an opposite reaction",
+      "**D)**Energy is capacity to do work",
+      "**Answer:** A",
+      "",
+      "**Question 2:** What does Newton's second law state?",
+      "**A)**Momentum is mass times velocity",
+      "**B)**Force equals mass times acceleration",
+      "**C)**Work requires displacement",
+      "**D)**Objects remain at rest",
+      "**Answer:** B",
+      "",
+      "**Question 3:** True or False: Work is done when force causes displacement.",
+      "**A)**True",
+      "**B)**False",
+      "**Answer:** A",
+      "",
+      "**Question 4:** Energy is the capacity to do what?",
+      "**A)**Remain at rest",
+      "**B)**Accelerate only",
+      "**C)**Do work",
+      "**D)**Oppose reaction",
+      "**Answer:** C",
+      "",
+      "**Question 5:** Momentum is the product of which quantities?",
+      "**A)**Mass and velocity",
+      "**B)**Force and displacement",
+      "**C)**Energy and work",
+      "**D)**Action and reaction",
+      "**Answer:** A",
+    ].join("\n");
+
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: aiContent } }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as unknown as typeof fetch;
+
+    const questions = await generateGroundedQuiz(context, 5);
+
+    expect(questions).toHaveLength(5);
+    expect(questions[2].options).toEqual(["True", "False"]);
+  });
+
+  test("builds PDF-grounded fallback questions when AI output cannot be parsed", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    process.env.GROQ_MODEL = "test-model";
+
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "I cannot format the quiz right now." } }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )) as unknown as typeof fetch;
+
+    const questions = await generateGroundedQuiz(context, 5);
+
+    expect(questions).toHaveLength(5);
+    expect(questions.every((question) => question.answer === "True")).toBe(true);
   });
 });
