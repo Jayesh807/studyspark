@@ -1967,6 +1967,7 @@ export function StudySearchPage() {
   const [asking, setAsking] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [isPdfBlobHtml, setIsPdfBlobHtml] = useState(false);
   const [showIntroSplash, setShowIntroSplash] = useState(true);
 
   const [isPortalDragging, setIsPortalDragging] = useState(false);
@@ -2151,10 +2152,19 @@ export function StudySearchPage() {
         );
       }
 
+      const contentType = response.headers.get("content-type") || "";
+      const isHtml = contentType.includes("text/html");
+      setIsPdfBlobHtml(isHtml);
+
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       setPdfBlobUrl(url);
-      toast.success("PDF ready! Click Preview or Download.");
+
+      if (isHtml) {
+        toast.success("Document ready! Click 'Save as PDF' or 'Download' to save.");
+      } else {
+        toast.success("PDF ready! Click Download to save it.");
+      }
     } catch (error) {
       handleError(error, "Could not create PDF");
     } finally {
@@ -2168,17 +2178,26 @@ export function StudySearchPage() {
     if (!win) {
       toast.error("Pop-up blocked. Please allow pop-ups to view/print your document.");
     } else {
-      toast.success("Print view opened! Click 'Save as PDF' to save your document.");
+      toast.success("Print view opened! Select 'Save as PDF' to save your document.");
     }
   };
 
   const downloadPdf = () => {
     if (!pdfBlobUrl) return;
-    const link = window.document.createElement("a");
-    link.href = pdfBlobUrl;
-    link.download = "study-notes.pdf";
-    link.click();
-    toast.success("PDF downloaded");
+    if (isPdfBlobHtml) {
+      const win = window.open(pdfBlobUrl, "_blank");
+      if (!win) {
+        toast.error("Pop-up blocked. Please allow pop-ups to view/print your document.");
+      } else {
+        toast.success("Opening print window! Select 'Save as PDF' to save.");
+      }
+    } else {
+      const link = window.document.createElement("a");
+      link.href = pdfBlobUrl;
+      link.download = "study-notes.pdf";
+      link.click();
+      toast.success("PDF downloaded");
+    }
   };
 
   return (
