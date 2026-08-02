@@ -28,7 +28,6 @@ import {
   PartyPopper,
   Play,
   Plus,
-  Printer,
   Rocket,
   RotateCcw,
   Send,
@@ -1804,15 +1803,13 @@ function TextToPdfPanel({
                 onClick={onSaveAsPdf}
                 className="rounded-[15px] bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-lg transition-all animate-in fade-in slide-in-from-top-2 duration-300"
               >
-                <Printer className="mr-2 h-4 w-4" />
-                Save as PDF
+                Preview
               </Button>
               <Button
                 type="button"
                 onClick={onDownload}
                 className="rounded-[15px] bg-cyan-600 hover:bg-cyan-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-lg transition-all animate-in fade-in slide-in-from-top-2 duration-300"
               >
-                <Download className="mr-2 h-4 w-4" />
                 Download PDF
               </Button>
             </div>

@@ -1,7 +1,7 @@
 import { STUDY_LIMITS, type PageText } from "./types";
 
 /**
- * Robust 3-layer PDF text extractor for serverless and local environments.
+ * Robust PDF text extractor for serverless and local environments.
  * Extracts text from standard PDFs, multi-page PDFs, and complex font encodings.
  */
 export async function extractPdfPages(buffer: Buffer): Promise<PageText[]> {
@@ -82,21 +82,7 @@ export async function extractPdfPages(buffer: Buffer): Promise<PageText[]> {
       return pages;
     }
   } catch (err) {
-    console.warn("[PDF Extract Warning]: Layer 2 (Stream Parser) failed, trying Layer 3:", err);
-  }
-
-  // --------------------------------------------------------------------------
-  // Layer 3: Raw UTF-8 / Devanagari string scanner fallback
-  // --------------------------------------------------------------------------
-  try {
-    const rawString = buffer.toString("utf-8");
-    const words = rawString.match(/[\w\u0900-\u097F]{3,}/g) || [];
-    if (words.length >= 10) {
-      const extracted = words.join(" ").slice(0, 15000);
-      return [{ pageNumber: 1, text: extracted }];
-    }
-  } catch (err) {
-    console.error("[PDF Extract Error]: Layer 3 failed:", err);
+    console.warn("[PDF Extract Warning]: Layer 2 (Stream Parser) failed:", err);
   }
 
   throw new Error(
