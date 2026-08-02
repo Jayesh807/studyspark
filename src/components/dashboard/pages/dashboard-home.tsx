@@ -280,8 +280,8 @@ function GreetingHeader({ username }: { username: string }) {
         </div>
       </div>
 
-      {/* Floating Glassmorphic Quick Search Bar with Ambient Blue Glow */}
-      <div className="relative group pt-1 sm:pt-2">
+      {/* Floating Glassmorphic Quick Search Bar with Ambient Blue Glow (Mobile Only) */}
+      <div className="relative group pt-1 sm:pt-2 md:hidden">
         <div className="absolute -inset-0.5 rounded-full bg-linear-to-r from-blue-600/35 via-cyan-500/30 to-violet-600/35 opacity-75 blur-md transition-all group-hover:opacity-100 group-hover:blur-lg" />
         <button
           type="button"

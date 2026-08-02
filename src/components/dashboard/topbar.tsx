@@ -488,7 +488,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex pt-safe h-[calc(88px+env(safe-area-inset-top,0px))] sm:h-[calc(110px+env(safe-area-inset-top,0px))] items-center gap-3 border-b border-x border-border/70 bg-card/92 px-4 shadow-sm backdrop-blur-xl rounded-b-[10px] dark:border-border/60 dark:bg-background/78 dark:shadow-none lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)_minmax(0,1fr)] lg:px-6">
+    <header className="sticky top-0 z-30 flex pt-safe h-[calc(88px+env(safe-area-inset-top,0px))] sm:h-[calc(72px+env(safe-area-inset-top,0px))] items-center gap-3 border-b border-x border-border/70 bg-card/92 px-4 shadow-sm backdrop-blur-xl rounded-b-[10px] dark:border-border/60 dark:bg-background/78 dark:shadow-none lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)_minmax(0,1fr)] lg:px-6">
       {/* Mobile menu */}
       <Button
         variant="ghost"
