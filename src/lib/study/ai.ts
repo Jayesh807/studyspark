@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { StudyQuizItem, StudySource } from "./types";
+import { getStudyTextQuality } from "./chunking";
 
 const quizItemSchema = z.object({
   question: z.string().min(5),
@@ -297,6 +298,15 @@ function parseAnswerLineQuiz(text: string, questionCount: number): StudyQuizItem
 }
 
 function isUsableQuizItem(item: StudyQuizItem) {
+  const placeholderQuestion =
+    /\b(?:standard concept|multiple-choice question|fill-in-the-blank formula|subject concept question|statement with ___ blank|option 1|option 2)\b/i;
+  const metaQuestion =
+    /\b(?:primary purpose of the pdf|document about|author of the pdf|formatting is used|pdf document|font descriptor|mediabox|xobject|flatedecode|cidtogidmap)\b/i;
+
+  if (placeholderQuestion.test(item.question) || metaQuestion.test(item.question)) {
+    return false;
+  }
+
   const answerLower = item.answer.toLowerCase();
   const optionsLower = item.options.map((option) => option.toLowerCase());
 
@@ -399,6 +409,7 @@ function normalizeQuizItem(item: StudyQuizItem): StudyQuizItem {
 
   const question = item.question
     .trim()
+    .replace(/\*\*/g, "")
     .replace(/^#+\s*/, "")
     .replace(/^\d+[\).]\s*/, "")
     .replace(/^(?:question|q)\s*\d*[:.?]*\s*/i, "")
@@ -431,6 +442,41 @@ function parseQuizItems(text: string, questionCount: number) {
     .concat(parseAnswerLineQuiz(normalized, questionCount))
     .map(normalizeQuizItem)
     .filter(isUsableQuizItem);
+}
+
+function dedupeQuizItems(items: StudyQuizItem[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = item.question.toLowerCase().replace(/\W+/g, " ").trim();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeUniqueQuizItems(
+  existingItems: StudyQuizItem[],
+  newItems: StudyQuizItem[],
+  limit: number
+) {
+  return dedupeQuizItems(existingItems.concat(newItems)).slice(0, limit);
+}
+
+function questionTypeMix(questionCount: number) {
+  if (questionCount <= 2) {
+    return { mcqCount: questionCount, tfCount: 0, fibCount: 0 };
+  }
+  if (questionCount <= 4) {
+    return { mcqCount: questionCount - 1, tfCount: 1, fibCount: 0 };
+  }
+  if (questionCount === 5) {
+    return { mcqCount: 3, tfCount: 1, fibCount: 1 };
+  }
+  return {
+    mcqCount: Math.max(1, questionCount - 4),
+    tfCount: 2,
+    fibCount: 2,
+  };
 }
 
 function buildSimpleVector(text: string, dimensions = 128): number[] {
@@ -508,13 +554,26 @@ async function generateQuizBatch(
   questionCount: number,
   existingQuestions: string[] = []
 ): Promise<StudyQuizItem[]> {
+  const contextQuality = getStudyTextQuality(context);
+  if (!contextQuality.looksUseful) {
+    console.warn("[Study Quiz]: Unusable quiz context", {
+      questionCount,
+      contextChars: contextQuality.charCount,
+      contextWords: contextQuality.wordCount,
+      pdfInternalTokenRatio: contextQuality.pdfInternalTokenRatio,
+      suspiciousTokenRatio: contextQuality.suspiciousTokenRatio,
+      contextPreview: context.slice(0, 240),
+    });
+    throw new Error(
+      "The uploaded PDF did not contain enough readable study text for quiz generation. Please upload a text-selectable PDF or run OCR on scanned/image-based notes first."
+    );
+  }
+
   const avoidText = existingQuestions.length
     ? `\nDo not repeat: ${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join("; ")}`
     : "";
 
-  const tfCount = questionCount === 5 ? 1 : 2;
-  const fibCount = questionCount === 5 ? 1 : 2;
-  const mcqCount = Math.max(1, questionCount - tfCount - fibCount);
+  const { mcqCount, tfCount, fibCount } = questionTypeMix(questionCount);
 
   const markdownPrompt = [
     `You are an expert exam question generator for high school and university students.`,
@@ -522,6 +581,7 @@ async function generateQuizBatch(
     `STRICT RULES:`,
     `- DO NOT ask meta-questions like "What is the primary purpose of the PDF document?", "What is the document about?", "Who is the author?", or "What formatting is used?".`,
     `- Ask ONLY deep, subject-matter questions testing actual scientific/academic concepts in the text (e.g. "What is centripetal acceleration?", "What is the formula for maximum height in projectile motion?").`,
+    `- Never use the category names below as question text. They describe the mix only.`,
     `- Ensure all options (A, B, C, D) are realistic, relevant, and test real knowledge.`,
     ``,
     `QUESTION TYPES REQUIRED (Mix of 3 types):`,
@@ -529,7 +589,7 @@ async function generateQuizBatch(
     `- ${tfCount} True/False Conceptual Questions (Prefix question with "True or False:", 2 options: A. True, B. False).`,
     `- ${fibCount} Fill-in-the-Blank Formula/Definition Questions (Statement containing "___" with 4 options for the missing term).`,
     "",
-    "Format each question exactly like this:",
+    "Format each question exactly like this, replacing the bracketed text with a real question from the material:",
     "",
     "1. [Subject Concept Question]?",
     "A. Option 1",
@@ -545,21 +605,40 @@ async function generateQuizBatch(
   ].join("\n");
 
   const responseText = await generateText(markdownPrompt, 2500);
-  const markdownQuestions = parseQuizItems(responseText, questionCount);
-  if (markdownQuestions.length >= 1) {
-    return markdownQuestions.slice(0, questionCount);
-  }
-
-  throw new Error(
-    "The AI model could not generate proper MCQs for this material. Please try again with a different section or text."
-  );
+  return dedupeQuizItems(parseQuizItems(responseText, questionCount)).slice(0, questionCount);
 }
 
 export async function generateGroundedQuiz(
   context: string,
   questionCount: 5 | 10
 ): Promise<StudyQuizItem[]> {
-  return generateQuizBatch(context, questionCount);
+  let questions: StudyQuizItem[] = [];
+  const maxAttempts = 2;
+
+  for (let attempt = 0; attempt < maxAttempts && questions.length < questionCount; attempt += 1) {
+    const remaining = questionCount - questions.length;
+    const batchSize = attempt === 0 ? questionCount : Math.max(remaining, 3);
+    const batch = await generateQuizBatch(
+      context,
+      batchSize,
+      questions.map((item) => item.question)
+    );
+    questions = mergeUniqueQuizItems(questions, batch, questionCount);
+  }
+
+  if (questions.length >= questionCount) {
+    return questions.slice(0, questionCount);
+  }
+
+  console.warn("[Study Quiz]: Not enough usable questions generated", {
+    requested: questionCount,
+    generated: questions.length,
+    contextPreview: context.slice(0, 240),
+  });
+
+  throw new Error(
+    `The AI generated ${questions.length || "no"} usable PDF-grounded questions, but ${questionCount} were requested. Please try 5 questions or upload a PDF with more selectable study text.`
+  );
 }
 
 export async function answerGroundedDoubt(
