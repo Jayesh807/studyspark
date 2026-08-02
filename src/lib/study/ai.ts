@@ -15,6 +15,22 @@ const quizResponseSchema = z.object({
 
 const AI_REQUEST_TIMEOUT_MS = 20_000;
 
+export type StudyQuizErrorCode =
+  | "UNREADABLE_CONTEXT"
+  | "AI_TIMEOUT"
+  | "AI_OUTPUT_NOT_USABLE"
+  | "AI_PROVIDER_ERROR";
+
+export class StudyQuizGenerationError extends Error {
+  code: StudyQuizErrorCode;
+
+  constructor(code: StudyQuizErrorCode, message: string) {
+    super(message);
+    this.name = "StudyQuizGenerationError";
+    this.code = code;
+  }
+}
+
 function aiTimeoutSignal() {
   return AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS);
 }
@@ -66,6 +82,7 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
 
     // Cap max_tokens to 4096 for Groq API compatibility
     const groqMaxTokens = Math.min(maxTokens, 4096);
+    let lastError = "";
 
     for (const model of groqModels) {
       try {
@@ -89,14 +106,23 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
           if (content) return content.trim();
         } else {
           const errText = await res.text().catch(() => "");
+          lastError = errText || `HTTP ${res.status}`;
           console.error(`[Groq API ${res.status} - ${model}]:`, errText);
         }
       } catch (err) {
         if (isAbortError(err)) {
-          throw new Error("Sparks AI timed out while generating quiz questions.");
+          throw new StudyQuizGenerationError(
+            "AI_TIMEOUT",
+            "Sparks AI timed out while generating quiz questions. Please try again with 5 questions."
+          );
         }
+        lastError = err instanceof Error ? err.message : String(err);
         console.error(`[Groq API Exception - ${model}]:`, err);
       }
+    }
+
+    if (lastError) {
+      throw new StudyQuizGenerationError("AI_PROVIDER_ERROR", `Sparks AI Error: ${lastError}`);
     }
   }
 
@@ -148,7 +174,10 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
           }
         } catch (err) {
           if (isAbortError(err)) {
-            throw new Error("Sparks AI timed out while generating quiz questions.");
+            throw new StudyQuizGenerationError(
+              "AI_TIMEOUT",
+              "Sparks AI timed out while generating quiz questions. Please try again with 5 questions."
+            );
           }
           lastError = err instanceof Error ? err.message : String(err);
         }
@@ -156,12 +185,22 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
     }
 
     if (isRateLimit) {
-      throw new Error("Sparks AI limit reached. Please wait 10 seconds and try again.");
+      throw new StudyQuizGenerationError(
+        "AI_PROVIDER_ERROR",
+        "Sparks AI limit reached. Please wait 10 seconds and try again."
+      );
     }
 
     if (lastError) {
-      throw new Error(`Sparks AI Error: ${lastError}`);
+      throw new StudyQuizGenerationError("AI_PROVIDER_ERROR", `Sparks AI Error: ${lastError}`);
     }
+  }
+
+  if (process.env.NETLIFY || process.env.VERCEL || process.env.NODE_ENV === "production") {
+    throw new StudyQuizGenerationError(
+      "AI_PROVIDER_ERROR",
+      "Sparks AI is not configured for live deployment. Please set GROQ_API_KEY or GEMINI_API_KEY."
+    );
   }
 
   // 3. Fallback to local Ollama
@@ -660,9 +699,9 @@ async function generateQuizBatch(
       contextWords: contextQuality.wordCount,
       pdfInternalTokenRatio: contextQuality.pdfInternalTokenRatio,
       suspiciousTokenRatio: contextQuality.suspiciousTokenRatio,
-      contextPreview: context.slice(0, 240),
     });
-    throw new Error(
+    throw new StudyQuizGenerationError(
+      "UNREADABLE_CONTEXT",
       "The uploaded PDF did not contain enough readable study text for quiz generation. Please upload a text-selectable PDF or run OCR on scanned/image-based notes first."
     );
   }
@@ -724,6 +763,12 @@ export async function generateGroundedQuiz(
       );
       questions = mergeUniqueQuizItems(questions, batch, questionCount);
     } catch (error) {
+      if (
+        error instanceof StudyQuizGenerationError &&
+        error.code === "UNREADABLE_CONTEXT"
+      ) {
+        throw error;
+      }
       console.warn("[Study Quiz]: AI quiz batch failed, using PDF fallback if needed", {
         attempt: attempt + 1,
         requested: questionCount,
@@ -748,11 +793,14 @@ export async function generateGroundedQuiz(
   console.warn("[Study Quiz]: Not enough usable questions generated", {
     requested: questionCount,
     generated: questions.length,
-    contextPreview: context.slice(0, 240),
+    contextChars: getStudyTextQuality(context).charCount,
   });
 
-  throw new Error(
-    `The AI generated ${questions.length || "no"} usable PDF-grounded questions, but ${questionCount} were requested. Please try 5 questions or upload a PDF with more selectable study text.`
+  throw new StudyQuizGenerationError(
+    "AI_OUTPUT_NOT_USABLE",
+    questionCount === 10
+      ? `Sparks AI generated ${questions.length || "no"} usable PDF-grounded questions, but 10 were requested. Please try 5 questions or upload a PDF with clearer study text.`
+      : `Sparks AI generated ${questions.length || "no"} usable PDF-grounded questions. Please upload a PDF with clearer study text or try again.`
   );
 }
 
