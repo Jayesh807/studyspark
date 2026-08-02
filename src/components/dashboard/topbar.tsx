@@ -488,7 +488,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-[70px] items-center gap-3 border-b border-border/70 bg-card/92 px-4 shadow-sm backdrop-blur-xl dark:border-border/60 dark:bg-background/78 dark:shadow-none lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)_minmax(0,1fr)] lg:px-6">
+    <header className="sticky top-0 z-30 flex pt-safe h-[calc(56px+env(safe-area-inset-top,0px))] sm:h-[calc(70px+env(safe-area-inset-top,0px))] items-center gap-3 border-b border-border/70 bg-card/92 px-4 shadow-sm backdrop-blur-xl dark:border-border/60 dark:bg-background/78 dark:shadow-none lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)_minmax(0,1fr)] lg:px-6">
       {/* Mobile menu */}
       <Button
         variant="ghost"
@@ -516,7 +516,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
         </p>
       </motion.div>
 
-      {/* Search — opens command palette */}
+      {/* Search — opens command palette (Desktop) */}
       <div className="relative hidden justify-center md:flex lg:w-full">
         <button
           type="button"
@@ -531,16 +531,6 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
           </kbd>
         </button>
       </div>
-      {/* Mobile search icon button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9 rounded-lg md:hidden"
-        onClick={onOpenPalette}
-        aria-label="Open command palette"
-      >
-        <Search className="h-[18px] w-[18px]" />
-      </Button>
 
       {/* Study Radio popover */}
       <div className="contents lg:flex lg:items-center lg:justify-end lg:gap-3">
@@ -622,7 +612,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
         </Tooltip>
       </TooltipProvider>
 
-      {/* Theme toggle */}
+      {/* Theme toggle — visible on mobile & desktop */}
       <TooltipProvider delayDuration={0}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -630,7 +620,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="relative hidden h-9 w-9 rounded-lg md:inline-flex"
+              className="relative flex h-9 w-9 rounded-lg"
               aria-label="Toggle theme"
             >
               <Sun className="h-[18px] w-[18px] rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
@@ -641,12 +631,30 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
         </Tooltip>
       </TooltipProvider>
 
+      {/* Install App toggle — visible on mobile */}
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={requestAppInstall}
+              className="relative flex h-9 w-9 rounded-lg md:hidden"
+              aria-label="Install App"
+            >
+              <Download className="h-[18px] w-[18px]" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Install App</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
       {/* Notifications — smart popover */}
       <div className="hidden md:block">
         <NotificationPopover />
       </div>
 
-      {/* Mobile utility actions */}
+      {/* Mobile utility actions — More options */}
       <Button
         variant="ghost"
         size="icon"
@@ -673,6 +681,20 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
             transition={{ duration: 0.18 }}
             className="absolute left-3 right-3 top-full mt-2 grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-background/95 p-2 shadow-2xl backdrop-blur-xl md:hidden"
           >
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                onOpenPalette?.();
+                setMobileActionsOpen(false);
+              }}
+              className="h-11 justify-start gap-3 rounded-lg px-3"
+              aria-label="Open command palette"
+            >
+              <Search className="h-[18px] w-[18px]" />
+              <span>Search</span>
+            </Button>
+
             <Popover open={mobileRadioOpen} onOpenChange={setMobileRadioOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -731,34 +753,6 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
             </Button>
 
             <NotificationPopover showLabel buttonClassName="w-full rounded-lg" />
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                toggleTheme();
-                setMobileActionsOpen(false);
-              }}
-              className="h-11 justify-start gap-3 rounded-lg px-3"
-              aria-label="Toggle theme"
-            >
-              <span className="relative h-[18px] w-[18px]">
-                <Sun className="absolute h-[18px] w-[18px] rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-[18px] w-[18px] rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
-              </span>
-              <span>Theme</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={requestAppInstall}
-              className="col-span-2 h-11 justify-start gap-3 rounded-lg px-3"
-              aria-label="Install StudySpark app"
-            >
-              <Download className="h-[18px] w-[18px]" />
-              <span>Install App</span>
-            </Button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -1751,22 +1751,22 @@ function TextToPdfPanel({
   };
 
   return (
-    <div className="flex flex-col w-full flex-1 h-full justify-between py-2 sm:py-4">
-      <div className="my-auto flex flex-col items-center justify-center py-6 text-center w-full max-w-2xl sm:max-w-3xl md:max-w-4xl mx-auto space-y-5 animate-in fade-in zoom-in-95 duration-300">
-        <div className="space-y-3 w-full">
+    <div className="flex flex-col items-center justify-center w-full flex-1 h-full py-2 sm:py-4 px-2 sm:px-4 overflow-y-auto">
+      <div className="my-auto flex flex-col items-center justify-center py-2 sm:py-6 text-center w-full max-w-2xl sm:max-w-3xl md:max-w-4xl mx-auto space-y-4 sm:space-y-6 animate-in fade-in zoom-in-95 duration-300">
+        <div className="space-y-2 sm:space-y-3 w-full">
           <h3
             style={{ fontFamily: "var(--font-poppins), sans-serif" }}
-            className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-100 flex items-center justify-center gap-2 whitespace-nowrap"
+            className="text-xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-100 flex items-center justify-center gap-2"
           >
             <span>Create Formatted Study Notes</span>
-            <FileText className="h-7 w-7 sm:h-8 sm:w-8 text-emerald-400 shrink-0" />
+            <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-400 shrink-0" />
           </h3>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed px-2">
             Select a format mode below and paste your content to generate a beautifully styled PDF.
           </p>
 
-          {/* Interactive Content Format Tag Pills (Single-line on desktop, responsive on mobile) */}
-          <div className="flex flex-wrap md:flex-nowrap items-center justify-center gap-1.5 sm:gap-2 pt-2 w-full max-w-3xl mx-auto">
+          {/* Interactive Content Format Tag Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 pt-1 sm:pt-2 w-full max-w-3xl mx-auto">
             {FORMAT_TAGS.map((tagItem) => {
               const isSelected = selectedTag === tagItem.id;
               const Icon = tagItem.icon;
@@ -1808,59 +1808,59 @@ function TextToPdfPanel({
             </div>
           )}
         </div>
-      </div>
 
-      <form onSubmit={submit} className="flex flex-col items-center gap-4 w-full max-w-2xl sm:max-w-3xl mx-auto mt-auto pt-4">
-        {/* Dynamic Width & Height Auto-Expanding Input Container */}
-        <div
-          className={cn(
-            "relative group w-full mx-auto transition-all duration-500 ease-in-out",
-            isMultiLine ? "max-w-2xl sm:max-w-3xl" : "max-w-xl sm:max-w-2xl"
-          )}
-        >
+        {/* Input Form Placed Directly Below Tags */}
+        <form onSubmit={submit} className="flex flex-col items-center gap-3 w-full max-w-2xl sm:max-w-3xl mx-auto pt-2 pb-6 sm:pb-8">
           <div
             className={cn(
-              "absolute -inset-0.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 opacity-40 blur-md transition-all duration-500 group-hover:opacity-75 group-focus-within:opacity-100 group-focus-within:blur-lg",
-              isMultiLine ? "rounded-3xl" : "rounded-full"
-            )}
-          />
-          <div
-            className={cn(
-              "relative flex bg-slate-900/90 backdrop-blur-2xl px-6 py-4 shadow-2xl border border-slate-800 transition-all duration-300 focus-within:ring-2 focus-within:ring-emerald-500/60",
-              isMultiLine ? "rounded-3xl items-end" : "rounded-full items-center"
+              "relative group w-full mx-auto transition-all duration-500 ease-in-out",
+              isMultiLine ? "max-w-2xl sm:max-w-3xl" : "max-w-xl sm:max-w-2xl"
             )}
           >
-            <textarea
-              rows={1}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  if (canGenerate) submit(e);
-                }
-              }}
-              placeholder="Paste notes or summary to generate a PDF..."
-              className="w-full bg-transparent text-sm sm:text-base text-slate-100 placeholder:text-slate-500 focus:outline-none disabled:cursor-not-allowed resize-none min-h-[32px] max-h-[260px] overflow-y-auto leading-relaxed py-1 font-medium"
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = "auto";
-                target.style.height = `${Math.min(target.scrollHeight, 260)}px`;
-              }}
+            <div
+              className={cn(
+                "absolute -inset-0.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 opacity-40 blur-md transition-all duration-500 group-hover:opacity-75 group-focus-within:opacity-100 group-focus-within:blur-lg",
+                isMultiLine ? "rounded-3xl" : "rounded-full"
+              )}
             />
-            <div className="ml-3 flex items-center shrink-0 self-end pb-0.5">
-              <Button
-                type="submit"
-                disabled={!canGenerate}
-                className="h-11 w-11 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 p-0 text-white shadow-md transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
-                aria-label="Generate PDF"
-              >
-                {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-              </Button>
+            <div
+              className={cn(
+                "relative flex bg-slate-900/90 backdrop-blur-2xl px-4 sm:px-6 py-3 sm:py-4 shadow-2xl border border-slate-800 transition-all duration-300 focus-within:ring-2 focus-within:ring-emerald-500/60",
+                isMultiLine ? "rounded-3xl items-end" : "rounded-full items-center"
+              )}
+            >
+              <textarea
+                rows={1}
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (canGenerate) submit(e);
+                  }
+                }}
+                placeholder="Paste notes or summary to generate a PDF..."
+                className="w-full bg-transparent text-xs sm:text-base text-slate-100 placeholder:text-slate-500 focus:outline-none disabled:cursor-not-allowed resize-none min-h-[32px] max-h-[220px] overflow-y-auto leading-relaxed py-1 font-medium"
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = "auto";
+                  target.style.height = `${Math.min(target.scrollHeight, 220)}px`;
+                }}
+              />
+              <div className="ml-2 sm:ml-3 flex items-center shrink-0 self-end pb-0.5">
+                <Button
+                  type="submit"
+                  disabled={!canGenerate}
+                  className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 p-0 text-white shadow-md transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                  aria-label="Generate PDF"
+                >
+                  {busy ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

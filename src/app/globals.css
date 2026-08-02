@@ -674,3 +674,58 @@
     transform: none !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * iPhone & Android Safe Area Inset Helpers
+ * ───────────────────────────────────────────────────────────────────────────── */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.mt-safe {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Instant Touch Response & Native UI Controls (Disable 300ms Delay & Selection)
+ * ───────────────────────────────────────────────────────────────────────────── */
+button,
+[role="button"],
+nav a,
+nav button,
+a,
+input[type="submit"],
+input[type="button"],
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+[role="button"],
+nav,
+.select-none-ui {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Re-enable text selection for readable content and inputs */
+input,
+textarea,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+

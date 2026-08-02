@@ -62,20 +62,28 @@ export function PwaInstallPrompt() {
     if (showIosGuide) {
       return {
         title: "Add StudySpark to your Home Screen",
-        body: "Tap Share, then choose Add to Home Screen.",
+        body: "Tap the Share button in Safari, then choose 'Add to Home Screen'.",
         action: "Got it",
       };
     }
 
+    if (!installPrompt) {
+      return {
+        title: "Install StudySpark App",
+        body: "Tap your browser menu (3 dots or Share), then tap 'Install app' or 'Add to Home screen'.",
+        action: "How to Install",
+      };
+    }
+
     return {
-      title: "Install StudySpark",
-      body: "Open your study dashboard faster from your phone.",
+      title: "Install StudySpark App",
+      body: "Install StudySpark on your phone for quick access and a full-screen experience.",
       action: "Install",
     };
-  }, [showIosGuide]);
+  }, [showIosGuide, installPrompt]);
 
   useEffect(() => {
-    if (!("serviceWorker" in navigator) || process.env.NODE_ENV !== "production") {
+    if (!("serviceWorker" in navigator)) {
       return;
     }
 
@@ -181,7 +189,8 @@ export function PwaInstallPrompt() {
         return;
       }
 
-      toast.info("Use your browser menu and choose Install app or Add to Home screen.");
+      setShowIosGuide(true);
+      setShowPrompt(true);
     };
 
     window.addEventListener(PWA_INSTALL_REQUEST_EVENT, handleInstallRequest);
@@ -204,8 +213,7 @@ export function PwaInstallPrompt() {
     }
 
     if (!installPrompt) {
-      toast.info("Install is not available in this browser yet.");
-      dismiss();
+      setShowIosGuide(true);
       return;
     }
 

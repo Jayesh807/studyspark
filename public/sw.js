@@ -1,4 +1,4 @@
-const CACHE_NAME = "studyspark-pwa-v1";
+const CACHE_NAME = "studyspark-pwa-v2";
 const APP_SHELL = [
   "/",
   "/site.webmanifest",
@@ -14,7 +14,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_NAME)
       .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting()),
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -26,10 +26,10 @@ self.addEventListener("activate", (event) => {
         Promise.all(
           keys
             .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key)),
-        ),
+            .map((key) => caches.delete(key))
+        )
       )
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
   );
 });
 
@@ -37,10 +37,13 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
+  // Skip service worker caching on localhost development and API calls
   if (
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
-    url.pathname.startsWith("/api/")
+    url.pathname.startsWith("/api/") ||
+    url.hostname === "localhost" ||
+    url.hostname === "127.0.0.1"
   ) {
     return;
   }
@@ -53,7 +56,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put("/", copy));
           return response;
         })
-        .catch(() => caches.match("/") || Response.error()),
+        .catch(() => caches.match("/") || Response.error())
     );
     return;
   }
@@ -70,6 +73,57 @@ self.addEventListener("fetch", (event) => {
 
         return response;
       });
-    }),
+    })
+  );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Native Mobile & Web Push Notification Event Handlers
+// ─────────────────────────────────────────────────────────────────────────────
+
+self.addEventListener("push", (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    const title = data.title || "StudySpark Notification 📚";
+    const options = {
+      body: data.body || "You have a new study update!",
+      icon: data.icon || "/icon-192.png",
+      badge: "/favicon-48x48.png",
+      vibrate: [100, 50, 100],
+      data: { url: data.url || "/" },
+      actions: data.actions || [],
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch {
+    const text = event.data.text();
+    event.waitUntil(
+      self.registration.showNotification("StudySpark 📚", {
+        body: text,
+        icon: "/icon-192.png",
+        vibrate: [100, 50, 100],
+      })
+    );
+  }
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification.data?.url || "/";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
   );
 });

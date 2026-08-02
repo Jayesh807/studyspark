@@ -103,7 +103,7 @@ export function QuickAddFAB() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 sm:bottom-8 sm:right-8"
+      className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3 lg:bottom-8 lg:right-8 pb-[env(safe-area-inset-bottom)]"
     >
       <AnimatePresence>
         {open && (

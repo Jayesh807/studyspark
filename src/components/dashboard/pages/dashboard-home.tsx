@@ -30,6 +30,7 @@ import {
   Plus,
   Quote,
   RefreshCw,
+  Search,
   Sparkles,
   Timer,
   TrendingUp,
@@ -248,11 +249,31 @@ function GreetingHeader({ username }: { username: string }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="dashboard-surface relative overflow-hidden p-4 sm:p-5"
+      className="relative overflow-hidden pt-0 px-1 pb-1 sm:p-5 space-y-1.5 sm:space-y-3 sm:dashboard-surface"
     >
+      {/* Floating Glassmorphic Quick Search Bar with Ambient Blue Glow */}
+      <div className="relative group">
+        <div className="absolute -inset-0.5 rounded-full bg-linear-to-r from-blue-600/35 via-cyan-500/30 to-violet-600/35 opacity-75 blur-md transition-all group-hover:opacity-100 group-hover:blur-lg" />
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(
+              new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true })
+            );
+          }}
+          className="relative flex w-full h-13 sm:h-14 items-center gap-3 rounded-full border border-cyan-500/30 bg-background/85 px-5 py-2 text-left text-sm text-muted-foreground shadow-xl backdrop-blur-xl transition-all hover:border-cyan-500/60 hover:bg-background/95 hover:text-foreground dark:bg-slate-950/80"
+        >
+          <Search className="h-4.5 w-4.5 text-cyan-400 transition-transform group-hover:scale-110 shrink-0" />
+          <span className="flex-1 font-medium truncate">Search tasks, subjects, exams, or study tools...</span>
+          <kbd className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-border/80 bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+            ⌘K
+          </kbd>
+        </button>
+      </div>
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text mb-3">
+          <div className="hidden md:inline-flex dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text mb-3">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Welcome back to your dashboard</span>
           </div>
@@ -260,12 +281,12 @@ function GreetingHeader({ username }: { username: string }) {
             {greeting},{" "}
             <span className="text-gradient capitalize">{username}</span>
           </h1>
-          <p className="text-base sm:text-lg text-muted-foreground/80 font-medium italic mt-1">
+          <p className="hidden text-base sm:block sm:text-lg text-muted-foreground/80 font-medium italic mt-1">
             Believe you can and you&apos;re halfway there.
           </p>
         </div>
 
-        <div className="grid gap-2 text-sm text-muted-foreground sm:justify-end">
+        <div className="hidden gap-2 text-sm text-muted-foreground sm:grid sm:justify-end">
           <span className="dashboard-chip justify-start sm:justify-end">
             <CalendarDays className="h-4 w-4 text-violet-500" />
             <span>{format(now, "EEEE, MMMM d, yyyy")}</span>

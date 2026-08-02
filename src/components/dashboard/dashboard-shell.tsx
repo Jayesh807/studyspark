@@ -9,6 +9,7 @@ import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { CommandPalette } from "./command-palette";
 import { QuickAddFAB } from "./quick-add-fab";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 import { OnboardingTour } from "./onboarding-tour";
 import { AnimatedBlobs } from "@/components/shared/animated-blobs";
 import { PageLoader } from "@/components/shared/feedback";
@@ -172,7 +173,7 @@ function PageRouter() {
 
   return (
     <main ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin scroll-smooth">
-      <div className="mx-auto w-full max-w-[1400px] p-3 sm:p-4 lg:p-5">
+      <div className="mx-auto w-full max-w-[1400px] px-3 pt-1 pb-24 sm:p-4 lg:p-5">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}
@@ -288,18 +289,27 @@ export function DashboardShell() {
             // Play sound chime arpeggio
             playBell("focus-end");
 
-            // Trigger desktop notification
+            // Trigger native mobile PWA & desktop notification
             if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-              const n = new Notification("Exam Starting! 📚", {
+              const title = "Exam Starting! 📚";
+              const options = {
                 body: `Your exam "${e.examName}" is starting now! Good luck! 🚀`,
-                icon: "/favicon.ico",
+                icon: "/icon-192.png",
+                badge: "/favicon-48x48.png",
                 tag: `exam-start-${e.id}`,
-                silent: false,
-              });
-              n.onclick = () => {
-                window.focus();
-                n.close();
               };
+
+              if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+                void navigator.serviceWorker.ready.then((reg) => {
+                  return reg.showNotification(title, options);
+                }).catch(() => {
+                  const n = new Notification(title, options);
+                  n.onclick = () => { window.focus(); n.close(); };
+                });
+              } else {
+                const n = new Notification(title, options);
+                n.onclick = () => { window.focus(); n.close(); };
+              }
             } else {
               // Fallback toast inside page
               toast.success(`Exam time! "${e.examName}" starts now! Good luck! 🚀`, {
@@ -333,6 +343,7 @@ export function DashboardShell() {
         sessionId={paletteSession}
       />
       <QuickAddFAB />
+      <MobileBottomNav />
       <OnboardingTour />
     </div>
   );
