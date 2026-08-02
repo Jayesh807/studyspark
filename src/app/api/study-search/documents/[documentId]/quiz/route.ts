@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { generateGroundedQuiz } from "@/lib/study/ai";
+import { getStudyTextQuality } from "@/lib/study/chunking";
 import { STUDY_LIMITS } from "@/lib/study/types";
 
 export const runtime = "nodejs";
@@ -38,7 +39,7 @@ export async function POST(
       include: {
         chunks: {
           orderBy: [{ pageNumber: "asc" }, { createdAt: "asc" }],
-          take: 6,
+          take: 12,
         },
       },
     });
@@ -47,7 +48,21 @@ export async function POST(
       return NextResponse.json({ error: "Study document not found." }, { status: 404 });
     }
 
-    const context = document.chunks.map((chunk) => chunk.content).join("\n\n");
+    const usefulChunks = document.chunks.filter((chunk) =>
+      getStudyTextQuality(chunk.content).looksUseful
+    );
+
+    if (usefulChunks.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "This PDF was indexed without readable study text. Please re-upload the PDF and try again.",
+        },
+        { status: 422 }
+      );
+    }
+
+    const context = usefulChunks.map((chunk) => chunk.content).join("\n\n");
     const questions = await generateGroundedQuiz(
       context,
       parsed.data.count as (typeof STUDY_LIMITS.allowedQuizCounts)[number]

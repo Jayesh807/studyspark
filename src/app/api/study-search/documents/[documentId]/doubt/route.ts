@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { answerGroundedDoubt, createEmbedding } from "@/lib/study/ai";
+import { getStudyTextQuality } from "@/lib/study/chunking";
 import { rankStudySources } from "@/lib/study/similarity";
 import { STUDY_LIMITS } from "@/lib/study/types";
 
@@ -49,10 +50,24 @@ export async function POST(
       );
     }
 
+    const usefulChunks = document.chunks.filter((chunk) =>
+      getStudyTextQuality(chunk.content).looksUseful
+    );
+
+    if (usefulChunks.length === 0) {
+      return NextResponse.json({
+        answer:
+          "I could not find readable study text in this indexed PDF. Please re-upload the PDF after the parser fix, or upload a clearer text-selectable PDF.",
+        found: false,
+        sources: [],
+        remainingDoubts: STUDY_LIMITS.maxDoubtsPerDocument - document.doubtCount,
+      });
+    }
+
     const questionEmbedding = await createEmbedding(parsed.data.question);
     let sources = rankStudySources(
       questionEmbedding,
-      document.chunks,
+      usefulChunks,
       STUDY_LIMITS.maxRetrievedChunks
     );
 
@@ -62,8 +77,8 @@ export async function POST(
 
     // If score is low or query is general, use available document chunks for AI grounding
     if (sources.length === 0 || sources[0]?.score < STUDY_LIMITS.minDoubtSimilarity) {
-      if (isGeneralQuery || document.chunks.length > 0) {
-        sources = document.chunks.slice(0, 3).map((chunk) => ({
+      if (isGeneralQuery || usefulChunks.length > 0) {
+        sources = usefulChunks.slice(0, 3).map((chunk) => ({
           pageNumber: chunk.pageNumber,
           content: chunk.content,
           score: 0.5,
