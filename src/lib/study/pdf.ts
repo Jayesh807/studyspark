@@ -1,5 +1,34 @@
 import { STUDY_LIMITS, type PageText } from "./types";
 
+function cleanExtractedText(value: string) {
+  return value
+    .replace(/\u0000/g, " ")
+    .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function pagesFromFullText(fullText: string): PageText[] {
+  const pageChunks = fullText.split(/\f/).filter((text) => cleanExtractedText(text).length > 0);
+  if (pageChunks.length > 1) {
+    return pageChunks.slice(0, STUDY_LIMITS.maxPages).map((pageText, index) => ({
+      pageNumber: index + 1,
+      text: cleanExtractedText(pageText),
+    }));
+  }
+
+  const pageSize = 1500;
+  const pages: PageText[] = [];
+  const numPages = Math.min(STUDY_LIMITS.maxPages, Math.ceil(fullText.length / pageSize));
+  for (let index = 0; index < numPages; index += 1) {
+    pages.push({
+      pageNumber: index + 1,
+      text: cleanExtractedText(fullText.slice(index * pageSize, (index + 1) * pageSize)),
+    });
+  }
+  return pages;
+}
+
 /**
  * Robust PDF text extractor for serverless and local environments.
  * Extracts text from standard PDFs, multi-page PDFs, and complex font encodings.
@@ -12,29 +41,37 @@ export async function extractPdfPages(buffer: Buffer): Promise<PageText[]> {
     const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: buffer });
     try {
-      const result = await parser.getText().catch(() => null);
-      const fullText = result?.text?.trim() || "";
+      const result = await parser.getText().catch((err) => {
+        console.warn("[PDF Extract Warning]: Full-document PDFParse text failed:", err);
+        return null;
+      });
+      const fullText = cleanExtractedText(result?.text || "");
 
       if (fullText.length >= 10) {
-        // Split by form-feed character (\f) if multi-page
-        const pageChunks = fullText.split(/\f/).filter((t) => t.trim().length > 0);
-        if (pageChunks.length > 1) {
-          return pageChunks.slice(0, STUDY_LIMITS.maxPages).map((pText, i) => ({
-            pageNumber: i + 1,
-            text: pText.trim(),
-          }));
-        }
+        return pagesFromFullText(fullText);
+      }
 
-        // Otherwise split by ~1500 character chunks
-        const pageSize = 1500;
-        const pages: PageText[] = [];
-        const numPages = Math.min(STUDY_LIMITS.maxPages, Math.ceil(fullText.length / pageSize));
-        for (let i = 0; i < numPages; i++) {
-          pages.push({
-            pageNumber: i + 1,
-            text: fullText.slice(i * pageSize, (i + 1) * pageSize),
+      const info = await parser.getInfo().catch(() => ({ total: STUDY_LIMITS.maxPages }));
+      const totalPages = Math.min(
+        typeof info.total === "number" && info.total > 0 ? info.total : STUDY_LIMITS.maxPages,
+        STUDY_LIMITS.maxPages
+      );
+      const pages: PageText[] = [];
+
+      for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+        const pageResult = await parser
+          .getText({ partial: [pageNumber] })
+          .catch((err) => {
+            console.warn(`[PDF Extract Warning]: Page ${pageNumber} PDFParse text failed:`, err);
+            return null;
           });
+        const pageText = cleanExtractedText(pageResult?.text || "");
+        if (pageText.length >= 10) {
+          pages.push({ pageNumber, text: pageText });
         }
+      }
+
+      if (pages.length > 0) {
         return pages;
       }
     } finally {
@@ -68,7 +105,7 @@ export async function extractPdfPages(buffer: Buffer): Promise<PageText[]> {
       }
     }
 
-    const fullText = textBlocks.join(" ").replace(/\s+/g, " ").trim();
+    const fullText = cleanExtractedText(textBlocks.join(" "));
     if (fullText.length >= 10) {
       const pageSize = 1500;
       const pages: PageText[] = [];

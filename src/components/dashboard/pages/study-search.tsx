@@ -662,16 +662,8 @@ function FullTestModeModal({
                 </div>
 
                 {currentItem && (() => {
-                  const isTF = /true or false/i.test(currentItem.question) || (currentItem.options.length === 2 && currentItem.options.some(o => /true/i.test(o)));
-                  const isFIB = /___|fill in the blank/i.test(currentItem.question);
-                  const typeLabel = isTF ? "TRUE / FALSE" : isFIB ? "FILL IN THE BLANK" : "MULTIPLE CHOICE";
-                  const typeColor = isTF ? "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/40" : isFIB ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40" : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40";
-
                   return (
-                    <div className="space-y-2">
-                      <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider border", typeColor)}>
-                        {typeLabel}
-                      </span>
+                    <div>
                       <h3 className="text-base sm:text-xl font-bold leading-relaxed text-slate-100">
                         {currentItem.question}
                       </h3>
@@ -1441,28 +1433,28 @@ function DoubtPanel({
 
   const ALL_PROMPT_SETS = [
     [
-      "Summarize the main points of this document",
-      "List important formulas and definitions",
-      "Create 3 key practice review questions",
-      "Explain the core concept step-by-step",
+      "Summarize only the real study topics from this PDF",
+      "List the formulas and definitions found in this PDF",
+      "Create 3 exam questions from this PDF content",
+      "Explain the main concept from this PDF step-by-step",
     ],
     [
-      "What are the most common exam questions for this?",
-      "Give a quick 60-second summary recap",
-      "What are 5 key terms I must memorize?",
-      "Explain this as if I am a beginner",
+      "What questions can be asked from this PDF?",
+      "Give a 60-second recap using only this PDF",
+      "What are 5 key terms from this PDF I must memorize?",
+      "Explain this PDF as if I am a beginner",
     ],
     [
-      "Compare and contrast the main ideas mentioned",
-      "What are the real-world applications of this topic?",
-      "What are the critical assumptions or limitations?",
-      "Generate a quick practice problem with solution",
+      "Compare the main ideas mentioned in this PDF",
+      "What real-world applications are mentioned in this PDF?",
+      "What assumptions or limitations are stated in this PDF?",
+      "Generate a practice problem from this PDF with solution",
     ],
     [
-      "What are the key takeaways for my exam?",
-      "Provide a bulleted cheat sheet for this chapter",
-      "Explain the trickiest concept in simple terms",
-      "Create 3 true/false review questions",
+      "What are the key exam takeaways from this PDF?",
+      "Provide a cheat sheet from this PDF only",
+      "Explain the trickiest PDF concept in simple terms",
+      "Create 3 true/false questions from this PDF",
     ],
   ];
 

@@ -13,6 +13,16 @@ const quizResponseSchema = z.object({
   questions: z.array(quizItemSchema),
 });
 
+const AI_REQUEST_TIMEOUT_MS = 20_000;
+
+function aiTimeoutSignal() {
+  return AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS);
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === "TimeoutError";
+}
+
 function ollamaBaseUrl() {
   return (process.env.OLLAMA_BASE_URL || "http://localhost:11434").replace(/\/$/, "");
 }
@@ -32,6 +42,7 @@ async function postOllama<T>(path: string, body: unknown): Promise<T> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: aiTimeoutSignal(),
     });
   } catch {
     throw new Error(
@@ -70,6 +81,7 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
             temperature: 0.15,
             max_tokens: groqMaxTokens,
           }),
+          signal: aiTimeoutSignal(),
         });
         if (res.ok) {
           const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
@@ -80,6 +92,9 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
           console.error(`[Groq API ${res.status} - ${model}]:`, errText);
         }
       } catch (err) {
+        if (isAbortError(err)) {
+          throw new Error("Sparks AI timed out while generating quiz questions.");
+        }
         console.error(`[Groq API Exception - ${model}]:`, err);
       }
     }
@@ -110,6 +125,7 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
                   maxOutputTokens: maxTokens,
                 },
               }),
+              signal: aiTimeoutSignal(),
             }
           );
 
@@ -131,6 +147,9 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
             break;
           }
         } catch (err) {
+          if (isAbortError(err)) {
+            throw new Error("Sparks AI timed out while generating quiz questions.");
+          }
           lastError = err instanceof Error ? err.message : String(err);
         }
       }
@@ -462,6 +481,85 @@ function mergeUniqueQuizItems(
   return dedupeQuizItems(existingItems.concat(newItems)).slice(0, limit);
 }
 
+function cleanSentence(value: string) {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/^[^A-Za-z0-9]+/, "")
+    .trim();
+}
+
+function extractFallbackSentences(context: string) {
+  const seen = new Set<string>();
+  return context
+    .replace(/\n+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map(cleanSentence)
+    .filter((sentence) => {
+      if (sentence.length < 60 || sentence.length > 240) return false;
+      if (!getStudyTextQuality(sentence).looksUseful) return false;
+      const key = sentence.toLowerCase().replace(/\W+/g, " ").slice(0, 90);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 40);
+}
+
+function topicFromSentence(sentence: string, index: number) {
+  const stopWords = new Set([
+    "about",
+    "according",
+    "after",
+    "also",
+    "because",
+    "between",
+    "during",
+    "electric",
+    "from",
+    "have",
+    "into",
+    "that",
+    "their",
+    "there",
+    "these",
+    "this",
+    "through",
+    "when",
+    "where",
+    "which",
+    "with",
+  ]);
+  const words = sentence
+    .match(/[A-Za-z][A-Za-z-]{3,}/g)
+    ?.filter((word) => !stopWords.has(word.toLowerCase()))
+    .slice(0, 4);
+
+  return words?.length ? words.join(" ") : `concept ${index + 1}`;
+}
+
+function buildFallbackQuiz(context: string, questionCount: number): StudyQuizItem[] {
+  const sentences = extractFallbackSentences(context);
+  if (sentences.length < 4) return [];
+
+  return sentences.slice(0, questionCount).map((answer, index) => {
+    const distractors = sentences
+      .filter((sentence) => sentence !== answer)
+      .slice(index + 1)
+      .concat(sentences.filter((sentence) => sentence !== answer).slice(0, index + 1))
+      .slice(0, 3);
+    const options = [answer, ...distractors].slice(0, 4);
+    const rotateBy = index % options.length;
+    const rotatedOptions = options.slice(rotateBy).concat(options.slice(0, rotateBy));
+
+    return {
+      question: `According to the PDF, which statement is correct about ${topicFromSentence(answer, index)}?`,
+      options: rotatedOptions,
+      answer,
+      explanation: `The correct answer is directly supported by the PDF: ${answer}`,
+    };
+  });
+}
+
 function questionTypeMix(questionCount: number) {
   if (questionCount <= 2) {
     return { mcqCount: questionCount, tfCount: 0, fibCount: 0 };
@@ -618,13 +716,30 @@ export async function generateGroundedQuiz(
   for (let attempt = 0; attempt < maxAttempts && questions.length < questionCount; attempt += 1) {
     const remaining = questionCount - questions.length;
     const batchSize = attempt === 0 ? questionCount : Math.max(remaining, 3);
-    const batch = await generateQuizBatch(
-      context,
-      batchSize,
-      questions.map((item) => item.question)
-    );
-    questions = mergeUniqueQuizItems(questions, batch, questionCount);
+    try {
+      const batch = await generateQuizBatch(
+        context,
+        batchSize,
+        questions.map((item) => item.question)
+      );
+      questions = mergeUniqueQuizItems(questions, batch, questionCount);
+    } catch (error) {
+      console.warn("[Study Quiz]: AI quiz batch failed, using PDF fallback if needed", {
+        attempt: attempt + 1,
+        requested: questionCount,
+        generated: questions.length,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      break;
+    }
   }
+
+  if (questions.length >= questionCount) {
+    return questions.slice(0, questionCount);
+  }
+
+  const fallbackQuestions = buildFallbackQuiz(context, questionCount - questions.length);
+  questions = mergeUniqueQuizItems(questions, fallbackQuestions, questionCount);
 
   if (questions.length >= questionCount) {
     return questions.slice(0, questionCount);
