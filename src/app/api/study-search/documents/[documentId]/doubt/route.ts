@@ -98,6 +98,20 @@ export async function POST(
       }
     }
 
+    // Verify source content is actually readable before sending to AI
+    // (catches garbled text from older indexed documents)
+    const combinedSourceText = sources.map((s) => s.content).join(" ");
+    const sourceQuality = getStudyTextQuality(combinedSourceText);
+    if (!sourceQuality.looksUseful) {
+      return NextResponse.json({
+        answer:
+          "This PDF contains garbled or unreadable text (possibly a scanned or font-encoded document). Please delete and re-upload the PDF, or upload a clearer text-selectable version.",
+        found: false,
+        sources: [],
+        remainingDoubts: STUDY_LIMITS.maxDoubtsPerDocument - document.doubtCount,
+      });
+    }
+
     const answer = await answerGroundedDoubt(parsed.data.question, sources);
     await db.studyDocument.update({
       where: { id: document.id },

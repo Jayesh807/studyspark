@@ -223,56 +223,38 @@ async function extractPdfPagesWithGeminiOcr(buffer: Buffer): Promise<PageText[]>
  */
 export async function extractPdfPages(buffer: Buffer): Promise<PageText[]> {
   // --------------------------------------------------------------------------
-  // Layer 1: PDFParse (pdf-parse) full text extraction
+  // Layer 1: unpdf (serverless-compatible, works on Netlify/Vercel)
   // --------------------------------------------------------------------------
   try {
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: buffer });
-    try {
-      const result = await parser.getText().catch((err) => {
-        console.warn("[PDF Extract Warning]: Full-document PDFParse text failed:", err);
-        return null;
-      });
-      const fullText = cleanExtractedText(result?.text || "");
+    const { getDocumentProxy, extractText } = await import("unpdf");
+    const pdf = await getDocumentProxy(new Uint8Array(buffer));
 
-      if (fullText.length >= 10) {
-        return pagesFromFullText(fullText);
-      }
+    // Try per-page extraction first
+    const { totalPages, text: pageTexts } = await extractText(pdf, { mergePages: false });
 
-      const info = await parser.getInfo().catch((err) => {
-        console.warn("[PDF Extract Warning]: PDFParse info failed:", err);
-        return null;
-      });
-      if (!info || typeof info.total !== "number" || info.total <= 0) {
-        throw new Error("PDF page count could not be read.");
-      }
-      const totalPages = Math.min(
-        info.total,
-        STUDY_LIMITS.maxPages
-      );
+    if (Array.isArray(pageTexts) && pageTexts.length > 0) {
       const pages: PageText[] = [];
-
-      for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
-        const pageResult = await parser
-          .getText({ partial: [pageNumber] })
-          .catch((err) => {
-            console.warn(`[PDF Extract Warning]: Page ${pageNumber} PDFParse text failed:`, err);
-            return null;
-          });
-        const pageText = cleanExtractedText(pageResult?.text || "");
+      const maxPages = Math.min(pageTexts.length, STUDY_LIMITS.maxPages);
+      for (let i = 0; i < maxPages; i++) {
+        const pageText = cleanExtractedText(pageTexts[i] || "");
         if (pageText.length >= 10) {
-          pages.push({ pageNumber, text: pageText });
+          pages.push({ pageNumber: i + 1, text: pageText });
         }
       }
+      if (pages.length > 0) return pages;
+    }
 
-      if (pages.length > 0) {
-        return pages;
-      }
-    } finally {
-      await parser.destroy().catch(() => null);
+    // Fallback: merge all pages into one text
+    const merged = await extractText(pdf, { mergePages: true });
+    const mergedText = merged.text;
+    const fullText = cleanExtractedText(
+      typeof mergedText === "string" ? mergedText : String(mergedText ?? "")
+    );
+    if (fullText.length >= 10) {
+      return pagesFromFullText(fullText);
     }
   } catch (err) {
-    console.warn("[PDF Extract Warning]: Layer 1 (PDFParse) failed, trying Layer 2:", err);
+    console.warn("[PDF Extract Warning]: Layer 1 (unpdf) failed, trying Layer 2:", err);
   }
 
   // --------------------------------------------------------------------------
