@@ -50,25 +50,37 @@ export async function POST(
     }
 
     const questionEmbedding = await createEmbedding(parsed.data.question);
-    const sources = rankStudySources(
+    let sources = rankStudySources(
       questionEmbedding,
       document.chunks,
       STUDY_LIMITS.maxRetrievedChunks
     );
 
-    const bestScore = sources[0]?.score ?? 0;
-    if (bestScore < STUDY_LIMITS.minDoubtSimilarity) {
-      await db.studyDocument.update({
-        where: { id: document.id },
-        data: { doubtCount: { increment: 1 } },
-      });
+    const isGeneralQuery = /summar|overview|main point|takeaway|recap|formula|definition|question|concept|step/i.test(
+      parsed.data.question
+    );
 
-      return NextResponse.json({
-        answer: "I could not find this answer in your uploaded PDF. Please ask from this material or upload another PDF.",
-        found: false,
-        sources: [],
-        remainingDoubts: STUDY_LIMITS.maxDoubtsPerDocument - document.doubtCount - 1,
-      });
+    // If score is low or query is general, use available document chunks for AI grounding
+    if (sources.length === 0 || sources[0]?.score < STUDY_LIMITS.minDoubtSimilarity) {
+      if (isGeneralQuery || document.chunks.length > 0) {
+        sources = document.chunks.slice(0, 3).map((chunk) => ({
+          pageNumber: chunk.pageNumber,
+          content: chunk.content,
+          score: 0.5,
+        }));
+      } else {
+        await db.studyDocument.update({
+          where: { id: document.id },
+          data: { doubtCount: { increment: 1 } },
+        });
+
+        return NextResponse.json({
+          answer: "I could not find this answer in your uploaded PDF. Please ask from this material or upload another PDF.",
+          found: false,
+          sources: [],
+          remainingDoubts: STUDY_LIMITS.maxDoubtsPerDocument - document.doubtCount - 1,
+        });
+      }
     }
 
     const answer = await answerGroundedDoubt(parsed.data.question, sources);

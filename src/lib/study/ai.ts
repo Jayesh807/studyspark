@@ -517,38 +517,30 @@ async function generateQuizBatch(
   const mcqCount = Math.max(1, questionCount - tfCount - fibCount);
 
   const markdownPrompt = [
-    `Create exactly ${questionCount} quiz questions from the material. Use ONLY facts from the material.`,
+    `You are an expert exam question generator for high school and university students.`,
+    `Create exactly ${questionCount} high-quality, subject-specific practice questions based ONLY on the core concepts, laws, definitions, and equations in the material below.`,
+    `STRICT RULES:`,
+    `- DO NOT ask meta-questions like "What is the primary purpose of the PDF document?", "What is the document about?", "Who is the author?", or "What formatting is used?".`,
+    `- Ask ONLY deep, subject-matter questions testing actual scientific/academic concepts in the text (e.g. "What is centripetal acceleration?", "What is the formula for maximum height in projectile motion?").`,
+    `- Ensure all options (A, B, C, D) are realistic, relevant, and test real knowledge.`,
+    ``,
     `QUESTION TYPES REQUIRED (Mix of 3 types):`,
-    `- ${mcqCount} Standard Multiple-Choice Questions (4 options: A, B, C, D).`,
-    `- ${tfCount} True/False Questions (Prefix question with "True or False:", 2 options: A. True, B. False).`,
-    `- ${fibCount} Fill-in-the-Blank Questions (Statement containing "___" with 4 options for the missing term).`,
+    `- ${mcqCount} Standard Concept Multiple-Choice Questions (4 options: A, B, C, D).`,
+    `- ${tfCount} True/False Conceptual Questions (Prefix question with "True or False:", 2 options: A. True, B. False).`,
+    `- ${fibCount} Fill-in-the-Blank Formula/Definition Questions (Statement containing "___" with 4 options for the missing term).`,
     "",
     "Format each question exactly like this:",
     "",
-    "1. [Standard MCQ Question]?",
+    "1. [Subject Concept Question]?",
     "A. Option 1",
     "B. Option 2",
     "C. Option 3",
     "D. Option 4",
     "Answer: A",
-    "Explanation: short reason",
-    "",
-    "2. True or False: [Statement]?",
-    "A. True",
-    "B. False",
-    "Answer: A",
-    "Explanation: short reason",
-    "",
-    "3. [Statement with ___ blank]?",
-    "A. Missing term 1",
-    "B. Missing term 2",
-    "C. Missing term 3",
-    "D. Missing term 4",
-    "Answer: A",
-    "Explanation: short reason",
+    "Explanation: short explanation derived from course material",
     avoidText,
     "",
-    "Material:",
+    "Course Material:",
     context,
   ].join("\n");
 
@@ -576,24 +568,28 @@ export async function answerGroundedDoubt(
 ): Promise<string> {
   const context = sources
     .map((source, index) => {
-      const content = source.content.replace(/\s+/g, " ").slice(0, 600);
-      return `[${index + 1}] Page ${source.pageNumber}: ${content}`;
+      const content = source.content.replace(/\s+/g, " ").slice(0, 1500);
+      return `[Source Page ${source.pageNumber}]:\n${content}`;
     })
     .join("\n\n");
 
   const prompt = [
-    "Answer using ONLY the material below. If not found, say: I could not find this in your PDF.",
-    "Be clear, concise, and student-friendly.",
-    "Do NOT use LaTeX math formatting, dollar signs ($R$), or raw backslashes. Use plain text (e.g., R, Ohm, Ω, m/s²).",
-    "Format: 1 short answer sentence, then 2-3 bullet key points.",
+    "You are Sparks AI, an intelligent, encouraging AI study assistant for students.",
+    "Use the course material provided below as the main reference to answer the student's question thoroughly.",
+    "SMART INSTRUCTIONS:",
+    "- Smartly correct typos in student questions (e.g., 'motion in plain' -> 'Motion in a Plane', 'formla' -> 'formula').",
+    "- If the student asks for a summary, main points, formulas, or key concepts, synthesize a clear, comprehensive breakdown from the material.",
+    "- Explain concepts clearly step-by-step with bold technical terms.",
+    "- Do NOT output generic refusal lines like 'I could not find this in your PDF' unless the material is completely empty.",
+    "- Do NOT use LaTeX math code ($R$) or raw backslashes. Use plain readable text (e.g., R, g = 9.8 m/s², v²/r).",
     "",
-    "Material:",
-    context,
+    "Course Material:",
+    context || "General course study material",
     "",
-    `Q: ${question}`,
+    `Student Question: ${question}`,
   ].join("\n");
 
-  return generateText(prompt, 400);
+  return generateText(prompt, 600);
 }
 
 export async function formatStudyTextForPdf(

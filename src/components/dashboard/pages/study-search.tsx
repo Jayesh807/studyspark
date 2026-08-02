@@ -28,6 +28,7 @@ import {
   PartyPopper,
   Play,
   Plus,
+  Printer,
   Rocket,
   RotateCcw,
   Send,
@@ -1192,16 +1193,27 @@ function QuizPanel({
 
       if (!res.ok) throw new Error("Failed to generate Quiz PDF");
 
+      const contentType = res.headers.get("content-type") || "";
       const blob = await res.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
-      const a = window.document.createElement("a");
-      a.href = downloadUrl;
-      a.download = `${(document?.fileName || "Quiz_Paper").replace(/[^a-zA-Z0-9_\-]/g, "_")}_Quiz_Exam_Paper.pdf`;
-      window.document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-      toast.success("Quiz PDF generated & downloaded!");
+
+      if (contentType.includes("text/html")) {
+        const win = window.open(downloadUrl, "_blank");
+        if (!win) {
+          toast.error("Pop-up blocked. Please allow pop-ups to view/print your Quiz PDF.");
+        } else {
+          toast.success("Quiz PDF ready! Use 'Save as PDF' in the print view.");
+        }
+      } else {
+        const a = window.document.createElement("a");
+        a.href = downloadUrl;
+        a.download = `${(document?.fileName || "Quiz_Paper").replace(/[^a-zA-Z0-9_\-]/g, "_")}_Quiz_Exam_Paper.pdf`;
+        window.document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+        toast.success("Quiz PDF generated & downloaded!");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to download Quiz PDF");
     } finally {
@@ -1717,11 +1729,13 @@ function TextToPdfPanel({
   busy,
   pdfReady,
   onGenerate,
+  onSaveAsPdf,
   onDownload,
 }: {
   busy: boolean;
   pdfReady: boolean;
   onGenerate: (text: string, tag: "english" | "hindi" | "maths" | "summary" | "code") => Promise<void>;
+  onSaveAsPdf: () => void;
   onDownload: () => void;
 }) {
   const [text, setText] = useState("");
@@ -1784,11 +1798,19 @@ function TextToPdfPanel({
           </div>
 
           {pdfReady && (
-            <div className="pt-2 flex justify-center">
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+              <Button
+                type="button"
+                onClick={onSaveAsPdf}
+                className="rounded-[15px] bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-lg transition-all animate-in fade-in slide-in-from-top-2 duration-300"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Save as PDF
+              </Button>
               <Button
                 type="button"
                 onClick={onDownload}
-                className="rounded-[15px] bg-cyan-600 hover:bg-cyan-500 px-6 py-2.5 text-sm font-bold text-white shadow-lg transition-all animate-in fade-in slide-in-from-top-2 duration-300"
+                className="rounded-[15px] bg-cyan-600 hover:bg-cyan-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-lg transition-all animate-in fade-in slide-in-from-top-2 duration-300"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Download PDF
@@ -2157,6 +2179,16 @@ export function StudySearchPage() {
     }
   };
 
+  const saveAsPdf = () => {
+    if (!pdfBlobUrl) return;
+    const win = window.open(pdfBlobUrl, "_blank");
+    if (!win) {
+      toast.error("Pop-up blocked. Please allow pop-ups to view/print your document.");
+    } else {
+      toast.success("Print view opened! Click 'Save as PDF' to save your document.");
+    }
+  };
+
   const downloadPdf = () => {
     if (!pdfBlobUrl) return;
     const link = window.document.createElement("a");
@@ -2433,6 +2465,7 @@ export function StudySearchPage() {
                       busy={generatingPdf}
                       pdfReady={Boolean(pdfBlobUrl)}
                       onGenerate={generatePdf}
+                      onSaveAsPdf={saveAsPdf}
                       onDownload={downloadPdf}
                     />
                   )}
