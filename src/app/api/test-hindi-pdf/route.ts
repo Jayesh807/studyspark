@@ -1,43 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { inspectText, validateDocumentText } from "@/lib/study/pdf-unicode";
-import { buildCompleteHtmlDocument, generatePdfWithPuppeteer } from "@/lib/study/pdf-generator";
+import { NextRequest } from "next/server";
+import { validateDocumentText } from "@/lib/study/pdf-unicode";
+import { generatePdfFromMarkdown } from "@/lib/study/pdf-generator";
 import { formatStudyTextForPdf } from "@/lib/study/ai";
 
 export const runtime = "nodejs";
 
 const HARDCODED_HINDI_TEST = `
-<h1>द्वि-आयामी गति के मूल सिद्धांत</h1>
+# द्वि-आयामी गति के मूल सिद्धांत
 
-<p>
-किसी समतल में गति को समझने के लिए स्थिति, वेग और
-त्वरण का अध्ययन किया जाता है।
-</p>
+किसी समतल में गति को समझने के लिए स्थिति, वेग और त्वरण का अध्ययन किया जाता है।
 
-<h2>प्रक्षेप्य गति</h2>
+## प्रक्षेप्य गति
 
-<p>
-प्रक्षेप्य वह वस्तु है जिसे प्रारंभिक वेग से छोड़ा जाता है
-और जिस पर गुरुत्वाकर्षण कार्य करता है।
-</p>
+प्रक्षेप्य वह वस्तु है जिसे प्रारंभिक वेग से छोड़ा जाता है और जिस पर गुरुत्वाकर्षण कार्य करता है।
 
-<table>
-  <thead>
-    <tr>
-      <th>राशि</th>
-      <th>सूत्र</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>प्रारंभिक वेग</td>
-      <td>u</td>
-    </tr>
-    <tr>
-      <td>त्वरण</td>
-      <td>g</td>
-    </tr>
-  </tbody>
-</table>
+- प्रारंभिक वेग: u
+- त्वरण: g
 `;
 
 export async function GET(req: NextRequest) {
@@ -57,24 +35,11 @@ export async function GET(req: NextRequest) {
     // Validate & normalize
     const safeText = validateDocumentText(rawText);
 
-    // Build complete HTML with embedded local Devanagari fonts
-    const html = buildCompleteHtmlDocument(safeText, {
+    // Generate PDF using PDFKit (works on Netlify - no Chrome needed)
+    const pdfBuffer = await generatePdfFromMarkdown(safeText, {
       title: "द्वि-आयामी गति टेस्ट",
       subtitle: "Hindi Devanagari PDF Generation Test",
-      lang: "hi",
     });
-
-    if (url.searchParams.get("format") === "html") {
-      return new Response(html, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/html; charset=utf-8",
-        },
-      });
-    }
-
-    // TASK 9: Generate PDF via Puppeteer
-    const pdfBuffer = await generatePdfWithPuppeteer(html);
 
     return new Response(new Uint8Array(pdfBuffer), {
       status: 200,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { buildCompleteHtmlDocument, generatePdfWithPuppeteer } from "@/lib/study/pdf-generator";
+import { generatePdfFromMarkdown } from "@/lib/study/pdf-generator";
 import { validateDocumentText } from "@/lib/study/pdf-unicode";
 
 const QuizToPdfSchema = z.object({
@@ -245,12 +245,41 @@ export async function POST(req: NextRequest) {
       ${answerExplanationsHtml}
     `;
 
-    const fullHtml = buildCompleteHtmlDocument(fullBodyHtml, {
-      title: `${cleanDocTitle} - Quiz Exam Paper`,
-      lang: "hi",
+    // Build a clean markdown string from quiz data for PDFKit
+    const markdownLines: string[] = [
+      `# Sparks AI Practice Exam Paper`,
+      `## ${cleanDocTitle}`,
+      `Total Questions: ${questions.length} MCQs | Time Allowed: ${questions.length} Minutes`,
+      `---`,
+      `## Part I — Multiple Choice Questions`,
+    ];
+
+    questions.forEach((q, idx) => {
+      const cleanQuestion = validateDocumentText(q.question);
+      markdownLines.push(`### Q${idx + 1}. ${cleanQuestion}`);
+      q.options.forEach((opt, optIdx) => {
+        const letter = String.fromCharCode(65 + optIdx);
+        markdownLines.push(`- **(${letter})** ${validateDocumentText(opt)}`);
+      });
+      markdownLines.push("");
     });
 
-    const pdfBuffer = await generatePdfWithPuppeteer(fullHtml);
+    markdownLines.push(`---`);
+    markdownLines.push(`## Part II — Answer Key & AI Explanations`);
+
+    questions.forEach((q, idx) => {
+      const cleanQuestion = validateDocumentText(q.question);
+      const cleanAns = validateDocumentText(q.answer);
+      const cleanExp = validateDocumentText(q.explanation);
+      markdownLines.push(`### Q${idx + 1}: ${cleanQuestion}`);
+      markdownLines.push(`> **Correct Answer:** ${cleanAns}`);
+      markdownLines.push(`> **Explanation:** ${cleanExp}`);
+      markdownLines.push("");
+    });
+
+    const pdfBuffer = await generatePdfFromMarkdown(markdownLines.join("\n"), {
+      title: `${cleanDocTitle} — Quiz Exam Paper`,
+    });
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
