@@ -2135,10 +2135,21 @@ export function StudySearchPage() {
         );
       }
 
+      const contentType = response.headers.get("content-type") || "";
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      setPdfBlobUrl(url);
-      toast.success("PDF ready! Click Download to save it.");
+
+      if (contentType.includes("text/html")) {
+        const win = window.open(url, "_blank");
+        if (!win) {
+          toast.error("Pop-up blocked. Please allow pop-ups to view/print your document.");
+        } else {
+          toast.success("Document ready! Use 'Save as PDF' in the print view.");
+        }
+      } else {
+        setPdfBlobUrl(url);
+        toast.success("PDF ready! Click Download to save it.");
+      }
     } catch (error) {
       handleError(error, "Could not create PDF");
     } finally {

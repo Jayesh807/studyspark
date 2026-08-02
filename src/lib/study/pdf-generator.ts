@@ -15,21 +15,18 @@ export function getLocalFontData() {
   const regularFontPath = path.join(fontsDir, "NotoSansDevanagari-Regular.ttf");
   const boldFontPath = path.join(fontsDir, "NotoSansDevanagari-Bold.ttf");
 
-  if (!fs.existsSync(regularFontPath)) {
-    throw new Error(`Hindi font was not found: ${regularFontPath}`);
-  }
-  if (!fs.existsSync(boldFontPath)) {
-    throw new Error(`Hindi font was not found: ${boldFontPath}`);
-  }
-
-  const regularFontBuffer = fs.readFileSync(regularFontPath);
-  const boldFontBuffer = fs.readFileSync(boldFontPath);
+  const regularFontBuffer = fs.existsSync(regularFontPath)
+    ? fs.readFileSync(regularFontPath)
+    : Buffer.from("");
+  const boldFontBuffer = fs.existsSync(boldFontPath)
+    ? fs.readFileSync(boldFontPath)
+    : Buffer.from("");
 
   return {
     regularFontPath,
     boldFontPath,
-    regularFontUrl: pathToFileURL(regularFontPath).href,
-    boldFontUrl: pathToFileURL(boldFontPath).href,
+    regularFontUrl: fs.existsSync(regularFontPath) ? pathToFileURL(regularFontPath).href : "",
+    boldFontUrl: fs.existsSync(boldFontPath) ? pathToFileURL(boldFontPath).href : "",
     regularFontBase64: regularFontBuffer.toString("base64"),
     boldFontBase64: boldFontBuffer.toString("base64"),
   };
@@ -40,6 +37,24 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
   const lang = options.lang || "hi";
   const title = options.title ? escapeHtml(options.title) : "";
   const subtitle = options.subtitle ? escapeHtml(options.subtitle) : "";
+
+  const fontFaceStyle = fontData.regularFontBase64
+    ? `
+    @font-face {
+      font-family: "HindiPDF";
+      src: url("data:font/ttf;charset=utf-8;base64,${fontData.regularFontBase64}") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "HindiPDF";
+      src: url("data:font/ttf;charset=utf-8;base64,${fontData.boldFontBase64}") format("truetype");
+      font-weight: 700;
+      font-style: normal;
+    }
+    `
+    : "";
 
   const mathJaxScript = options.includeMathJax !== false
     ? `
@@ -68,19 +83,7 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
   <title>${title || "Document"}</title>
   ${mathJaxScript}
   <style>
-    @font-face {
-      font-family: "HindiPDF";
-      src: url("data:font/ttf;charset=utf-8;base64,${fontData.regularFontBase64}") format("truetype");
-      font-weight: 400;
-      font-style: normal;
-    }
-
-    @font-face {
-      font-family: "HindiPDF";
-      src: url("data:font/ttf;charset=utf-8;base64,${fontData.boldFontBase64}") format("truetype");
-      font-weight: 700;
-      font-style: normal;
-    }
+    ${fontFaceStyle}
 
     *, *::before, *::after {
       box-sizing: border-box;
@@ -90,7 +93,7 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
 
     @page {
       size: A4;
-      margin: 0;
+      margin: 15mm 15mm 15mm 15mm;
     }
 
     html,
@@ -101,15 +104,11 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
         "HindiPDF",
         "Noto Sans Devanagari",
         "Mangal",
-        "Noto Sans",
-        "DejaVu Sans",
+        "Segoe UI",
+        Roboto,
         sans-serif;
       font-size: 15px;
       line-height: 1.75;
-      letter-spacing: 0;
-      word-break: normal;
-      overflow-wrap: break-word;
-      text-rendering: optimizeLegibility;
       color: #1e293b;
       background: #ffffff;
     }
@@ -119,18 +118,17 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
         "HindiPDF",
         "Noto Sans Devanagari",
         "Mangal",
-        "Noto Sans",
+        "Segoe UI",
+        Roboto,
         sans-serif;
     }
 
     .doc-banner {
       background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
       color: #ffffff;
-      padding: 36px 20mm 26px 20mm;
+      padding: 28px 24px;
       margin: 0 0 24px 0;
-      width: 100%;
-      box-sizing: border-box;
-      page-break-after: avoid;
+      border-radius: 12px;
       box-shadow: 0 4px 14px rgba(29, 78, 216, 0.15);
     }
 
@@ -149,14 +147,12 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
       font-weight: 600;
       color: #bfdbfe;
       margin: 0;
-      letter-spacing: 0.3px;
     }
 
     .doc-container {
       max-width: 100%;
-      margin: 0;
-      padding: 0 20mm 20mm 20mm;
-      box-sizing: border-box;
+      margin: 0 auto;
+      padding: 0 12px 24px 12px;
     }
 
     h1 {
@@ -219,10 +215,6 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
       color: #334155;
     }
 
-    tr {
-      page-break-inside: avoid;
-    }
-
     tr:nth-child(even) td {
       background: #f8fafc;
     }
@@ -246,7 +238,6 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
       margin: 16px 0;
       overflow: hidden;
       page-break-inside: avoid;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
 
     pre {
@@ -254,20 +245,11 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
       padding: 14px 16px;
       white-space: pre-wrap;
       word-break: break-all;
-      overflow-wrap: anywhere;
-      font-family: "Consolas", "Courier New", "JetBrains Mono", monospace;
+      font-family: "Consolas", "Courier New", monospace;
       font-size: 12.5px;
       line-height: 1.6;
       color: #38bdf8;
       background: #0f172a;
-    }
-
-    pre code {
-      font-family: "Consolas", "Courier New", "JetBrains Mono", monospace;
-      color: #38bdf8;
-      background: transparent;
-      padding: 0;
-      border: none;
     }
 
     .inline-code {
@@ -277,7 +259,7 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
       border-radius: 4px;
       padding: 1.5px 5px;
       font-size: 12.5px;
-      font-family: "Consolas", "Courier New", "JetBrains Mono", monospace;
+      font-family: "Consolas", "Courier New", monospace;
       font-weight: 600;
     }
 
@@ -287,6 +269,16 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
 
     li {
       margin: 4px 0;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+      .doc-banner {
+        border-radius: 0;
+        box-shadow: none;
+      }
     }
   </style>
 </head>
@@ -299,76 +291,67 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
 </html>`;
 }
 
-export async function generatePdfWithPuppeteer(html: string): Promise<Buffer> {
-  // On Netlify (cloud), use @sparticuz/chromium — a serverless-optimized Chromium binary.
-  // Locally (dev), use the regular puppeteer package with its bundled Chrome.
+export async function generatePdfWithPuppeteer(html: string): Promise<{ buffer: Buffer; isHtml: boolean }> {
   const isNetlify = Boolean(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
-  let browser;
+  // Try Puppeteer locally if not on Netlify
+  if (!isNetlify) {
+    try {
+      const puppeteer = await import("puppeteer");
+      const browser = await puppeteer.default.launch({
+        headless: true,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-web-security",
+          "--allow-file-access-from-files",
+          "--font-render-hinting=medium",
+        ],
+      });
 
-  if (isNetlify) {
-    // Serverless path: use chromium binary from @sparticuz/chromium
-    const chromium = (await import("@sparticuz/chromium")).default;
-    const puppeteerCore = await import("puppeteer-core");
+      try {
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: "networkidle0" as never });
+        await page.evaluate(async () => {
+          await document.fonts.ready;
+          let attempts = 0;
+          while (!(window as never as { MathJax?: { typesetPromise?: () => Promise<void> } }).MathJax?.typesetPromise && attempts < 60) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            attempts++;
+          }
+          const mjx = (window as never as { MathJax?: { typesetPromise?: () => Promise<void> } }).MathJax;
+          if (mjx?.typesetPromise) {
+            await mjx.typesetPromise();
+          }
+        });
 
-    chromium.setGraphicsMode = false;
+        const pdfUint8Array = await page.pdf({
+          format: "A4",
+          printBackground: true,
+          preferCSSPageSize: true,
+          margin: { top: "18mm", right: "16mm", bottom: "18mm", left: "16mm" },
+        });
 
-    browser = await puppeteerCore.default.launch({
-      args: chromium.args,
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    });
-  } else {
-    // Local dev path: use the full puppeteer package
-    const puppeteer = await import("puppeteer");
-    browser = await puppeteer.default.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-web-security",
-        "--allow-file-access-from-files",
-        "--font-render-hinting=medium",
-      ],
-    });
+        return { buffer: Buffer.from(pdfUint8Array), isHtml: false };
+      } finally {
+        await browser.close().catch(() => null);
+      }
+    } catch (err) {
+      console.warn("[PDF Generator]: Local Puppeteer failed, falling back to HTML print mode:", err);
+    }
   }
 
-  try {
-    const page = await browser.newPage();
+  // Serverless / Netlify Fallback: Return complete, self-contained HTML document with auto-print trigger
+  const autoPrintHtml = html.replace(
+    "</body>",
+    `<script>
+      window.onload = function() {
+        setTimeout(function() {
+          window.print();
+        }, 600);
+      };
+    </script></body>`
+  );
 
-    await page.setContent(html, {
-      waitUntil: "networkidle0" as never,
-    });
-
-    await page.evaluate(async () => {
-      await document.fonts.ready;
-
-      let attempts = 0;
-      while (!(window as never as { MathJax?: { typesetPromise?: () => Promise<void> } }).MathJax?.typesetPromise && attempts < 60) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        attempts++;
-      }
-
-      const mjx = (window as never as { MathJax?: { typesetPromise?: () => Promise<void> } }).MathJax;
-      if (mjx?.typesetPromise) {
-        await mjx.typesetPromise();
-      }
-    });
-
-    const pdfUint8Array = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      preferCSSPageSize: true,
-      margin: {
-        top: "18mm",
-        right: "16mm",
-        bottom: "18mm",
-        left: "16mm",
-      },
-    });
-
-    return Buffer.from(pdfUint8Array);
-  } finally {
-    await browser.close();
-  }
+  return { buffer: Buffer.from(autoPrintHtml, "utf-8"), isHtml: true };
 }

@@ -73,13 +73,13 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const pdfBuffer = await generatePdfWithPuppeteer(html);
+    const { buffer, isHtml } = await generatePdfWithPuppeteer(html);
 
-    return new Response(new Uint8Array(pdfBuffer), {
+    return new Response(new Uint8Array(buffer), {
       status: 200,
       headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="hindi-test-${testMode}.pdf"`,
+        "Content-Type": isHtml ? "text/html; charset=utf-8" : "application/pdf",
+        "Content-Disposition": `inline; filename="hindi-test-${testMode}.${isHtml ? "html" : "pdf"}"`,
         "Cache-Control": "no-store",
       },
     });

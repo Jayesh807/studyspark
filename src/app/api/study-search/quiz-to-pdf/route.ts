@@ -251,9 +251,19 @@ export async function POST(req: NextRequest) {
       lang: "hi",
     });
 
-    const pdfBuffer = await generatePdfWithPuppeteer(fullHtml);
+    const { buffer, isHtml } = await generatePdfWithPuppeteer(fullHtml);
 
-    return new NextResponse(new Uint8Array(pdfBuffer), {
+    if (isHtml) {
+      return new NextResponse(new Uint8Array(buffer), {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

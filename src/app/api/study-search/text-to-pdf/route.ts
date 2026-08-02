@@ -255,10 +255,20 @@ export async function POST(req: NextRequest) {
       lang: "hi",
     });
 
-    // Generate PDF via Puppeteer (local) or @sparticuz/chromium (Netlify)
-    const pdfBuffer = await generatePdfWithPuppeteer(html);
+    // Generate PDF via Puppeteer (local) or HTML auto-print fallback (Netlify)
+    const { buffer, isHtml } = await generatePdfWithPuppeteer(html);
 
-    return new Response(new Uint8Array(pdfBuffer), {
+    if (isHtml) {
+      return new Response(new Uint8Array(buffer), {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      });
+    }
+
+    return new Response(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
