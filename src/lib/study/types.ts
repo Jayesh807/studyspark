@@ -7,6 +7,7 @@ export const STUDY_LIMITS = {
   minStudyTextWords: 8,
   maxPdfInternalTokenRatio: 0.18,
   maxSuspiciousTokenRatio: 0.35,
+  maxGibberishTokenRatio: 0.30,
   chunkTargetChars: 1200,
   chunkOverlapChars: 160,
   minDoubtSimilarity: 0.25,
