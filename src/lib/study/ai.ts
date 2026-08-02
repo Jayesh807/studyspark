@@ -283,7 +283,7 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
       continue;
     }
 
-    const optionMatch = line.match(/^[A-D][\).]\s+(.+)/i);
+    const optionMatch = line.match(/^(?:[-*]\s*)?[A-D][\).:-]\s+(.+)/i);
     if (optionMatch && current) {
       const rawOption = optionMatch[1].trim();
       const isAnswer =
@@ -301,7 +301,9 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
     }
 
     // Handle "Answer: X" line (letter or full text)
-    const answerLineMatch = line.match(/^(?:answer|correct answer)\s*[:.:]\s*(.+)/i);
+    const answerLineMatch = line.match(
+      /^(?:[-*]\s*)?(?:answer|correct answer)\s*[:.]\s*(.+)/i
+    );
     if (answerLineMatch && current) {
       const answerValue = answerLineMatch[1].trim();
       const letterMatch = answerValue.match(/^([A-D])\b/i);
@@ -334,10 +336,12 @@ function parseAnswerLineQuiz(text: string, questionCount: number): StudyQuizItem
 
   return blocks.flatMap((block) => {
     const question = block.match(/^\s*\d+[\).]\s+(.+)/m)?.[1]?.trim();
-    const options = [...block.matchAll(/^\s*([A-D])[\).]\s+(.+)$/gim)].map(
+    const options = [...block.matchAll(/^\s*(?:[-*]\s*)?([A-D])[\).:-]\s+(.+)$/gim)].map(
       (match) => cleanOption(match[2])
     );
-    const answerText = block.match(/^\s*(?:answer|correct answer)\s*:\s*(.+)$/im)?.[1]?.trim();
+    const answerText = block
+      .match(/^\s*(?:[-*]\s*)?(?:answer|correct answer)\s*:\s*(.+)$/im)?.[1]
+      ?.trim();
     const explanation =
       block.match(/^\s*explanation\s*:\s*(.+)$/im)?.[1]?.trim() ??
       "This answer is based on the uploaded PDF.";
