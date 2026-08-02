@@ -22,9 +22,6 @@ export async function GET(req: Request) {
 
     return NextResponse.redirect(buildGoogleAuthUrl(state, origin));
   } catch {
-    console.warn(
-      "Google sign-in is not configured. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI."
-    );
     return NextResponse.redirect(
       new URL(
         "/login?error=google_config",

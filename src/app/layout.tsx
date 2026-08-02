@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Poppins } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+// Trigger layout cache refresh
 
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -11,15 +12,10 @@ import { AdSenseScript } from "@/components/adsense-script";
 
 const GOOGLE_ANALYTICS_ID = "G-G3PFDZL17W";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const poppins = Poppins({
+  weight: ["300", "400", "500", "600", "700"],
   subsets: ["latin"],
-  display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-poppins",
   display: "swap",
 });
 
@@ -27,14 +23,14 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://studysparks.cloud"),
 
   title: {
-    default: "StudySpark – Student Productivity Platform",
-    template: "%s | StudySpark",
+    default: "Study Sparks – Student Productivity Platform",
+    template: "%s | Study Sparks",
   },
 
   description:
-    "StudySpark helps students stay organized with task management, focus timer, calendar, study tools (GPA, Age & Unit calculators), Study Radio, and productivity analytics. Plan smarter and achieve your study goals.",
+    "Study Sparks helps students stay organized with task management, focus timer, calendar, study tools (GPA, Age & Unit calculators), Study Radio, and productivity analytics. Plan smarter and achieve your study goals.",
 
-  applicationName: "StudySpark",
+  applicationName: "Study Sparks",
 
   keywords: [
     "StudySpark",
@@ -138,7 +134,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${poppins.variable} font-sans antialiased bg-background text-foreground`}
       >
         <Script
           async

@@ -79,9 +79,7 @@ export function PwaInstallPrompt() {
       return;
     }
 
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      console.warn("StudySpark service worker registration failed.");
-    });
+    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }, []);
 
   useEffect(() => {

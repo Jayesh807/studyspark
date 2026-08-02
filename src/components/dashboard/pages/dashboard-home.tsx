@@ -248,11 +248,11 @@ function GreetingHeader({ username }: { username: string }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative"
+      className="dashboard-surface relative overflow-hidden p-4 sm:p-5"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 dark:text-violet-300 ring-1 ring-violet-500/20">
+          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text mb-3">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Welcome back to your dashboard</span>
           </div>
@@ -265,13 +265,12 @@ function GreetingHeader({ username }: { username: string }) {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground sm:justify-end pb-1">
-          <span className="inline-flex items-center gap-1.5">
+        <div className="grid gap-2 text-sm text-muted-foreground sm:justify-end">
+          <span className="dashboard-chip justify-start sm:justify-end">
             <CalendarDays className="h-4 w-4 text-violet-500" />
             <span>{format(now, "EEEE, MMMM d, yyyy")}</span>
           </span>
-          <span className="hidden sm:inline text-muted-foreground/40">•</span>
-          <span className="inline-flex items-center gap-1.5">
+          <span className="dashboard-chip justify-start sm:justify-end">
             <Clock className="h-4 w-4 text-violet-500" />
             <span className="tabular-nums font-medium text-foreground/80">
               {format(now, "HH:mm:ss")}
@@ -328,31 +327,23 @@ function StreakCard({
   return (
     <StaggerItem className="h-full">
       <GlassCard
-        className="group relative h-full overflow-hidden p-5"
+        className="dashboard-surface group relative h-full overflow-hidden rounded-lg p-4"
       >
         <div className="relative flex items-start justify-between">
           <div
             className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300",
+              "dashboard-icon-tile transition-colors duration-200",
               "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
               streak === 0 && "opacity-70 grayscale-[30%]"
             )}
           >
             <Flame className="h-6 w-6" />
           </div>
-          {/* Animated fire emoji */}
+          {/* Static status keeps the card calm while still showing momentum. */}
           {streak > 0 && (
-            <motion.span
-              className="text-2xl"
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{
-                duration: 1.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            >
-              🔥
-            </motion.span>
+            <span className="dashboard-chip text-cyan-700 dark:text-cyan-300">
+              Active
+            </span>
           )}
         </div>
 
@@ -383,7 +374,7 @@ function StreakCard({
         </div>
 
         {/* 7-day circles */}
-        <div className="relative mt-4 flex items-center justify-between gap-1.5">
+        <div className="relative mt-4 grid grid-cols-7 gap-1.5 rounded-lg border border-border/50 bg-background/45 p-2">
           {last7Days.map((day, i) => (
             <div key={i} className="flex flex-col items-center gap-1">
               <motion.div
@@ -399,9 +390,9 @@ function StreakCard({
                   ease: [0.22, 1, 0.36, 1],
                 }}
                 className={cn(
-                  "h-5 w-5 rounded-full transition-all duration-300",
+                  "h-4 w-4 rounded-full transition-colors duration-200",
                   day.hadSession
-                    ? "bg-gradient-to-br from-cyan-400 to-teal-500 shadow-sm shadow-cyan-500/30"
+                    ? "bg-cyan-500 shadow-sm shadow-cyan-500/20"
                     : "bg-muted border border-border/60"
                 )}
               />
@@ -453,7 +444,7 @@ function TodaysGoalRing({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
     >
-      <GlassCard className="relative overflow-hidden p-5 sm:p-6">
+      <GlassCard className="dashboard-surface relative overflow-hidden rounded-lg p-4 sm:p-5">
         <div className="relative flex items-center gap-5 sm:gap-6">
           <div className="relative shrink-0">
             <svg
@@ -498,7 +489,7 @@ function TodaysGoalRing({
               <span className="text-xl font-bold tabular-nums">
                 {displayPct}%
               </span>
-              <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">
+              <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
                 of goal
               </span>
             </div>
@@ -537,7 +528,7 @@ function TodaysGoalRing({
                 </span>
               )}
             </p>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(rawPct, 100)}%` }}
@@ -598,18 +589,18 @@ function StatCard({
   return (
     <StaggerItem className="h-full">
       <GlassCard
-        className={cn("group relative h-full overflow-hidden p-5", isEmpty && "icon-chip-shimmer")}
+        className={cn("dashboard-surface group relative h-full overflow-hidden rounded-lg p-4", isEmpty && "icon-chip-shimmer")}
       >
         <div className="relative flex items-start justify-between">
-            <div
-              className={cn(
-                "flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300",
-                config.iconColorClass,
-                isEmpty && "opacity-70 grayscale-30"
-              )}
-            >
-              <Icon className="h-6 w-6" />
-            </div>
+          <div
+            className={cn(
+              "dashboard-icon-tile transition-colors duration-200",
+              config.iconColorClass,
+              isEmpty && "opacity-70 grayscale-30"
+            )}
+          >
+            <Icon className="h-6 w-6" />
+          </div>
           </div>
           <div className="relative mt-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -627,7 +618,7 @@ function StatCard({
           </div>
 
           {/* simple progress bar at the bottom */}
-          <div className="mt-4 space-y-1.5 border-t border-violet-500/5 pt-3">
+          <div className="mt-4 space-y-2 border-t border-border/45 pt-3">
             <div className="flex items-center justify-between text-[10px] font-medium text-muted-foreground">
               <span>{progressLabel}</span>
               <span className="tabular-nums">{progressPct}%</span>
@@ -652,11 +643,13 @@ function StatCard({
 
 function WeeklyChart({ data }: { data: Analytics["weeklyData"] }) {
   return (
-    <GlassCard className="p-5 sm:p-6">
+    <GlassCard className="dashboard-surface rounded-lg p-4 sm:p-5">
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h3 className="flex items-center gap-2 text-base font-semibold">
-            <TrendingUp className="h-4 w-4 text-violet-500" />
+          <h3 className="dashboard-section-title">
+            <span className="dashboard-icon-tile text-violet-600 dark:text-violet-300">
+              <TrendingUp className="h-4 w-4" />
+            </span>
             Weekly Study Hours
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -734,11 +727,13 @@ function WeeklyChart({ data }: { data: Analytics["weeklyData"] }) {
 
 function MonthlyChart({ data }: { data: Analytics["monthlyData"] }) {
   return (
-    <GlassCard className="p-5 sm:p-6">
+    <GlassCard className="dashboard-surface rounded-lg p-4 sm:p-5">
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h3 className="flex items-center gap-2 text-base font-semibold">
-            <Timer className="h-4 w-4 text-fuchsia-500" />
+          <h3 className="dashboard-section-title">
+            <span className="dashboard-icon-tile text-fuchsia-600 dark:text-fuchsia-300">
+              <Timer className="h-4 w-4" />
+            </span>
             Monthly Study Hours
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -812,9 +807,9 @@ function QuoteCard() {
   const quote = QUOTES[index];
 
   return (
-    <GlassCard className="relative flex h-full flex-col overflow-hidden p-6">
+    <GlassCard className="dashboard-surface relative flex h-full flex-col overflow-hidden rounded-lg p-4 sm:p-5">
       <div className="relative flex items-start justify-between">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/20">
+        <div className="dashboard-icon-tile bg-violet-500/10 text-violet-600 dark:text-violet-300">
           <Quote className="h-5 w-5" />
         </div>
         <Button
@@ -879,20 +874,22 @@ function SubjectProgressList({
   const top = useMemo(() => [...data].sort((a, b) => b.progress - a.progress).slice(0, 4), [data]);
 
   return (
-    <GlassCard className="flex h-full flex-col p-5 sm:p-6">
+    <GlassCard className="dashboard-surface flex h-full flex-col rounded-lg p-4 sm:p-5">
       <div className="mb-5 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <GraduationCap className="h-4 w-4 text-violet-500" />
+        <h3 className="dashboard-section-title">
+          <span className="dashboard-icon-tile text-violet-600 dark:text-violet-300">
+            <GraduationCap className="h-4 w-4" />
+          </span>
           Subject Progress
         </h3>
-        <span className="text-xs text-muted-foreground">Top {top.length}</span>
+        <span className="dashboard-chip">Top {top.length}</span>
       </div>
       {top.length === 0 ? (
         <div className="flex flex-1 items-center justify-center text-center text-sm text-muted-foreground">
           No subjects tracked yet.
         </div>
       ) : (
-        <ul className="flex flex-1 flex-col justify-center space-y-4">
+        <ul className="flex flex-1 flex-col justify-center space-y-3">
           {top.map((subject, i) => {
             const c = colorOf(subject.color);
             return (
@@ -902,32 +899,34 @@ function SubjectProgressList({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: i * 0.06 }}
               >
-                <div className="mb-1.5 flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-2 font-medium">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
+                <div className="dashboard-row p-3">
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 font-medium">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: c.chart }}
+                      />
+                      {subject.name}
+                    </span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {subject.progress}%
+                    </span>
+                  </div>
+                  <div
+                    className="h-2 w-full overflow-hidden rounded-full bg-muted"
+                    role="progressbar"
+                    aria-valuenow={subject.progress}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  >
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${subject.progress}%` }}
+                      transition={{ duration: 0.8, delay: 0.1 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
+                      className="h-full rounded-full"
                       style={{ backgroundColor: c.chart }}
                     />
-                    {subject.name}
-                  </span>
-                  <span className="tabular-nums text-muted-foreground">
-                    {subject.progress}%
-                  </span>
-                </div>
-                <div
-                  className="h-2 w-full overflow-hidden rounded-full bg-muted"
-                  role="progressbar"
-                  aria-valuenow={subject.progress}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                >
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${subject.progress}%` }}
-                    transition={{ duration: 0.8, delay: 0.1 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
-                    className="h-full rounded-full"
-                    style={{ backgroundColor: c.chart }}
-                  />
+                  </div>
                 </div>
               </motion.li>
             );
@@ -962,10 +961,12 @@ function ExamsPreview({
   );
 
   return (
-    <GlassCard className="p-5 sm:p-6">
+    <GlassCard className="dashboard-surface rounded-lg p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <AlarmClock className="h-4 w-4 text-amber-500" />
+        <h3 className="dashboard-section-title">
+          <span className="dashboard-icon-tile text-amber-600 dark:text-amber-300">
+            <AlarmClock className="h-4 w-4" />
+          </span>
           Upcoming Exams
         </h3>
         <Button
@@ -980,12 +981,8 @@ function ExamsPreview({
       </div>
 
       {next.length === 0 ? (
-        <div className="relative flex flex-col items-center justify-center text-center py-10 px-6">
-          {/* Pulsing glow behind */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-32 w-32 rounded-full bg-amber-500/10 empty-pulse-glow blur-2xl" />
-          </div>
-          <div className="relative">
+        <div className="dashboard-row flex flex-col items-center justify-center px-6 py-10 text-center">
+          <div>
             <EmptyState
               icon={GraduationCap}
               title="No upcoming exams"
@@ -1009,11 +1006,11 @@ function ExamsPreview({
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: i * 0.06 }}
-                  className="group flex items-center gap-3 rounded-2xl border border-violet-500/10 bg-violet-500/3 p-3 transition-colors hover:border-violet-500/25 hover:bg-violet-500/[0.06]"
+                  className="dashboard-row group flex items-center gap-3 p-3 transition-colors hover:border-violet-500/25 hover:bg-violet-500/[0.06]"
                 >
                   <div
                     className={cn(
-                      "flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl text-white shadow-md",
+                      "flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg text-white shadow-md",
                       "bg-linear-to-br from-amber-500 to-orange-600"
                     )}
                   >
@@ -1109,10 +1106,12 @@ function TodayTasksPreview({
   }, [todos]);
 
   return (
-    <GlassCard className="p-5 sm:p-6">
+    <GlassCard className="dashboard-surface rounded-lg p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <ListTodo className="h-4 w-4 text-violet-500" />
+        <h3 className="dashboard-section-title">
+          <span className="dashboard-icon-tile text-violet-600 dark:text-violet-300">
+            <ListTodo className="h-4 w-4" />
+          </span>
           Today's Tasks
         </h3>
         <Button
@@ -1127,12 +1126,8 @@ function TodayTasksPreview({
       </div>
 
       {todays.length === 0 ? (
-        <div className="relative flex flex-col items-center justify-center text-center py-10 px-6">
-          {/* Pulsing glow behind */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-32 w-32 rounded-full bg-violet-500/10 empty-pulse-glow blur-2xl" />
-          </div>
-          <div className="relative">
+        <div className="dashboard-row flex flex-col items-center justify-center px-6 py-10 text-center">
+          <div>
             <EmptyState
               icon={CheckCircle2}
               title="Nothing due today"
@@ -1155,7 +1150,7 @@ function TodayTasksPreview({
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.25, delay: i * 0.05 }}
-                  className="group flex items-center gap-3 rounded-xl border border-violet-500/5 bg-violet-500/[0.02] px-3 py-2.5 transition-colors hover:border-violet-500/20 hover:bg-violet-500/[0.06]"
+                  className="dashboard-row group flex items-center gap-3 px-3 py-2.5 transition-colors hover:border-violet-500/20 hover:bg-violet-500/[0.06]"
                 >
                   <span
                     className={cn("h-2 w-2 shrink-0 rounded-full", pc.dot)}
@@ -1246,27 +1241,13 @@ function QuickStartCard({ onNavigate }: { onNavigate: (view: AppView) => void })
       initial={{ opacity: 0, y: 12, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative overflow-hidden rounded-3xl border border-violet-500/20 bg-linear-to-br from-violet-500/8 via-fuchsia-500/6 to-purple-500/8 p-6 backdrop-blur-xl"
+      className="dashboard-surface relative overflow-hidden p-4 sm:p-5"
     >
-      {/* Sparkle decorations */}
-      <div className="pointer-events-none absolute left-[15%] top-[20%] sparkle-float" style={{ animationDelay: "0s" }}>
-        <Sparkles className="h-4 w-4 text-violet-400/60" />
-      </div>
-      <div className="pointer-events-none absolute right-[20%] top-[15%] sparkle-float" style={{ animationDelay: "0.8s" }}>
-        <Sparkles className="h-3 w-3 text-fuchsia-400/50" />
-      </div>
-      <div className="pointer-events-none absolute left-[60%] bottom-[20%] sparkle-float" style={{ animationDelay: "1.6s" }}>
-        <Sparkles className="h-3.5 w-3.5 text-purple-400/50" />
-      </div>
-      <div className="pointer-events-none absolute left-[8%] bottom-[25%] sparkle-float" style={{ animationDelay: "2.1s" }}>
-        <Sparkles className="h-3 w-3 text-violet-300/40" />
-      </div>
-
-      {/* Glow blob */}
-      <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-fuchsia-500/10 blur-3xl" />
-
       <div className="relative">
+        <div className="dashboard-chip mb-3 text-violet-700 dark:text-violet-300">
+          <Sparkles className="h-3.5 w-3.5" />
+          First steps
+        </div>
         <h2 className="text-xl font-bold sm:text-2xl">
           Welcome to StudySpark! 🎉
         </h2>
@@ -1274,7 +1255,7 @@ function QuickStartCard({ onNavigate }: { onNavigate: (view: AppView) => void })
           Get started by adding some data — your dashboard will light up with insights in no time.
         </p>
 
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
           {actions.map((action, i) => {
             const ActionIcon = action.icon;
             return (
@@ -1287,7 +1268,7 @@ function QuickStartCard({ onNavigate }: { onNavigate: (view: AppView) => void })
                 whileTap={{ scale: 0.97 }}
                 onClick={() => onNavigate(action.view)}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-shadow hover:shadow-xl",
+                  "flex items-center justify-center gap-2.5 rounded-lg px-4 py-3 text-sm font-semibold text-white shadow-sm transition-shadow hover:shadow-md",
                   `bg-linear-to-br ${action.gradient}`
                 )}
               >
@@ -1514,17 +1495,13 @@ function AIInsightsPanel({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
     >
-      <GlassCard className="overflow-hidden">
-        <div className="relative p-5 sm:p-6">
-          {/* Decorative blobs */}
-          <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-fuchsia-500/10 blur-3xl" />
-
+      <GlassCard className="dashboard-surface overflow-hidden rounded-lg">
+        <div className="relative p-4 sm:p-5">
           <div className="relative z-[1]">
             {/* Header */}
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="live-pulse flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25">
+                <div className="dashboard-icon-tile text-violet-600 dark:text-violet-300">
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
@@ -1536,11 +1513,7 @@ function AIInsightsPanel({
                   </p>
                 </div>
               </div>
-              <span className="hidden items-center gap-1.5 rounded-full bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400 sm:inline-flex">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-500 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-violet-500" />
-                </span>
+              <span className="dashboard-chip hidden text-violet-700 dark:text-violet-300 sm:inline-flex">
                 AI-powered
               </span>
             </div>
@@ -1560,7 +1533,7 @@ function AIInsightsPanel({
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ duration: 0.35, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
                       className={cn(
-                        "relative overflow-hidden rounded-2xl bg-gradient-to-br p-4 ring-1",
+                        "dashboard-row relative overflow-hidden bg-gradient-to-br p-4 ring-1",
                         config.gradient,
                         config.ring
                       )}
@@ -1568,7 +1541,7 @@ function AIInsightsPanel({
                       <div className="flex items-start gap-3">
                         <div
                           className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white shadow-md",
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-md",
                             config.iconBg
                           )}
                         >
@@ -1746,7 +1719,7 @@ export function DashboardHome() {
   const username = user?.username ?? "there";
 
   return (
-    <PageTransition className="space-y-4 sm:space-y-6">
+    <PageTransition className="space-y-3 sm:space-y-4">
       <GreetingHeader username={username} />
 
       {loading || !analytics ? (
@@ -1759,7 +1732,7 @@ export function DashboardHome() {
           )}
 
           {/* Stat cards + enhanced streak */}
-          <StaggerContainer className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <StaggerContainer className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {STAT_CARDS.map((cfg) => (
               <StatCard
                 key={cfg.key}
@@ -1788,7 +1761,7 @@ export function DashboardHome() {
           />
 
           {/* Study charts + supporting cards */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <WeeklyChart data={analytics.weeklyData} />
             </div>
@@ -1804,7 +1777,7 @@ export function DashboardHome() {
           </div>
 
           {/* Exams + Today's tasks */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ExamsPreview
               exams={analytics.upcomingExams}
               onViewAll={() => setView("exams")}

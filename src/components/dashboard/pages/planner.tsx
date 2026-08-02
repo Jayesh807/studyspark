@@ -13,7 +13,6 @@ import {
   ChevronRight,
   CalendarRange,
   Sparkles,
-  GripVertical,
   Target,
   Zap,
   Coffee,
@@ -57,21 +56,17 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
-import {
-  PageTransition,
-  GlassCard,
-  StaggerContainer,
-  StaggerItem,
-} from "@/components/shared/motion";
+import { PageTransition } from "@/components/shared/motion";
 import { EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 
 const FORM_FIELD_CLASS =
-  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+  "rounded-lg border-border/75 bg-background/90 shadow-sm transition-colors hover:bg-card focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20 dark:border-border/55 dark:bg-background/60 dark:hover:bg-background/75";
 const FORM_SELECT_CLASS = cn("h-11 w-full px-3", FORM_FIELD_CLASS);
 const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
 const FORM_DIALOG_CLASS =
-  "max-h-[90vh] overflow-y-auto scrollbar-thin rounded-[14px] sm:max-w-lg border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+  "dashboard-surface max-h-[90vh] overflow-y-auto rounded-lg p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl sm:max-w-lg";
+const FORM_SECTION_CLASS = "dashboard-row space-y-2 p-3 sm:p-4";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -250,23 +245,25 @@ function BlockDialog({
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="space-y-2">
-          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
-            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/90 via-fuchsia-500/90 to-sky-500/80 text-white shadow-sm">
-              <CalendarRange className="h-4 w-4" />
-            </span>
-            {initial ? "Edit Study Block" : "Add Study Block"}
-          </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            {initial
-              ? "Update this study block in your weekly plan."
-              : "Plan a focused study session in your weekly schedule."}
-          </DialogDescription>
-        </DialogHeader>
+        <div className="border-b border-border/60 p-4 sm:p-5">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+              <span className="dashboard-icon-tile dashboard-theme-glow-text">
+                <CalendarRange className="h-4 w-4" />
+              </span>
+              {initial ? "Edit Study Block" : "Add Study Block"}
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              {initial
+                ? "Update this study block in your weekly plan."
+                : "Plan a focused study session in your weekly schedule."}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 p-4 sm:p-5">
           {/* Day */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label className={FORM_LABEL_CLASS}>Day</Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -282,7 +279,7 @@ function BlockDialog({
                   {form.day ? format(parseISO(form.day), "EEE, MMM d") : "Pick a date"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto rounded-[8px] border-border/60 p-0 shadow-xl" align="start">
+              <PopoverContent className="dashboard-surface w-auto rounded-lg border-border/70 p-0 shadow-xl dark:border-border/55" align="start">
                 <Calendar
                   mode="single"
                   selected={form.day ? parseISO(form.day) : undefined}
@@ -296,7 +293,7 @@ function BlockDialog({
 
           {/* Time Slot + Type */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className={FORM_SECTION_CLASS}>
               <Label className={FORM_LABEL_CLASS}>Time Slot</Label>
               <Select
                 value={form.timeSlot}
@@ -305,7 +302,7 @@ function BlockDialog({
                 <SelectTrigger className={FORM_SELECT_CLASS}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-[8px]">
+                <SelectContent className="dashboard-surface rounded-lg border-border/70 p-1 dark:border-border/55">
                   {TIME_SLOTS.map((slot) => (
                     <SelectItem key={slot.key} value={slot.key}>
                       {slot.label}
@@ -314,7 +311,7 @@ function BlockDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
+            <div className={FORM_SECTION_CLASS}>
               <Label className={FORM_LABEL_CLASS}>Block Type</Label>
               <Select
                 value={form.type}
@@ -322,19 +319,19 @@ function BlockDialog({
               >
                 <SelectTrigger className={FORM_SELECT_CLASS}>
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] bg-muted text-violet-500 ring-1 ring-border/60">
+                    <span className="dashboard-icon-tile h-6 w-6 text-violet-500">
                       <SelectedBlockTypeIcon className="h-3.5 w-3.5" />
                     </span>
                     <span className="truncate">{selectedBlockType.label}</span>
                   </span>
                 </SelectTrigger>
-                <SelectContent className="rounded-[8px]">
+                <SelectContent className="dashboard-surface rounded-lg border-border/70 p-1 dark:border-border/55">
                   {BLOCK_TYPES.map((bt) => {
                     const BlockTypeIcon = bt.icon;
                     return (
                       <SelectItem key={bt.key} value={bt.key}>
                         <span className="flex items-center gap-2">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-[5px] bg-muted text-violet-500 ring-1 ring-border/60">
+                          <span className="dashboard-icon-tile h-6 w-6 text-violet-500">
                             <BlockTypeIcon className="h-3.5 w-3.5" />
                           </span>
                           {bt.label}
@@ -348,14 +345,14 @@ function BlockDialog({
           </div>
 
           {/* Subject */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label className={FORM_LABEL_CLASS}>Subject</Label>
             {subjects.length > 0 ? (
               <Select value={form.subject} onValueChange={(v) => update("subject", v)}>
                 <SelectTrigger className={FORM_SELECT_CLASS}>
                   <SelectValue placeholder="Choose a subject" />
                 </SelectTrigger>
-                <SelectContent className="rounded-[8px]">
+                <SelectContent className="dashboard-surface rounded-lg border-border/70 p-1 dark:border-border/55">
                   {subjects.map((s) => (
                     <SelectItem key={s.id} value={s.name}>
                       <span className="flex items-center gap-2">
@@ -379,7 +376,7 @@ function BlockDialog({
           </div>
 
           {/* Title */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label className={FORM_LABEL_CLASS}>
               Title <span className="text-rose-500">*</span>
             </Label>
@@ -394,7 +391,7 @@ function BlockDialog({
           </div>
 
           {/* Duration */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label className={FORM_LABEL_CLASS}>Duration (minutes)</Label>
             <div className="flex items-center gap-2">
               {[25, 45, 60, 90, 120].map((d) => (
@@ -404,7 +401,7 @@ function BlockDialog({
                   size="sm"
                   variant={form.duration === d ? "default" : "outline"}
                   className={cn(
-                    "rounded-[5px] text-xs",
+                    "rounded-lg text-xs",
                     form.duration === d &&
                       "bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
                   )}
@@ -426,7 +423,7 @@ function BlockDialog({
           </div>
 
           {/* Notes */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label className={FORM_LABEL_CLASS}>Notes</Label>
             <Textarea
               placeholder="Topics, resources, goals…"
@@ -437,13 +434,13 @@ function BlockDialog({
             />
           </div>
 
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-11 rounded-[5px] px-6">
+          <DialogFooter className="gap-2 border-t border-border/60 bg-background/55 p-4 sm:p-5">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-10 rounded-lg border-border/70 bg-background/85 px-4 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60">
               Cancel
             </Button>
             <Button
               type="submit"
-              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+              className="h-10 rounded-lg accent-gradient px-4 text-white shadow-md shadow-violet-500/20"
             >
               <Sparkles className="mr-1.5 h-4 w-4" />
               {initial ? "Save changes" : "Add block"}
@@ -480,12 +477,11 @@ function StudyBlockCard({
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      whileHover={{ y: -1 }}
       className={cn(
-        "group relative rounded-xl border p-3 transition-all cursor-pointer",
+        "dashboard-row group relative cursor-pointer rounded-xl p-3 transition-colors",
         block.completed
-          ? "border-emerald-500/20 bg-emerald-500/5 opacity-75"
-          : cn("border-border/60 bg-card/80 hover:border-violet-500/30 hover:shadow-md hover:shadow-violet-500/5")
+          ? "border-emerald-500/25 bg-emerald-500/8 opacity-75"
+          : "hover:border-violet-500/30 hover:bg-violet-500/[0.04]"
       )}
       onClick={onToggle}
     >
@@ -514,7 +510,7 @@ function StudyBlockCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] bg-muted text-violet-500 ring-1 ring-border/60">
+            <span className="dashboard-icon-tile h-5 w-5 text-violet-500">
               <BlockTypeIcon className="h-3 w-3" />
             </span>
             <span
@@ -703,35 +699,30 @@ export function PlannerPage() {
 
   return (
     <PageTransition>
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+      <div className="space-y-4">
+      {/* Subtitle & Actions Bar */}
+      <div className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="space-y-1">
+          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Plan your success, week by week</span>
           </div>
-          <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight sm:text-3xl">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25">
-              <CalendarRange className="h-5 w-5" />
-            </span>
-            Study Planner
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Plan your weekly study sessions and stay on track
+          <p className="text-sm text-muted-foreground">
+            Plan your weekly study sessions and stay on track.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="rounded-xl"
+            className="h-10 rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
             onClick={clearWeek}
           >
             Clear Week
           </Button>
           <Button
             size="sm"
-            className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25"
+            className="h-10 rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
             onClick={() => openAddDialog(format(new Date(), "yyyy-MM-dd"), "morning")}
           >
             <Plus className="mr-1.5 h-4 w-4" />
@@ -741,11 +732,11 @@ export function PlannerPage() {
       </div>
 
       {/* Week nav */}
-      <div className="mt-6 flex items-center justify-between">
+      <div className="dashboard-surface flex items-center justify-between p-3 sm:p-4">
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-xl"
+          className="rounded-lg"
           onClick={() => setWeekOffset((w) => w - 1)}
         >
           <ChevronLeft className="h-4 w-4" />
@@ -766,7 +757,7 @@ export function PlannerPage() {
         <Button
           variant="ghost"
           size="icon"
-          className="rounded-xl"
+          className="rounded-lg"
           onClick={() => setWeekOffset((w) => w + 1)}
         >
           <ChevronRight className="h-4 w-4" />
@@ -774,7 +765,7 @@ export function PlannerPage() {
       </div>
 
       {/* Stats */}
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           {
             label: "Planned",
@@ -814,7 +805,7 @@ export function PlannerPage() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             className={cn(
-              "rounded-xl bg-gradient-to-br p-3 ring-1",
+              "dashboard-surface rounded-lg bg-gradient-to-br p-3 ring-1",
               stat.gradient,
               stat.ring
             )}
@@ -837,10 +828,10 @@ export function PlannerPage() {
 
       {/* Progress bar */}
       {totalMinutes > 0 && (
-        <div className="mt-3">
+        <div className="dashboard-surface p-3">
           <div className="h-2 overflow-hidden rounded-full bg-muted">
             <motion.div
-              className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500 rounded-full progress-shimmer"
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500"
               initial={{ width: 0 }}
               animate={{ width: `${completionPct}%` }}
               transition={{ duration: 0.6, ease: "easeOut" }}
@@ -851,7 +842,7 @@ export function PlannerPage() {
       )}
 
       {/* Weekly grid */}
-      <div className="mt-6 space-y-3">
+      <div className="space-y-3">
         {weekDays.map((day) => {
           const dayStr = format(day, "yyyy-MM-dd");
           const dayBlocks = blocks.filter((b) => b.day === dayStr);
@@ -863,10 +854,10 @@ export function PlannerPage() {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               className={cn(
-                "rounded-xl border p-4 transition-colors card-shimmer-border hover-lift",
+                "rounded-xl border p-4 transition-colors",
                 isToday
-                  ? "border-violet-500/30 bg-violet-500/5 planner-slot-glow"
-                  : "border-border/60 bg-card/50"
+                  ? "dashboard-surface border-violet-500/35 bg-violet-500/8"
+                  : "dashboard-surface"
               )}
             >
               {/* Day header */}
@@ -961,7 +952,7 @@ export function PlannerPage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-8"
+          className="dashboard-surface p-4 sm:p-5"
         >
           <EmptyState
             icon={CalendarRange}
@@ -970,7 +961,7 @@ export function PlannerPage() {
             action={
               <Button
                 onClick={() => openAddDialog(format(new Date(), "yyyy-MM-dd"), "morning")}
-                className="rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+                className="rounded-lg accent-gradient text-white"
               >
                 <Plus className="mr-1.5 h-4 w-4" />
                 Plan your first study block
@@ -990,6 +981,7 @@ export function PlannerPage() {
         subjects={subjects}
         onSubmit={handleAddBlock}
       />
+      </div>
     </PageTransition>
   );
 }

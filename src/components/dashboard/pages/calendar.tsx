@@ -62,12 +62,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-import {
-  PageTransition,
-  GlassCard,
-  StaggerContainer,
-  StaggerItem,
-} from "@/components/shared/motion";
+import { PageTransition } from "@/components/shared/motion";
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { apiFetch, handleError } from "@/lib/api";
@@ -86,10 +81,11 @@ type CalendarView = "month" | "week" | "day";
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const COLOR_KEYS: EventColor[] = ["violet", "blue", "green", "amber", "rose", "cyan"];
 const FORM_FIELD_CLASS =
-  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+  "rounded-lg border-border/75 bg-background/90 shadow-sm transition-colors hover:bg-card focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20 dark:border-border/55 dark:bg-background/60 dark:hover:bg-background/75";
 const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
 const FORM_DIALOG_CLASS =
-  "sm:max-w-[560px] rounded-[14px] max-h-[90vh] overflow-y-auto scrollbar-thin border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+  "dashboard-surface max-h-[90vh] overflow-y-auto rounded-lg p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl sm:max-w-[600px]";
+const FORM_SECTION_CLASS = "dashboard-row space-y-2 p-3 sm:p-4";
 
 // ---------- Helpers ----------
 function eventOnDay(event: Event, day: Date): boolean {
@@ -380,24 +376,22 @@ export function CalendarPage() {
   // ---------- Render ----------
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+        {/* Subtitle & Actions Bar */}
+        <div className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="space-y-1">
+            <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
               <Sparkles className="h-3.5 w-3.5" />
               <span>Organize your life, day by day</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Calendar
-            </h1>
-            <p className="text-muted-foreground mt-1.5 text-sm sm:text-base">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Keep track of your events, deadlines, and important dates.
             </p>
           </div>
           <Button
             onClick={() => handleCreate()}
-            className="accent-gradient text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all rounded-xl h-11 px-5"
+            className="accent-gradient h-10 shrink-0 rounded-lg px-4 text-white shadow-md shadow-violet-500/20 transition-shadow hover:shadow-violet-500/30"
           >
             <Plus className="h-4 w-4" />
             New Event
@@ -405,39 +399,33 @@ export function CalendarPage() {
         </div>
 
         {/* Stats */}
-        <StaggerContainer className="grid grid-cols-3 gap-3 sm:gap-4">
-          <StaggerItem>
-            <MiniStat
-              icon={CalendarDays}
-              label="This Month"
-              value={stats.monthCount}
-              accent="bg-violet-500/15 text-violet-600 dark:text-violet-400"
-            />
-          </StaggerItem>
-          <StaggerItem>
-            <MiniStat
-              icon={ListChecks}
-              label="Upcoming"
-              value={stats.upcomingCount}
-              accent="bg-amber-500/15 text-amber-600 dark:text-amber-400"
-            />
-          </StaggerItem>
-          <StaggerItem>
-            <MiniStat
-              icon={CalendarIcon}
-              label="All Events"
-              value={stats.total}
-              accent="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-            />
-          </StaggerItem>
-        </StaggerContainer>
+        <div className="grid grid-cols-3 gap-3">
+          <MiniStat
+            icon={CalendarDays}
+            label="This Month"
+            value={stats.monthCount}
+            accent="bg-violet-500/15 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300"
+          />
+          <MiniStat
+            icon={ListChecks}
+            label="Upcoming"
+            value={stats.upcomingCount}
+            accent="bg-amber-500/15 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300"
+          />
+          <MiniStat
+            icon={CalendarIcon}
+            label="All Events"
+            value={stats.total}
+            accent="bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"
+          />
+        </div>
 
         {/* Main grid: calendar + sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
           {/* Calendar card */}
-          <GlassCard className="p-4 sm:p-5">
+          <div className="dashboard-surface p-3 sm:p-4">
             {/* Calendar toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg sm:text-xl font-semibold">
                   {headerLabel}
@@ -449,12 +437,12 @@ export function CalendarPage() {
                   variant="outline"
                   size="sm"
                   onClick={goToday}
-                  className="rounded-xl"
+                  className="h-9 rounded-lg border-border/70 bg-background/85 shadow-sm dark:border-border/60 dark:bg-background/60"
                 >
                   Today
                 </Button>
 
-                <div className="flex items-center gap-0.5 rounded-xl border bg-background/60 p-0.5">
+                <div className="flex items-center gap-0.5 rounded-lg border border-border/70 bg-background/85 p-0.5 shadow-sm dark:border-border/60 dark:bg-background/60">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -479,7 +467,7 @@ export function CalendarPage() {
                   value={view}
                   onValueChange={(v) => setView(v as CalendarView)}
                 >
-                  <TabsList className="rounded-xl">
+                  <TabsList className="rounded-lg">
                     <TabsTrigger value="month" className="rounded-lg">
                       Month
                     </TabsTrigger>
@@ -521,13 +509,13 @@ export function CalendarPage() {
                 onEventClick={handleEdit}
               />
             )}
-          </GlassCard>
+          </div>
 
           {/* Upcoming events sidebar */}
-          <GlassCard className="p-4 sm:p-5 lg:max-h-[calc(100vh-200px)]">
+          <div className="dashboard-surface p-3 sm:p-4 lg:max-h-[calc(100vh-200px)]">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
+              <h3 className="dashboard-section-title">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 shadow-sm ring-1 ring-violet-500/15 dark:bg-violet-500/20 dark:text-violet-300">
                   <Clock className="h-4 w-4" />
                 </span>
                 Upcoming
@@ -543,7 +531,7 @@ export function CalendarPage() {
             {loading ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-2xl" />
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
                 ))}
               </div>
             ) : upcoming.length === 0 ? (
@@ -556,7 +544,7 @@ export function CalendarPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => handleCreate()}
-                  className="mt-3 rounded-xl"
+                  className="mt-3 rounded-lg border-border/70 bg-background/85 shadow-sm dark:border-border/60 dark:bg-background/60"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add Event
@@ -576,7 +564,7 @@ export function CalendarPage() {
                 </div>
               </ScrollArea>
             )}
-          </GlassCard>
+          </div>
         </div>
 
         {/* Event form dialog */}
@@ -620,7 +608,7 @@ export function CalendarPage() {
           open={!!deleting}
           onOpenChange={(o) => !o && setDeleting(null)}
         >
-          <AlertDialogContent className="rounded-2xl">
+          <AlertDialogContent className="dashboard-surface rounded-lg border-border/70 shadow-2xl shadow-slate-950/20 dark:border-border/55">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
@@ -635,7 +623,9 @@ export function CalendarPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60">
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 className="rounded-xl bg-rose-500 text-white hover:bg-rose-600"
@@ -663,10 +653,10 @@ function MiniStat({
   accent: string;
 }) {
   return (
-    <GlassCard className="p-3 sm:p-4 flex items-center gap-3">
+    <div className="dashboard-surface flex items-center gap-3 p-3 sm:p-4">
       <span
         className={cn(
-          "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg shadow-sm ring-1 ring-white/20",
           accent
         )}
       >
@@ -680,7 +670,7 @@ function MiniStat({
           {label}
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -843,13 +833,12 @@ function DayCell({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "group relative min-h-[80px] sm:min-h-[110px] rounded-xl p-1.5 sm:p-2 cursor-pointer transition-all border",
-        "hover:border-violet-500/30 hover:shadow-sm",
+        "dashboard-row group relative min-h-[76px] cursor-pointer rounded-xl p-1.5 transition-colors sm:min-h-[104px] sm:p-2",
+        "hover:border-violet-500/30 hover:bg-violet-500/[0.04]",
         !isCurrentMonth && "opacity-40",
         today
-          ? "border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/30"
-          : "border-border/40 bg-background/40",
-        today && "today-cell-pulse",
+          ? "border-violet-500/45 bg-violet-500/8 ring-1 ring-violet-500/20"
+          : "",
         isDragOver && "drag-over"
       )}
     >
@@ -914,7 +903,7 @@ function DayCell({
                 onEventClick(event);
               }}
               className={cn(
-                "flex items-center gap-1 w-full text-left rounded-md px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium leading-tight truncate transition-colors hover:brightness-110 cursor-grab active:cursor-grabbing",
+                "flex w-full cursor-grab items-center gap-1 rounded-md px-1.5 py-0.5 text-left text-[10px] font-medium leading-tight transition-colors hover:brightness-110 active:cursor-grabbing sm:text-[11px]",
                 c.soft,
                 c.text,
                 saving && "cursor-default opacity-70",
@@ -1009,11 +998,8 @@ function WeekView({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={cn(
-              "relative rounded-2xl border p-3 min-h-[160px] cursor-pointer transition-all hover:border-violet-500/30 hover:shadow-sm flex flex-col",
-              today
-                ? "border-violet-500/50 bg-violet-500/5 ring-1 ring-violet-500/30"
-                : "border-border/40 bg-background/40",
-              today && "today-cell-pulse",
+              "dashboard-row relative flex min-h-[150px] cursor-pointer flex-col rounded-2xl p-3 transition-colors hover:border-violet-500/30 hover:bg-violet-500/[0.04]",
+              today && "border-violet-500/45 bg-violet-500/8 ring-1 ring-violet-500/20",
               isDragOver && "drag-over"
             )}
           >
@@ -1081,7 +1067,7 @@ function WeekView({
                         onEventClick(event);
                       }}
                       className={cn(
-                        "flex flex-col gap-0.5 w-full text-left rounded-lg px-2 py-1.5 text-xs transition-colors hover:brightness-110 cursor-grab active:cursor-grabbing",
+                        "flex w-full cursor-grab flex-col gap-0.5 rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:brightness-110 active:cursor-grabbing",
                         c.soft,
                         saving && "cursor-default opacity-70",
                         isThisDragging && "event-dragging"
@@ -1136,7 +1122,7 @@ function DayView({
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              "flex h-14 w-14 flex-col items-center justify-center rounded-2xl",
+              "flex h-14 w-14 flex-col items-center justify-center rounded-lg",
               today
                 ? "accent-gradient text-white"
                 : "bg-muted text-foreground"
@@ -1162,7 +1148,7 @@ function DayView({
           variant="outline"
           size="sm"
           onClick={() => onAdd(cursor)}
-          className="rounded-xl"
+          className="rounded-lg border-border/70 bg-background/85 shadow-sm dark:border-border/60 dark:bg-background/60"
         >
           <Plus className="h-3.5 w-3.5" />
           Add
@@ -1178,7 +1164,7 @@ function DayView({
             <Button
               size="sm"
               onClick={() => onAdd(cursor)}
-              className="accent-gradient text-white rounded-xl"
+              className="accent-gradient rounded-lg text-white"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Event
@@ -1222,7 +1208,7 @@ function DayEventRow({
         if (!saving) onClick();
       }}
       className={cn(
-        "flex w-full items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3.5 text-left transition-all hover:border-violet-500/30 hover:shadow-md group",
+        "dashboard-row group flex w-full items-start gap-3 p-3 text-left transition-colors hover:border-violet-500/30 hover:bg-violet-500/[0.04]",
         saving && "cursor-default opacity-70"
       )}
     >
@@ -1295,13 +1281,13 @@ function UpcomingItem({
         if (!saving) onClick();
       }}
       className={cn(
-        "flex w-full items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3 text-left transition-all hover:border-violet-500/30 hover:shadow-md group",
+        "dashboard-row group flex w-full items-start gap-3 p-3 text-left transition-colors hover:border-violet-500/30 hover:bg-violet-500/[0.04]",
         saving && "cursor-default opacity-70"
       )}
     >
       <span
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+          "dashboard-icon-tile",
           c.soft
         )}
       >
@@ -1356,22 +1342,24 @@ function DayDetailDialog({
 }) {
   return (
     <Dialog open={!!date} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-thin border-border/50">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-600 dark:text-violet-400">
-              <CalendarDays className="h-4 w-4" />
-            </span>
-            {date ? format(date, "EEEE, MMMM d") : ""}
-          </DialogTitle>
-          <DialogDescription>
-            {events.length === 0
-              ? "No events scheduled. Click below to add one."
-              : `${events.length} event${events.length !== 1 ? "s" : ""} on this day.`}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="dashboard-surface max-h-[90vh] overflow-y-auto rounded-lg p-0 shadow-2xl shadow-slate-950/15 sm:max-w-[500px]">
+        <div className="border-b border-border/60 p-4 sm:p-5">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <span className="dashboard-icon-tile dashboard-theme-glow-text">
+                <CalendarDays className="h-4 w-4" />
+              </span>
+              {date ? format(date, "EEEE, MMMM d") : ""}
+            </DialogTitle>
+            <DialogDescription>
+              {events.length === 0
+                ? "No events scheduled. Click below to add one."
+                : `${events.length} event${events.length !== 1 ? "s" : ""} on this day.`}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-2 max-h-[50vh] overflow-y-auto scrollbar-thin pr-1">
+        <div className="max-h-[50vh] space-y-2 overflow-y-auto p-4 pr-5 scrollbar-thin sm:p-5">
           {events.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <CalendarDays className="h-10 w-10 text-muted-foreground/40 mb-2" />
@@ -1383,11 +1371,11 @@ function DayDetailDialog({
               return (
                 <div
                   key={event.id}
-                  className="group flex items-start gap-3 rounded-2xl border border-border/40 bg-background/40 p-3"
+                  className="dashboard-row group flex items-start gap-3 p-3"
                 >
                   <span
                     className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                      "dashboard-icon-tile",
                       c.soft
                     )}
                   >
@@ -1445,10 +1433,10 @@ function DayDetailDialog({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="border-t border-border/60 bg-background/55 p-4 sm:p-5">
           <Button
             onClick={() => date && onAdd(date)}
-            className="rounded-xl accent-gradient text-white w-full sm:w-auto"
+            className="w-full rounded-lg accent-gradient text-white sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             Add Event
@@ -1527,23 +1515,25 @@ function EventFormDialog({
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="space-y-2">
-          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
-            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/20 via-fuchsia-500/15 to-sky-500/20 text-violet-600 shadow-sm ring-1 ring-violet-500/15 dark:text-violet-300">
-              {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            </span>
-            {isEdit ? "Edit Event" : "New Event"}
-          </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            {isEdit
-              ? "Update the details of your event below."
-              : "Add a new event to your calendar."}
-          </DialogDescription>
-        </DialogHeader>
+        <div className="border-b border-border/60 p-4 sm:p-5">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+              <span className="dashboard-icon-tile dashboard-theme-glow-text">
+                {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              </span>
+              {isEdit ? "Edit Event" : "New Event"}
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              {isEdit
+                ? "Update the details of your event below."
+                : "Add a new event to your calendar."}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 p-4 sm:p-5">
           {/* Title */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label htmlFor="event-title" className={FORM_LABEL_CLASS}>
               Title <span className="text-rose-500">*</span>
             </Label>
@@ -1568,7 +1558,7 @@ function EventFormDialog({
 
           {/* Date + time */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className={FORM_SECTION_CLASS}>
               <Label htmlFor="event-date" className={FORM_LABEL_CLASS}>
                 Date <span className="text-rose-500">*</span>
               </Label>
@@ -1583,7 +1573,7 @@ function EventFormDialog({
                 )}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className={FORM_SECTION_CLASS}>
               <Label htmlFor="event-time" className={FORM_LABEL_CLASS}>
                 Time
               </Label>
@@ -1598,7 +1588,7 @@ function EventFormDialog({
           </div>
 
           {/* Description */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label htmlFor="event-desc" className={FORM_LABEL_CLASS}>
               Description
             </Label>
@@ -1613,7 +1603,7 @@ function EventFormDialog({
           </div>
 
           {/* Color picker */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label className={FORM_LABEL_CLASS}>Color</Label>
             <div className="flex items-center gap-2 flex-wrap">
               {COLOR_KEYS.map((color) => {
@@ -1625,9 +1615,9 @@ function EventFormDialog({
                     type="button"
                     onClick={() => update("color", color)}
                     className={cn(
-                      "relative h-9 w-9 rounded-[5px] shadow-sm transition-all",
-                      "hover:scale-110",
-                      selected && "ring-2 ring-offset-2 ring-offset-background scale-110",
+                      "relative h-9 w-9 rounded-lg shadow-sm transition-transform",
+                      "hover:scale-105",
+                      selected && "scale-105 ring-2 ring-offset-2 ring-offset-background",
                       c.bg
                     )}
                     style={
@@ -1664,12 +1654,12 @@ function EventFormDialog({
           </div>
         </form>
 
-        <DialogFooter className="gap-2 pt-2">
+        <DialogFooter className="gap-2 border-t border-border/60 bg-background/55 p-4 sm:p-5">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="h-11 rounded-[5px] px-6"
+            className="h-10 rounded-lg border-border/70 bg-background/85 px-4 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
             disabled={saving}
           >
             Cancel
@@ -1678,7 +1668,7 @@ function EventFormDialog({
             type="button"
             onClick={handleSubmit}
             disabled={saving || !form.title.trim() || !form.date}
-            className="h-11 min-w-[120px] rounded-[5px] accent-gradient px-6 text-white shadow-lg shadow-violet-500/20"
+            className="h-10 min-w-[120px] rounded-lg accent-gradient px-4 text-white shadow-md shadow-violet-500/20"
           >
             {saving ? (
               <>
@@ -1718,14 +1708,14 @@ function CalendarSkeleton({ view }: { view: CalendarView }) {
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-14 w-14 rounded-2xl" />
+          <Skeleton className="h-14 w-14 rounded-lg" />
           <div className="space-y-2">
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-3 w-24" />
           </div>
         </div>
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+          <Skeleton key={i} className="h-20 w-full rounded-lg" />
         ))}
       </div>
     );

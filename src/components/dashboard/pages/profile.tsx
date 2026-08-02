@@ -31,9 +31,6 @@ import type { Profile, Analytics } from "@/lib/types";
 
 import {
   PageTransition,
-  GlassCard,
-  StaggerContainer,
-  StaggerItem,
 } from "@/components/shared/motion";
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
@@ -93,10 +90,10 @@ interface FormState {
 
 const ACCENT_HUE = "var(--accent-color)";
 const FORM_FIELD_CLASS =
-  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+  "rounded-lg border-border/75 bg-background/90 shadow-sm transition-colors hover:bg-card focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20 dark:border-border/55 dark:bg-background/60 dark:hover:bg-background/75";
 const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
 const FORM_DIALOG_CLASS =
-  "sm:max-w-[600px] rounded-[14px] max-h-[90vh] overflow-y-auto scrollbar-thin border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+  "dashboard-surface sm:max-w-[600px] rounded-lg max-h-[90vh] overflow-y-auto p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl";
 
 function getInitial(username: string | undefined): string {
   if (!username) return "S";
@@ -171,33 +168,33 @@ function StatCard({
   gradient,
   delay = 0,
 }: StatCardProps) {
+  const cleanHint = hint && /^[\x20-\x7E]+$/.test(hint) ? hint : "Active";
+
   return (
-    <StaggerItem delay={delay}>
-      <GlassCard hover className="p-5 h-full">
-        <div className="flex items-start justify-between mb-3">
+    <div className="dashboard-surface h-full p-3 sm:p-5">
+        <div className="mb-2 flex items-start justify-between sm:mb-3">
           <div
             className={cn(
-              "flex h-11 w-11 items-center justify-center rounded-2xl text-white shadow-lg",
+              "flex h-9 w-9 items-center justify-center rounded-lg text-white shadow-sm ring-1 ring-white/20 dark:ring-white/10 sm:h-10 sm:w-10",
               gradient
             )}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
           </div>
           {hint && (
             <Badge
               variant="secondary"
               className="text-[10px] uppercase tracking-wide"
             >
-              {hint}
+              {cleanHint}
             </Badge>
           )}
         </div>
-        <div className="text-3xl font-bold tracking-tight">
+        <div className="text-2xl font-bold tracking-tight sm:text-3xl">
           <AnimatedCounter value={value} suffix={suffix} decimals={decimals} />
         </div>
-        <div className="text-xs text-muted-foreground mt-1">{label}</div>
-      </GlassCard>
-    </StaggerItem>
+        <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground sm:mt-1 sm:text-xs">{label}</div>
+    </div>
   );
 }
 
@@ -218,23 +215,21 @@ function DetailCard({ icon: Icon, label, value, delay = 0 }: DetailCardProps) {
     value === undefined ||
     (typeof value === "string" && value.trim() === "");
   return (
-    <StaggerItem delay={delay}>
-      <GlassCard hover className="p-5 h-full">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Icon className="h-4 w-4" />
+    <div className="dashboard-surface h-full p-3 sm:p-5">
+        <div className="mb-2 flex items-center gap-2 sm:mb-3 sm:gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary sm:h-9 sm:w-9">
+            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </div>
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground sm:text-xs">
             {label}
           </span>
         </div>
         {isEmpty ? (
           <p className="text-sm text-muted-foreground/70 italic">Not set</p>
         ) : (
-          <p className="text-base font-semibold truncate">{value}</p>
+          <p className="truncate text-sm font-semibold sm:text-base">{value}</p>
         )}
-      </GlassCard>
-    </StaggerItem>
+    </div>
   );
 }
 
@@ -458,38 +453,39 @@ function EditProfileForm({
 
     setSaveState("saving");
     onSaved(optimisticProfile, updatedUsername);
-    onCloseAfterSuccess();
 
-    void (async () => {
-      try {
-        const data = await apiFetch<ProfileResponse>("/api/profile", {
-          method: "PUT",
-          body: JSON.stringify({
-            username: updatedUsername,
-            bio: optimisticProfile.bio,
-            goal: optimisticProfile.goal,
-            targetHours: optimisticProfile.targetHours,
-            college: optimisticProfile.college,
-            course: optimisticProfile.course,
-            semester: optimisticProfile.semester,
-            avatar: optimisticProfile.avatar,
-          }),
-        });
-        onSaved(data.profile, data.user?.username ?? updatedUsername);
-        toast.success("Profile updated");
-      } catch (error) {
-        onSaved(profile, username);
-        handleError(error, "Failed to update profile");
-      }
-    })();
+    try {
+      const data = await apiFetch<ProfileResponse>("/api/profile", {
+        method: "PUT",
+        body: JSON.stringify({
+          username: updatedUsername,
+          bio: optimisticProfile.bio,
+          goal: optimisticProfile.goal,
+          targetHours: optimisticProfile.targetHours,
+          college: optimisticProfile.college,
+          course: optimisticProfile.course,
+          semester: optimisticProfile.semester,
+          avatar: optimisticProfile.avatar,
+        }),
+      });
+      onSaved(data.profile, data.user?.username ?? updatedUsername);
+      setSaveState("success");
+      toast.success("Profile updated");
+      onCloseAfterSuccess();
+    } catch (error) {
+      onSaved(profile, username);
+      setSaveState("idle");
+      handleError(error, "Failed to update profile");
+    }
   };
 
   return (
     <>
+      <div className="border-b border-border/60 p-4 sm:p-5">
       <DialogHeader className="space-y-2">
         <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
           <span
-            className="flex h-11 w-11 items-center justify-center rounded-[5px] text-white shadow-sm"
+            className="dashboard-icon-tile dashboard-theme-glow-text"
             style={{
               background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
             }}
@@ -502,10 +498,11 @@ function EditProfileForm({
           Update your personal info, study goal, and avatar.
         </DialogDescription>
       </DialogHeader>
+      </div>
 
-      <div className="space-y-4 py-2">
+      <div className="space-y-3 p-4 sm:p-5">
         {/* Username */}
-        <div className="space-y-2">
+        <div className="dashboard-row space-y-2 p-3">
           <Label htmlFor="edit-username" className={FORM_LABEL_CLASS}>Username</Label>
           <div className="relative">
             <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -524,7 +521,7 @@ function EditProfileForm({
         </div>
 
         {/* Profile Photo Upload */}
-        <div className="space-y-2">
+        <div className="dashboard-row space-y-2 p-3">
           <Label className={FORM_LABEL_CLASS}>Profile Photo</Label>
           <div className="flex items-center gap-4">
             {/* Preview */}
@@ -562,7 +559,7 @@ function EditProfileForm({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-2 rounded-[5px]"
+                className="gap-2 rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-3.5 w-3.5" />
@@ -579,7 +576,7 @@ function EditProfileForm({
         </div>
 
         {/* Bio */}
-        <div className="space-y-2">
+        <div className="dashboard-row space-y-2 p-3">
           <Label htmlFor="edit-bio" className={FORM_LABEL_CLASS}>
             Bio
             <span className="ml-2 text-xs font-normal text-muted-foreground">
@@ -601,7 +598,7 @@ function EditProfileForm({
         </div>
 
         {/* Goal */}
-        <div className="space-y-2">
+        <div className="dashboard-row space-y-2 p-3">
           <Label htmlFor="edit-goal" className={FORM_LABEL_CLASS}>
             Study Goal
             <span className="ml-2 text-xs font-normal text-muted-foreground">
@@ -623,7 +620,7 @@ function EditProfileForm({
 
         {/* Two column row */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
+          <div className="dashboard-row space-y-2 p-3">
             <Label htmlFor="edit-target" className={FORM_LABEL_CLASS}>Target hours / day</Label>
             <Input
               id="edit-target"
@@ -641,7 +638,7 @@ function EditProfileForm({
               <p className="text-xs text-destructive">{errors.targetHours}</p>
             )}
           </div>
-          <div className="space-y-2">
+          <div className="dashboard-row space-y-2 p-3">
             <Label htmlFor="edit-semester">Semester (1–12)</Label>
             <Input
               id="edit-semester"
@@ -662,7 +659,7 @@ function EditProfileForm({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
+          <div className="dashboard-row space-y-2 p-3">
             <Label htmlFor="edit-college" className={FORM_LABEL_CLASS}>College</Label>
             <Input
               id="edit-college"
@@ -672,7 +669,7 @@ function EditProfileForm({
               className={FORM_FIELD_CLASS}
             />
           </div>
-          <div className="space-y-2">
+          <div className="dashboard-row space-y-2 p-3">
             <Label htmlFor="edit-course" className={FORM_LABEL_CLASS}>Course</Label>
             <Input
               id="edit-course"
@@ -684,7 +681,7 @@ function EditProfileForm({
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="dashboard-row space-y-2 p-3">
           <Label htmlFor="edit-avatar" className={FORM_LABEL_CLASS}>Avatar URL (optional)</Label>
           <Input
             id="edit-avatar"
@@ -701,16 +698,17 @@ function EditProfileForm({
         </div>
       </div>
 
-      <DialogFooter className="gap-2">
+      <DialogFooter className="gap-2 border-t border-border/60 bg-background/55 p-4 sm:p-5">
         <DialogClose asChild>
-          <Button variant="outline" disabled={saveState !== "idle"} className="h-11 rounded-[5px] px-6">
+          <Button variant="outline" disabled={saveState !== "idle"} className="h-10 rounded-lg border-border/70 bg-background/85 px-4 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60">
             Cancel
           </Button>
         </DialogClose>
         <Button
+          type="button"
           onClick={handleSave}
           disabled={saveState !== "idle"}
-          className="relative h-11 min-w-[150px] rounded-[5px] px-6 text-white shadow-lg shadow-violet-500/20"
+          className="relative h-10 min-w-[150px] rounded-lg px-4 text-white shadow-md shadow-violet-500/20"
           style={{
             background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
           }}
@@ -805,17 +803,17 @@ function ProfileHero({
 }: ProfileHeroProps) {
   if (loading) {
     return (
-      <GlassCard className="p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          <Skeleton className="h-24 w-24 rounded-full" />
-          <div className="flex-1 space-y-3 w-full">
-            <Skeleton className="h-7 w-48" />
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-9 w-32" />
+      <div className="dashboard-surface p-4 sm:p-6">
+        <div className="flex items-start gap-3 sm:gap-6">
+          <Skeleton className="h-20 w-20 shrink-0 rounded-full sm:h-24 sm:w-24" />
+          <div className="w-full flex-1 space-y-3">
+            <Skeleton className="h-6 w-40 sm:h-7 sm:w-48" />
+            <Skeleton className="h-4 w-28 sm:w-32" />
+            <Skeleton className="h-14 w-full sm:h-16" />
+            <Skeleton className="h-9 w-full sm:w-32" />
           </div>
         </div>
-      </GlassCard>
+      </div>
     );
   }
 
@@ -823,39 +821,58 @@ function ProfileHero({
   const hasGoal = profile.goal && profile.goal.trim() !== "";
 
   return (
-    <GlassCard className="p-6 sm:p-8 relative overflow-hidden">
-      <div className="relative flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-7">
-        <ProfileAvatar
-          username={username}
-          avatarUrl={profile.avatar}
-          size={96}
-        />
-
-        <div className="flex-1 min-w-0 w-full text-center sm:text-left">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-1">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">
-              {username ?? "Student"}
-            </h2>
-            <Badge
-              className="mx-auto sm:mx-0 w-fit text-white"
-              style={{
-                background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
-              }}
-            >
-              <Sparkles className="h-3 w-3" />
-              Student
-            </Badge>
+    <div className="dashboard-surface relative overflow-hidden p-4 sm:p-6 lg:p-7">
+      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 lg:gap-8">
+        <div className="flex items-center gap-4 sm:shrink-0">
+          <div className="sm:hidden">
+            <ProfileAvatar
+              username={username}
+              avatarUrl={profile.avatar}
+              size={72}
+            />
+          </div>
+          <div className="hidden sm:block lg:hidden">
+            <ProfileAvatar
+              username={username}
+              avatarUrl={profile.avatar}
+              size={96}
+            />
+          </div>
+          <div className="hidden lg:block">
+            <ProfileAvatar
+              username={username}
+              avatarUrl={profile.avatar}
+              size={112}
+            />
           </div>
 
-          <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs text-muted-foreground mb-4">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Member since {memberSince}</span>
+          <div className="min-w-0 flex-1 text-left sm:hidden">
+            <h2 className="truncate text-2xl font-bold leading-tight tracking-tight">
+              {username ?? "Student"}
+            </h2>
+            <div className="mt-2 flex items-center gap-1.5 text-xs leading-none text-muted-foreground">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Member since {memberSince}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="min-w-0 w-full flex-1 text-left sm:py-1">
+          <div className="hidden min-w-0 sm:block">
+            <h2 className="truncate text-3xl font-bold leading-tight tracking-tight lg:text-4xl">
+              {username ?? "Student"}
+            </h2>
+
+            <div className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span>Member since {memberSince}</span>
+            </div>
           </div>
 
           {/* Bio */}
-          <div className="mb-4">
+          <div className="mb-4 sm:mt-5 sm:max-w-3xl">
             {hasBio ? (
-              <p className="text-sm text-foreground/80 leading-relaxed">
+              <p className="text-sm font-medium leading-relaxed text-foreground/80 sm:text-base">
                 {profile.bio}
               </p>
             ) : (
@@ -871,20 +888,21 @@ function ProfileHero({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="mt-2 inline-flex items-start gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm max-w-full"
+              className="dashboard-row mt-2 inline-flex max-w-full items-start gap-2 border-primary/20 bg-primary/5 px-4 py-2.5 text-sm sm:px-5 sm:py-3"
             >
               <Quote className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-              <span className="font-medium italic text-foreground/90">
+              <span className="font-semibold italic text-foreground/90">
                 {profile.goal}
               </span>
             </motion.div>
           )}
         </div>
 
-        <div className="flex-shrink-0 flex items-center mt-4 sm:mt-0">
+        <div className="flex shrink-0 items-center sm:self-start lg:self-center">
           <Button
+            type="button"
             onClick={onEdit}
-            className="text-white"
+            className="w-full rounded-lg px-4 text-white shadow-md shadow-violet-500/20 sm:w-auto sm:px-5"
             style={{
               background: `linear-gradient(135deg, oklch(0.58 0.22 ${ACCENT_HUE}), oklch(0.66 0.2 calc(${ACCENT_HUE} + 40)))`,
             }}
@@ -894,7 +912,7 @@ function ProfileHero({
           </Button>
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -973,6 +991,7 @@ export function ProfilePage() {
 
   const handleSaved = (p: Profile, updatedUsername?: string) => {
     setProfile(p);
+    useAppStore.getState().setView("profile");
     writePageCache("profile", user?.id, {
       profile: p,
       stats,
@@ -998,23 +1017,20 @@ export function ProfilePage() {
     <PageTransition>
       <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+        <div className="dashboard-surface flex flex-wrap items-center justify-between gap-4 p-4 sm:p-5">
+          <div className="min-w-0">
+            <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
               <Sparkles className="h-3.5 w-3.5" />
               <span>Your learning journey</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              My <span className="text-gradient">Profile</span>
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               Manage your personal info, study goal, and account details.
             </p>
           </div>
         </div>
 
         {error ? (
-          <GlassCard className="p-6">
+          <div className="dashboard-surface p-5 sm:p-6">
             <EmptyState
               icon={GraduationCap}
               title="Couldn't load profile"
@@ -1025,11 +1041,11 @@ export function ProfilePage() {
                 </Button>
               }
             />
-          </GlassCard>
+          </div>
         ) : (
-          <StaggerContainer className="space-y-6 sm:space-y-8">
+          <div className="space-y-4">
             {/* Hero */}
-            <StaggerItem>
+            <div>
               <ProfileHero
                 profile={safeProfile}
                 username={currentUsername}
@@ -1037,14 +1053,14 @@ export function ProfilePage() {
                 loading={loading}
                 onEdit={() => setEditOpen(true)}
               />
-            </StaggerItem>
+            </div>
 
             {/* Stats */}
             <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">
+              <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:mb-3 sm:text-sm">
                 Snapshot
               </h3>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
                 <StatCard
                   icon={Flame}
                   label="Study Streak"
@@ -1083,10 +1099,10 @@ export function ProfilePage() {
 
             {/* Details */}
             <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 px-1">
+              <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:mb-3 sm:text-sm">
                 Academic Details
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
                 <DetailCard
                   icon={School}
                   label="College"
@@ -1119,7 +1135,7 @@ export function ProfilePage() {
             </div>
 
 
-          </StaggerContainer>
+          </div>
         )}
       </div>
 

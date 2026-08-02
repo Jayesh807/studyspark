@@ -1,4 +1,5 @@
 "use client";
+// Updated todos.tsx: Removed duplicate Daily Tasks title header
 
 import * as React from "react";
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -657,24 +658,21 @@ export function TodosPage() {
   // ---------- Render ----------
   return (
     <PageTransition>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+      <div className="space-y-4">
+        {/* Subtitle & Actions Bar */}
+        <div className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="space-y-1">
+            <div className="dashboard-chip dashboard-theme-glow-text">
               <Sparkles className="h-3.5 w-3.5" />
               <span>Conquer your day, one task at a time</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Daily Tasks
-            </h1>
-            <p className="text-muted-foreground mt-1.5 text-sm sm:text-base">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Plan, organize, and conquer your day — one task at a time.
             </p>
           </div>
           <Button
             onClick={handleCreate}
-            className="accent-gradient text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-[1.02] transition-all rounded-xl h-11 px-5"
+            className="accent-gradient h-10 shrink-0 rounded-lg px-4 text-white shadow-md shadow-violet-500/20 transition-shadow hover:shadow-violet-500/30"
           >
             <Plus className="h-4 w-4" />
             New Task
@@ -713,7 +711,7 @@ export function TodosPage() {
         </StaggerContainer>
 
         {/* Toolbar */}
-        <GlassCard className="p-4">
+        <GlassCard className="dashboard-surface rounded-lg p-3 sm:p-4">
           <div className="flex flex-col lg:flex-row gap-3">
             {/* Search */}
             <div className="relative flex-1 min-w-0">
@@ -722,7 +720,7 @@ export function TodosPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search tasks by title or description..."
-                className="pl-9 rounded-xl bg-background/60"
+                className="h-10 rounded-lg border-border/70 bg-background/85 pl-9 shadow-sm dark:border-border/60 dark:bg-background/60"
               />
               {search && (
                 <button
@@ -741,7 +739,7 @@ export function TodosPage() {
               onValueChange={(v) => setStatusFilter(v as "all" | TodoStatus)}
               className="w-full lg:w-auto"
             >
-              <TabsList className="w-full lg:w-auto rounded-xl">
+              <TabsList className="w-full rounded-lg lg:w-auto">
                 <TabsTrigger value="all" className="flex-1 lg:flex-initial">
                   All
                 </TabsTrigger>
@@ -762,7 +760,7 @@ export function TodosPage() {
               value={priorityFilter}
               onValueChange={(v) => setPriorityFilter(v as "all" | Priority)}
             >
-              <SelectTrigger className="w-full lg:w-[150px] rounded-xl bg-background/60">
+              <SelectTrigger className="h-10 w-full rounded-lg border-border/70 bg-background/85 shadow-sm dark:border-border/60 dark:bg-background/60 lg:w-[150px]">
                 <Flag className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
@@ -794,7 +792,7 @@ export function TodosPage() {
               value={sortBy}
               onValueChange={(v) => setSortBy(v as "due" | "priority" | "created")}
             >
-              <SelectTrigger className="w-full lg:w-[150px] rounded-xl bg-background/60">
+              <SelectTrigger className="h-10 w-full rounded-lg border-border/70 bg-background/85 shadow-sm dark:border-border/60 dark:bg-background/60 lg:w-[150px]">
                 <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                 <SelectValue placeholder="Sort" />
               </SelectTrigger>
@@ -883,7 +881,7 @@ export function TodosPage() {
           open={!!deleting}
           onOpenChange={(o) => !o && setDeleting(null)}
         >
-          <AlertDialogContent className="rounded-2xl">
+          <AlertDialogContent className="dashboard-surface rounded-lg border-border/70 shadow-2xl shadow-slate-950/20 dark:border-border/55">
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
@@ -898,7 +896,9 @@ export function TodosPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60">
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 className="rounded-xl bg-rose-500 text-white hover:bg-rose-600"
@@ -1235,12 +1235,12 @@ function TaskCardInner({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="rounded-xl"
+                className="dashboard-menu-surface p-1"
                 onCloseAutoFocus={(e) => e.preventDefault()}
               >
                 <DropdownMenuItem
                   onClick={() => onEdit?.(todo)}
-                  className="rounded-md cursor-pointer"
+                  className="cursor-pointer rounded-lg"
                 >
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit
@@ -1248,7 +1248,7 @@ function TaskCardInner({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => onDelete?.(todo)}
-                  className="rounded-md cursor-pointer text-rose-600 dark:text-rose-400 focus:text-rose-600 focus:bg-rose-500/10"
+                  className="cursor-pointer rounded-lg text-rose-600 focus:bg-rose-500/10 focus:text-rose-600 dark:text-rose-300 dark:focus:text-rose-300"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
@@ -1359,9 +1359,12 @@ function TaskFormDialog({
   const selectedCategory = CATEGORY_ICON_CONFIG[form.category];
   const SelectedCategoryIcon = selectedCategory.icon;
   const fieldClass =
-    "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+    "rounded-lg border-border/75 bg-background/90 shadow-sm transition-colors hover:bg-card focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20 dark:border-border/55 dark:bg-background/60 dark:hover:bg-background/75";
   const selectClass = cn("w-full h-11 px-3", fieldClass);
   const labelClass = "text-sm font-semibold text-foreground/90";
+  const sectionClass = "dashboard-row space-y-3 p-3 sm:p-4";
+  const selectContentClass =
+    "rounded-lg border-border/70 bg-popover/95 p-1 shadow-xl backdrop-blur-xl";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1384,25 +1387,27 @@ function TaskFormDialog({
       <DialogContent
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
-        className="sm:max-w-[600px] rounded-[14px] max-h-[90vh] overflow-y-auto scrollbar-thin border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90"
+        className="dashboard-surface scrollbar-thin max-h-[90vh] overflow-y-auto rounded-lg p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl sm:max-w-[640px]"
       >
-        <DialogHeader className="space-y-2">
-          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
-            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/18 to-fuchsia-500/14 text-violet-600 ring-1 ring-violet-500/15 dark:text-violet-300">
-              {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            </span>
-            {isEdit ? "Edit Task" : "New Task"}
-          </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            {isEdit
-              ? "Update the details of your task below."
-              : "Fill in the details below to create a new task."}
-          </DialogDescription>
-        </DialogHeader>
+        <div className="border-b border-border/60 p-4 sm:p-5">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+              <span className="dashboard-icon-tile dashboard-theme-glow-text">
+                {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              </span>
+              <span>{isEdit ? "Edit Task" : "New Task"}</span>
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              {isEdit
+                ? "Update the details of your task below."
+                : "Fill in the details below to create a new task."}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-3 p-4 sm:p-5">
           {/* Title */}
-          <div className="space-y-2">
+          <div className={sectionClass}>
             <Label htmlFor="task-title" className={labelClass}>
               Title <span className="text-rose-500">*</span>
             </Label>
@@ -1427,7 +1432,7 @@ function TaskFormDialog({
           </div>
 
           {/* Description */}
-          <div className="space-y-2">
+          <div className={sectionClass}>
             <Label htmlFor="task-desc" className={labelClass}>
               Description
             </Label>
@@ -1443,7 +1448,7 @@ function TaskFormDialog({
 
           {/* Grid: Priority, Category, Status */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="space-y-2">
+            <div className={sectionClass}>
               <Label className={labelClass}>Priority</Label>
               <Select
                 value={form.priority}
@@ -1452,20 +1457,20 @@ function TaskFormDialog({
                 <SelectTrigger className={selectClass}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-[5px] border-border/60 bg-popover/95 p-1 shadow-xl backdrop-blur-xl">
-                  <SelectItem value="high">
+                <SelectContent className={selectContentClass}>
+                  <SelectItem value="high" className="rounded-lg">
                     <span className="inline-flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-rose-500" />
                       High
                     </span>
                   </SelectItem>
-                  <SelectItem value="medium">
+                  <SelectItem value="medium" className="rounded-lg">
                     <span className="inline-flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-amber-500" />
                       Medium
                     </span>
                   </SelectItem>
-                  <SelectItem value="low">
+                  <SelectItem value="low" className="rounded-lg">
                     <span className="inline-flex items-center gap-2">
                       <span className="h-2 w-2 rounded-full bg-sky-500" />
                       Low
@@ -1475,7 +1480,7 @@ function TaskFormDialog({
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className={sectionClass}>
               <Label className={labelClass}>Category</Label>
               <Select
                 value={form.category}
@@ -1485,7 +1490,7 @@ function TaskFormDialog({
                   <span className="flex min-w-0 items-center gap-2.5">
                     <span
                       className={cn(
-                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-[5px] ring-1",
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-lg ring-1",
                         selectedCategory.soft,
                         selectedCategory.text,
                         selectedCategory.ring
@@ -1496,16 +1501,16 @@ function TaskFormDialog({
                     <span className="truncate">{CATEGORY_CONFIG[form.category].label}</span>
                   </span>
                 </SelectTrigger>
-                <SelectContent className="rounded-[5px] border-border/60 bg-popover/95 p-1 shadow-xl backdrop-blur-xl">
+                <SelectContent className={selectContentClass}>
                   {(Object.keys(CATEGORY_CONFIG) as TodoCategory[]).map((c) => {
                     const categoryUi = CATEGORY_ICON_CONFIG[c];
                     const CategoryIcon = categoryUi.icon;
                     return (
-                      <SelectItem key={c} value={c} className="rounded-[5px] py-2">
+                      <SelectItem key={c} value={c} className="rounded-lg py-2">
                         <span className="inline-flex items-center gap-2.5">
                           <span
                             className={cn(
-                              "flex h-6 w-6 items-center justify-center rounded-[5px] ring-1",
+                              "flex h-6 w-6 items-center justify-center rounded-lg ring-1",
                               categoryUi.soft,
                               categoryUi.text,
                               categoryUi.ring
@@ -1522,7 +1527,7 @@ function TaskFormDialog({
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className={sectionClass}>
               <Label className={labelClass}>Status</Label>
               <Select
                 value={form.status}
@@ -1531,20 +1536,20 @@ function TaskFormDialog({
                 <SelectTrigger className={selectClass}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-[5px] border-border/60 bg-popover/95 p-1 shadow-xl backdrop-blur-xl">
-                  <SelectItem value="todo" className="rounded-[5px]">
+                <SelectContent className={selectContentClass}>
+                  <SelectItem value="todo" className="rounded-lg">
                     <span className="inline-flex items-center gap-2">
                       <CircleDashed className="h-3.5 w-3.5 text-slate-500" />
                       To Do
                     </span>
                   </SelectItem>
-                  <SelectItem value="in-progress" className="rounded-[5px]">
+                  <SelectItem value="in-progress" className="rounded-lg">
                     <span className="inline-flex items-center gap-2">
                       <ClipboardList className="h-3.5 w-3.5 text-amber-500" />
                       In Progress
                     </span>
                   </SelectItem>
-                  <SelectItem value="completed" className="rounded-[5px]">
+                  <SelectItem value="completed" className="rounded-lg">
                     <span className="inline-flex items-center gap-2">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                       Completed
@@ -1557,7 +1562,7 @@ function TaskFormDialog({
 
           {/* Grid: Subject, Due date */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
+            <div className={sectionClass}>
               <Label className={labelClass}>Subject</Label>
               <Select
                 value={form.subject || "__none__"}
@@ -1568,12 +1573,12 @@ function TaskFormDialog({
                 <SelectTrigger className={selectClass}>
                   <SelectValue placeholder="None" />
                 </SelectTrigger>
-                <SelectContent className="rounded-[5px] border-border/60 bg-popover/95 p-1 shadow-xl backdrop-blur-xl">
-                  <SelectItem value="__none__" className="rounded-[5px]">
+                <SelectContent className={selectContentClass}>
+                  <SelectItem value="__none__" className="rounded-lg">
                     <span className="text-muted-foreground">None</span>
                   </SelectItem>
                   {subjects.map((s) => (
-                    <SelectItem key={s.id} value={s.name} className="rounded-[5px]">
+                    <SelectItem key={s.id} value={s.name} className="rounded-lg">
                       <span className="inline-flex items-center gap-2">
                         <span
                           className={cn(
@@ -1589,7 +1594,7 @@ function TaskFormDialog({
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className={sectionClass}>
               <Label htmlFor="task-due" className={labelClass}>
                 Due date
               </Label>
@@ -1604,12 +1609,12 @@ function TaskFormDialog({
           </div>
         </form>
 
-        <DialogFooter className="pt-1">
+        <DialogFooter className="border-t border-border/60 bg-background/55 p-4 sm:p-5">
           <Button
             type="button"
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="h-11 rounded-[5px] border-border/60 bg-background/70 px-5 shadow-sm hover:bg-muted/60"
+            className="h-10 rounded-lg border-border/70 bg-background/85 px-4 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
             disabled={saving}
           >
             Cancel
@@ -1618,7 +1623,7 @@ function TaskFormDialog({
             type="button"
             onClick={handleSubmit}
             disabled={saving || !form.title.trim()}
-            className="h-11 min-w-[118px] rounded-[5px] accent-gradient px-5 text-white shadow-lg shadow-violet-500/20 transition-all hover:shadow-violet-500/30"
+            className="h-10 min-w-[118px] rounded-lg accent-gradient px-4 text-white shadow-md shadow-violet-500/20 transition-shadow hover:shadow-violet-500/30"
           >
             {saving ? (
               <>

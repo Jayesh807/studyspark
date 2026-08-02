@@ -33,7 +33,7 @@ export function Logo({ className, showWordmark = true, onClick }: LogoProps) {
       </m.span>
       {showWordmark && (
         <span className="text-lg font-bold tracking-tight">
-          Study<span className="text-gradient">Spark</span>
+          Study <span className="text-gradient">Sparks</span>
         </span>
       )}
     </button>

@@ -84,12 +84,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-import {
-  PageTransition,
-  GlassCard,
-  StaggerContainer,
-  StaggerItem,
-} from "@/components/shared/motion";
+import { PageTransition } from "@/components/shared/motion";
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 
@@ -98,11 +93,12 @@ import { AnimatedCounter } from "@/components/shared/animated-counter";
 // ---------------------------------------------------------------------------
 
 const FORM_FIELD_CLASS =
-  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+  "rounded-lg border-border/75 bg-background/90 shadow-sm transition-colors hover:bg-card focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20 dark:border-border/55 dark:bg-background/60 dark:hover:bg-background/75";
 const FORM_SELECT_CLASS = cn("h-11 w-full px-3", FORM_FIELD_CLASS);
 const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
 const FORM_DIALOG_CLASS =
-  "max-h-[90vh] overflow-y-auto scrollbar-thin rounded-[14px] sm:max-w-lg border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+  "dashboard-surface max-h-[90vh] overflow-y-auto rounded-lg p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl sm:max-w-lg";
+const FORM_SECTION_CLASS = "dashboard-row space-y-2 p-3 sm:p-4";
 
 interface CountdownParts {
   days: number;
@@ -158,7 +154,7 @@ function FlipDigit({ value, label }: { value: number; label: string }) {
   const display = String(value).padStart(2, "0");
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-b from-violet-500/10 to-fuchsia-500/10 px-2 py-1.5 ring-1 ring-violet-500/15 dark:from-violet-500/15 dark:to-fuchsia-500/15 sm:px-2.5 sm:py-2">
+      <div className="relative overflow-hidden rounded-lg bg-gradient-to-b from-violet-500/10 to-fuchsia-500/10 px-2 py-1.5 ring-1 ring-violet-500/15 dark:from-violet-500/15 dark:to-fuchsia-500/15 sm:px-2.5 sm:py-2">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
             key={display}
@@ -193,7 +189,7 @@ function CountdownTimer({ target }: { target: Date }) {
 
   if (parts.isPast) {
     return (
-      <div className="inline-flex items-center gap-1.5 rounded-xl bg-muted/60 px-3 py-2 text-xs font-semibold text-muted-foreground ring-1 ring-border">
+      <div className="inline-flex items-center gap-1.5 rounded-lg bg-muted/60 px-3 py-2 text-xs font-semibold text-muted-foreground ring-1 ring-border">
         <History className="h-3.5 w-3.5" />
         Exam window passed
       </div>
@@ -217,7 +213,7 @@ function CountdownTimer({ target }: { target: Date }) {
   return (
     <div
       className={cn(
-        "relative rounded-2xl bg-gradient-to-br p-3 ring-1",
+        "relative rounded-lg bg-gradient-to-br p-3 ring-1",
         urgencyStyles
       )}
     >
@@ -258,17 +254,17 @@ interface StatCardProps {
 
 function StatCard({ icon: Icon, label, value, decimals = 0, suffix, gradient }: StatCardProps) {
   return (
-    <GlassCard className="relative overflow-hidden p-4 sm:p-5">
+    <div className="dashboard-surface relative overflow-hidden p-3 sm:p-4">
       <div className="relative flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="mt-1.5 text-2xl font-bold tracking-tight sm:text-3xl">
+          <p className="mt-1 text-2xl font-bold tracking-tight">
             <AnimatedCounter value={value} decimals={decimals} suffix={suffix} />
           </p>
         </div>
         <div
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm ring-1",
             gradient,
             "ring-white/20 dark:ring-white/10"
           )}
@@ -276,7 +272,7 @@ function StatCard({ icon: Icon, label, value, decimals = 0, suffix, gradient }: 
           <Icon className="h-4.5 w-4.5 text-white" />
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -304,7 +300,7 @@ function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
   const priority = PRIORITY_CONFIG[exam.priority];
 
   return (
-    <GlassCard hover className="group relative flex flex-col gap-4 p-5 sm:p-6">
+    <div className="dashboard-surface group relative flex flex-col gap-4 p-4 transition-colors hover:border-violet-500/30 hover:bg-violet-500/[0.03] sm:p-5">
       {/* Top row: subject badge + menu */}
       <div className="relative flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -329,7 +325,7 @@ function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 -mr-1.5 -mt-1.5 opacity-60 transition-opacity hover:opacity-100"
+              className="h-8 w-8 -mr-1.5 -mt-1.5 rounded-lg opacity-70 transition-opacity hover:bg-muted/60 hover:opacity-100"
               aria-label="Exam actions"
             >
               <svg
@@ -344,8 +340,8 @@ function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
               </svg>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem onSelect={() => onEdit(exam)}>
+          <DropdownMenuContent align="end" className="dashboard-menu-surface w-40 p-1">
+            <DropdownMenuItem onSelect={() => onEdit(exam)} className="cursor-pointer rounded-lg">
               <Pencil className="h-4 w-4" />
               Edit
             </DropdownMenuItem>
@@ -353,6 +349,7 @@ function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
             <DropdownMenuItem
               variant="destructive"
               onSelect={() => onDelete(exam)}
+              className="cursor-pointer rounded-lg text-rose-600 focus:bg-rose-500/10 focus:text-rose-600 dark:text-rose-300 dark:focus:text-rose-300"
             >
               <Trash2 className="h-4 w-4" />
               Delete
@@ -431,7 +428,7 @@ function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
           {exam.notes}
         </p>
       )}
-    </GlassCard>
+    </div>
   );
 }
 
@@ -442,9 +439,9 @@ function ExamCard({ exam, subjects, onEdit, onDelete }: ExamCardProps) {
 function PastExamRow({ exam }: { exam: Exam }) {
   const target = examDate(exam);
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card/40 px-3 py-2.5 transition-colors hover:bg-accent/40">
+    <div className="dashboard-row flex items-center justify-between gap-3 px-3 py-2.5 transition-colors hover:border-violet-500/30 hover:bg-violet-500/[0.03]">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
           <History className="h-4 w-4" />
         </div>
         <div className="min-w-0">
@@ -575,23 +572,25 @@ function ExamDialog({
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="space-y-2">
-          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
-            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/90 via-fuchsia-500/90 to-sky-500/80 text-white shadow-sm">
-              <ClipboardList className="h-4 w-4" />
-            </span>
-            {initial ? "Edit Exam" : "Add New Exam"}
-          </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            {initial
-              ? "Update the details for this exam."
-              : "Track an upcoming exam with a live countdown and prep progress."}
-          </DialogDescription>
-        </DialogHeader>
+        <div className="border-b border-border/60 p-4 sm:p-5">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+              <span className="dashboard-icon-tile dashboard-theme-glow-text">
+                <ClipboardList className="h-4 w-4" />
+              </span>
+              {initial ? "Edit Exam" : "Add New Exam"}
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              {initial
+                ? "Update the details for this exam."
+                : "Track an upcoming exam with a live countdown and prep progress."}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 p-4 sm:p-5">
           {/* Subject */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label htmlFor="exam-subject" className={FORM_LABEL_CLASS}>Subject</Label>
             {subjects.length > 0 ? (
               <Select
@@ -601,7 +600,7 @@ function ExamDialog({
                 <SelectTrigger id="exam-subject" className={FORM_SELECT_CLASS}>
                   <SelectValue placeholder="Choose a subject" />
                 </SelectTrigger>
-                <SelectContent className="rounded-[8px]">
+                <SelectContent className="dashboard-surface rounded-lg border-border/70 p-1 dark:border-border/55">
                   {subjects.map((s) => (
                     <SelectItem key={s.id} value={s.name}>
                       <span className="flex items-center gap-2">
@@ -629,7 +628,7 @@ function ExamDialog({
           </div>
 
           {/* Exam name */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label htmlFor="exam-name" className={FORM_LABEL_CLASS}>
               Exam Name <span className="text-rose-500">*</span>
             </Label>
@@ -648,7 +647,7 @@ function ExamDialog({
 
           {/* Date + Time */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+            <div className={FORM_SECTION_CLASS}>
               <Label htmlFor="exam-date" className={FORM_LABEL_CLASS}>
                 Date <span className="text-rose-500">*</span>
               </Label>
@@ -670,7 +669,7 @@ function ExamDialog({
                       : "Pick a date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto rounded-[8px] border-border/60 p-0 shadow-xl" align="start">
+                <PopoverContent className="dashboard-surface w-auto rounded-lg border-border/70 p-0 shadow-xl dark:border-border/55" align="start">
                   <Calendar
                     mode="single"
                     selected={form.date ? parseISO(form.date) : undefined}
@@ -685,7 +684,7 @@ function ExamDialog({
                 <p className="text-xs text-rose-500">{errors.date}</p>
               )}
             </div>
-            <div className="space-y-1.5">
+            <div className={FORM_SECTION_CLASS}>
               <Label htmlFor="exam-time" className={FORM_LABEL_CLASS}>Time</Label>
               <Input
                 id="exam-time"
@@ -699,7 +698,7 @@ function ExamDialog({
 
           {/* Location + Priority */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
+            <div className={FORM_SECTION_CLASS}>
               <Label htmlFor="exam-location" className={FORM_LABEL_CLASS}>Location</Label>
               <Input
                 id="exam-location"
@@ -709,7 +708,7 @@ function ExamDialog({
                 className={FORM_FIELD_CLASS}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className={FORM_SECTION_CLASS}>
               <Label className={FORM_LABEL_CLASS}>Priority</Label>
               <Select
                 value={form.priority}
@@ -718,7 +717,7 @@ function ExamDialog({
                 <SelectTrigger className={FORM_SELECT_CLASS}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-[8px]">
+                <SelectContent className="dashboard-surface rounded-lg border-border/70 p-1 dark:border-border/55">
                   {(Object.keys(PRIORITY_CONFIG) as Priority[]).map((p) => (
                     <SelectItem key={p} value={p}>
                       <span className="flex items-center gap-2">
@@ -738,7 +737,7 @@ function ExamDialog({
           </div>
 
           {/* Progress */}
-          <div className="space-y-2">
+          <div className={FORM_SECTION_CLASS}>
             <div className="flex items-center justify-between">
               <Label className={FORM_LABEL_CLASS}>Preparation progress</Label>
               <span className="text-sm font-semibold tabular-nums">
@@ -755,7 +754,7 @@ function ExamDialog({
           </div>
 
           {/* Notes */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label htmlFor="exam-notes" className={FORM_LABEL_CLASS}>Notes</Label>
             <Textarea
               id="exam-notes"
@@ -767,25 +766,25 @@ function ExamDialog({
             />
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="gap-2 border-t border-border/60 bg-background/55 p-4 sm:p-5">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={submitting}
-              className="h-11 rounded-[5px] px-6"
+              className="h-10 rounded-lg border-border/70 bg-background/85 px-4 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+              className="h-10 rounded-lg accent-gradient px-4 text-white shadow-md shadow-violet-500/20"
             >
               {submitting ? (
                 <>
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Saving…
+                  Saving...
                 </>
               ) : (
                 <>
@@ -807,14 +806,14 @@ function ExamDialog({
 
 function ExamCardSkeleton() {
   return (
-    <div className="glass rounded-3xl p-5 sm:p-6">
+    <div className="dashboard-surface p-5 sm:p-6">
       <div className="flex items-center justify-between">
         <Skeleton className="h-6 w-24 rounded-full" />
         <Skeleton className="h-6 w-16 rounded-full" />
       </div>
       <Skeleton className="mt-4 h-5 w-3/4" />
       <Skeleton className="mt-2 h-3 w-2/3" />
-      <Skeleton className="mt-4 h-20 w-full rounded-2xl" />
+      <Skeleton className="mt-4 h-20 w-full rounded-lg" />
       <Skeleton className="mt-4 h-2 w-full rounded-full" />
       <Skeleton className="mt-3 h-3 w-full" />
     </div>
@@ -1042,24 +1041,21 @@ export function ExamsPage() {
   };
 
   return (
-    <PageTransition className="space-y-6 sm:space-y-8">
-      {/* Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <PageTransition className="space-y-4">
+      {/* Subtitle & Actions Bar */}
+      <header className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="space-y-1">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Crush your next exam</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Upcoming Exams
-          </h1>
           <p className="text-sm text-muted-foreground">
             Stay ahead with live countdowns and prep progress for every exam.
           </p>
         </div>
         <Button
           onClick={handleAdd}
-          className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+          className="h-10 rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
         >
           <Plus className="h-4 w-4" />
           Add Exam
@@ -1070,7 +1066,7 @@ export function ExamsPage() {
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-3xl" />
+            <Skeleton key={i} className="h-24 rounded-lg" />
           ))
         ) : (
           <>
@@ -1119,13 +1115,13 @@ export function ExamsPage() {
             action={
               <Button
                 onClick={handleAdd}
-                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+                className="rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
               >
                 <Plus className="h-4 w-4" />
                 Add your first exam
               </Button>
             }
-            className="glass rounded-3xl"
+            className="dashboard-surface"
           />
         ) : upcoming.length === 0 ? (
           <EmptyState
@@ -1135,29 +1131,27 @@ export function ExamsPage() {
             action={
               <Button
                 onClick={handleAdd}
-                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+                className="rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
               >
                 <Plus className="h-4 w-4" />
                 Add exam
               </Button>
             }
-            className="glass rounded-3xl"
+            className="dashboard-surface"
           />
         ) : (
-          <StaggerContainer
-            className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
-          >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {upcoming.map((exam) => (
-              <StaggerItem key={exam.id}>
+              <div key={exam.id}>
                 <ExamCard
                   exam={exam}
                   subjects={subjects}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                 />
-              </StaggerItem>
+              </div>
             ))}
-          </StaggerContainer>
+          </div>
         )}
       </section>
 
@@ -1165,14 +1159,14 @@ export function ExamsPage() {
       {!loading && past.length > 0 && (
         <section>
           <Collapsible open={pastOpen} onOpenChange={setPastOpen}>
-            <GlassCard className="overflow-hidden p-0">
+            <div className="dashboard-surface overflow-hidden p-0">
               <CollapsibleTrigger asChild>
                 <button
                   className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition-colors hover:bg-accent/40"
                   aria-expanded={pastOpen}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
                       <History className="h-4 w-4" />
                     </div>
                     <div>
@@ -1202,7 +1196,7 @@ export function ExamsPage() {
                   </AnimatePresence>
                 </div>
               </CollapsibleContent>
-            </GlassCard>
+            </div>
           </Collapsible>
         </section>
       )}
@@ -1217,10 +1211,10 @@ export function ExamsPage() {
       />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent className="dashboard-surface rounded-lg border-border/70 p-5 shadow-2xl shadow-slate-950/20 dark:border-border/45 sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-500">
+            <AlertDialogTitle className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/15 text-rose-500">
                 <AlertTriangle className="h-4 w-4" />
               </span>
               Delete exam?
@@ -1233,11 +1227,13 @@ export function ExamsPage() {
               . This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-rose-500 text-white hover:bg-rose-600"
+              className="rounded-lg bg-rose-500 text-white shadow-md shadow-rose-500/20 hover:bg-rose-600"
             >
               Delete
             </AlertDialogAction>

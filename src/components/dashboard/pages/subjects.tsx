@@ -62,7 +62,6 @@ import {
 
 import {
   PageTransition,
-  GlassCard,
   StaggerContainer,
   StaggerItem,
 } from "@/components/shared/motion";
@@ -75,10 +74,11 @@ import { AnimatedCounter } from "@/components/shared/animated-counter";
 // ---------------------------------------------------------------------------
 
 const FORM_FIELD_CLASS =
-  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+  "rounded-lg border-border/75 bg-background/90 shadow-sm transition-colors hover:bg-card focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20 dark:border-border/55 dark:bg-background/60 dark:hover:bg-background/75";
 const FORM_LABEL_CLASS = "text-sm font-semibold text-foreground/90";
 const FORM_DIALOG_CLASS =
-  "max-h-[90vh] overflow-y-auto scrollbar-thin rounded-[14px] sm:max-w-lg border-white/60 bg-background/92 p-7 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+  "dashboard-surface max-h-[90vh] overflow-y-auto rounded-lg p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl sm:max-w-lg";
+const FORM_SECTION_CLASS = "dashboard-row space-y-2 p-3 sm:p-4";
 
 const COLOR_SWATCHES: EventColor[] = [
   "violet",
@@ -115,24 +115,24 @@ function StatCard({
   gradient,
 }: StatCardProps) {
   return (
-    <GlassCard className="relative overflow-hidden p-4 sm:p-5">
+    <div className="dashboard-surface relative overflow-hidden p-3 sm:p-4">
       <div className="relative flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="mt-1.5 text-2xl font-bold tracking-tight sm:text-3xl">
+          <p className="mt-1 text-2xl font-bold tracking-tight">
             <AnimatedCounter value={value} decimals={decimals} suffix={suffix} />
           </p>
         </div>
         <div
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-white/20 dark:ring-white/10",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm ring-1 ring-white/20 dark:ring-white/10",
             gradient
           )}
         >
           <Icon className="h-4.5 w-4.5 text-white" />
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -237,7 +237,7 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
   const saving = isOptimisticSubject(subject);
 
   return (
-    <GlassCard hover className="group relative overflow-hidden px-5 pb-6 pt-4 sm:px-6 sm:pb-7 sm:pt-5">
+    <div className="dashboard-surface group relative overflow-hidden p-4 transition-colors hover:border-violet-500/30 hover:bg-violet-500/[0.03] sm:p-5">
       {/* Make the main area clickable to open the detail drawer */}
       <button
         type="button"
@@ -283,7 +283,7 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
             variant="ghost"
             size="icon"
             disabled={saving}
-            className="h-8 w-8 -mt-1.5 shrink-0 opacity-60 transition-opacity hover:opacity-100"
+            className="h-8 w-8 -mt-1.5 shrink-0 rounded-lg opacity-70 transition-opacity hover:bg-muted/60 hover:opacity-100"
             aria-label="Open subject details"
             onClick={() => onOpenDetail(subject)}
           >
@@ -295,7 +295,7 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 -mr-1.5 -mt-1.5 shrink-0 opacity-60 transition-opacity hover:opacity-100"
+                className="h-8 w-8 -mr-1.5 -mt-1.5 shrink-0 rounded-lg opacity-70 transition-opacity hover:bg-muted/60 hover:opacity-100"
                 aria-label="Subject actions"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -311,8 +311,8 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
                 </svg>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onSelect={() => onEdit(subject)}>
+            <DropdownMenuContent align="end" className="dashboard-menu-surface w-40 p-1">
+              <DropdownMenuItem onSelect={() => onEdit(subject)} className="cursor-pointer rounded-lg">
                 <Pencil className="h-4 w-4" />
                 Edit
               </DropdownMenuItem>
@@ -320,6 +320,7 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
               <DropdownMenuItem
                 variant="destructive"
                 onSelect={() => onDelete(subject)}
+                className="cursor-pointer rounded-lg text-rose-600 focus:bg-rose-500/10 focus:text-rose-600 dark:text-rose-300 dark:focus:text-rose-300"
               >
                 <Trash2 className="h-4 w-4" />
                 Delete
@@ -357,7 +358,7 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
       </div>
 
       {/* Attendance + Progress row */}
-      <div className="relative mt-3 flex items-center gap-4 rounded-2xl bg-muted/30 p-3 ring-1 ring-border/40">
+      <div className="dashboard-row relative mt-3 flex items-center gap-4 p-3">
         <AttendanceRing value={subject.attendance} />
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-center justify-between">
@@ -402,14 +403,14 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
 
       {/* Notes preview */}
       {subject.notes && (
-        <div className="relative mt-3 flex items-start gap-2 rounded-xl bg-muted/20 px-3 py-2">
+        <div className="dashboard-row relative mt-3 flex items-start gap-2 px-3 py-2">
           <StickyNote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
             {subject.notes}
           </p>
         </div>
       )}
-    </GlassCard>
+    </div>
   );
 }
 
@@ -419,7 +420,7 @@ function SubjectCard({ subject, onEdit, onDelete, onOpenDetail }: SubjectCardPro
 
 function SubjectCardSkeleton() {
   return (
-    <div className="glass relative overflow-hidden rounded-3xl p-5 sm:p-6">
+    <div className="dashboard-surface relative overflow-hidden p-5 sm:p-6">
       <div className="absolute left-0 top-0 h-full w-1.5 bg-muted" />
       <div className="flex items-center gap-3">
         <Skeleton className="h-2.5 w-2.5 rounded-full" />
@@ -430,7 +431,7 @@ function SubjectCardSkeleton() {
         <Skeleton className="h-5 w-20 rounded-full" />
         <Skeleton className="h-5 w-20 rounded-full" />
       </div>
-      <div className="mt-4 flex items-center gap-4 rounded-2xl bg-muted/30 p-3">
+      <div className="dashboard-row mt-4 flex items-center gap-4 p-3">
         <Skeleton className="h-16 w-16 rounded-full" />
         <div className="flex-1 space-y-2">
           <Skeleton className="h-3 w-24" />
@@ -539,23 +540,25 @@ function SubjectDialog({
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        <DialogHeader className="space-y-2">
-          <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
-            <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/90 via-fuchsia-500/90 to-sky-500/80 text-white shadow-sm">
-              <BookOpen className="h-4 w-4" />
-            </span>
-            {initial ? "Edit Subject" : "Add New Subject"}
-          </DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            {initial
-              ? "Update the details for this subject."
-              : "Organize your courses with attendance, progress, and notes."}
-          </DialogDescription>
-        </DialogHeader>
+        <div className="border-b border-border/60 p-4 sm:p-5">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+              <span className="dashboard-icon-tile dashboard-theme-glow-text">
+                <BookOpen className="h-4 w-4" />
+              </span>
+              {initial ? "Edit Subject" : "Add New Subject"}
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              {initial
+                ? "Update the details for this subject."
+                : "Organize your courses with attendance, progress, and notes."}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 p-4 sm:p-5">
           {/* Name */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label htmlFor="subject-name" className={FORM_LABEL_CLASS}>
               Subject Name <span className="text-rose-500">*</span>
             </Label>
@@ -574,7 +577,7 @@ function SubjectDialog({
 
           {/* Teacher + Credits */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
+            <div className={FORM_SECTION_CLASS}>
               <Label htmlFor="subject-teacher" className={FORM_LABEL_CLASS}>Teacher</Label>
               <Input
                 id="subject-teacher"
@@ -584,8 +587,8 @@ function SubjectDialog({
                 className={FORM_FIELD_CLASS}
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="subject-credits">Credits (1–10)</Label>
+            <div className={FORM_SECTION_CLASS}>
+              <Label htmlFor="subject-credits" className={FORM_LABEL_CLASS}>Credits (1-10)</Label>
               <Input
                 id="subject-credits"
                 type="number"
@@ -605,7 +608,7 @@ function SubjectDialog({
           </div>
 
           {/* Color picker */}
-          <div className="space-y-2">
+          <div className={FORM_SECTION_CLASS}>
             <Label className={FORM_LABEL_CLASS}>Color</Label>
             <div className="flex flex-wrap items-center gap-2">
               {COLOR_SWATCHES.map((c) => {
@@ -619,7 +622,7 @@ function SubjectDialog({
                     aria-label={`Color ${c}`}
                     aria-pressed={isActive}
                     className={cn(
-                      "relative h-9 w-9 rounded-[5px] ring-2 ring-offset-2 ring-offset-background shadow-sm transition-all",
+                      "relative h-9 w-9 rounded-lg ring-2 ring-offset-2 ring-offset-background shadow-sm transition-transform",
                       cm.bg,
                       isActive
                         ? "scale-110 ring-foreground/40"
@@ -642,7 +645,7 @@ function SubjectDialog({
           </div>
 
           {/* Attendance */}
-          <div className="space-y-2">
+          <div className={FORM_SECTION_CLASS}>
             <div className="flex items-center justify-between">
               <Label className={FORM_LABEL_CLASS}>Attendance</Label>
               <span className="text-sm font-semibold tabular-nums">
@@ -659,7 +662,7 @@ function SubjectDialog({
           </div>
 
           {/* Progress */}
-          <div className="space-y-2">
+          <div className={FORM_SECTION_CLASS}>
             <div className="flex items-center justify-between">
               <Label className={FORM_LABEL_CLASS}>Course progress</Label>
               <span className="text-sm font-semibold tabular-nums">
@@ -676,11 +679,11 @@ function SubjectDialog({
           </div>
 
           {/* Notes */}
-          <div className="space-y-1.5">
+          <div className={FORM_SECTION_CLASS}>
             <Label htmlFor="subject-notes" className={FORM_LABEL_CLASS}>Notes</Label>
             <Textarea
               id="subject-notes"
-              placeholder="Syllabus, key topics, anything important…"
+              placeholder="Syllabus, key topics, anything important..."
               value={form.notes}
               onChange={(e) => update("notes", e.target.value)}
               rows={3}
@@ -688,25 +691,25 @@ function SubjectDialog({
             />
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="gap-2 border-t border-border/60 bg-background/55 p-4 sm:p-5">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={submitting}
-              className="h-11 rounded-[5px] px-6"
+              className="h-10 rounded-lg border-border/70 bg-background/85 px-4 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={submitting}
-              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+              className="h-10 rounded-lg accent-gradient px-4 text-white shadow-md shadow-violet-500/20"
             >
               {submitting ? (
                 <>
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  Saving…
+                  Saving...
                 </>
               ) : (
                 <>
@@ -906,25 +909,21 @@ export function SubjectsPage() {
   };
 
   return (
-    <PageTransition className="space-y-6 sm:space-y-8">
-      {/* Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <PageTransition className="space-y-4">
+      {/* Subtitle & Actions Bar */}
+      <header className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="space-y-1">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Your knowledge universe</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            My Subjects
-          </h1>
           <p className="text-sm text-muted-foreground">
-            Keep every course organized — attendance, progress, and notes in one
-            place.
+            Keep every course organized — attendance, progress, and notes in one place.
           </p>
         </div>
         <Button
           onClick={handleAdd}
-          className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+          className="h-10 rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
         >
           <Plus className="h-4 w-4" />
           Add Subject
@@ -935,7 +934,7 @@ export function SubjectsPage() {
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-3xl" />
+            <Skeleton key={i} className="h-24 rounded-lg" />
           ))
         ) : (
           <>
@@ -985,13 +984,13 @@ export function SubjectsPage() {
             action={
               <Button
                 onClick={handleAdd}
-                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+                className="rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
               >
                 <Plus className="h-4 w-4" />
                 Add your first subject
               </Button>
             }
-            className="glass rounded-3xl"
+            className="dashboard-surface"
           />
         ) : (
           <StaggerContainer className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -1023,10 +1022,10 @@ export function SubjectsPage() {
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
       >
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent className="dashboard-surface rounded-lg border-border/70 p-5 shadow-2xl shadow-slate-950/20 dark:border-border/45 sm:max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-500">
+            <AlertDialogTitle className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/15 text-rose-500">
                 <AlertTriangle className="h-4 w-4" />
               </span>
               Delete subject?
@@ -1039,11 +1038,13 @@ export function SubjectsPage() {
               . This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-rose-500 text-white hover:bg-rose-600"
+              className="rounded-lg bg-rose-500 text-white shadow-md shadow-rose-500/20 hover:bg-rose-600"
             >
               Delete
             </AlertDialogAction>

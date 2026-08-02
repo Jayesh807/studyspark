@@ -43,9 +43,6 @@ import type { Todo, Subject, Event, Exam } from "@/lib/types";
 
 import {
   PageTransition,
-  GlassCard,
-  StaggerContainer,
-  StaggerItem,
 } from "@/components/shared/motion";
 import { Skeleton } from "@/components/shared/feedback";
 import { Button } from "@/components/ui/button";
@@ -126,11 +123,10 @@ function SettingsSection({
   delay = 0,
 }: SectionProps) {
   return (
-    <StaggerItem delay={delay}>
-      <GlassCard className="p-5 sm:p-6">
+    <div className="dashboard-surface p-4 sm:p-5">
         <div className="flex items-start gap-3 mb-5">
           <div
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-md"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-md"
             style={accentGradientStyle("var(--accent-color)")}
           >
             <Icon className="h-5 w-5" />
@@ -143,8 +139,7 @@ function SettingsSection({
           </div>
         </div>
         <div className="space-y-1">{children}</div>
-      </GlassCard>
-    </StaggerItem>
+    </div>
   );
 }
 
@@ -161,7 +156,7 @@ interface RowProps {
 
 function SettingsRow({ title, description, children, icon: Icon }: RowProps) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
+    <div className="dashboard-row flex items-center justify-between gap-4 px-3 py-3">
       <div className="flex items-start gap-3 min-w-0">
         {Icon && (
           <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
@@ -263,7 +258,7 @@ function AccentPicker() {
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.95 }}
             className={cn(
-              "group relative flex flex-col items-center gap-1.5 rounded-2xl p-2 transition-all",
+              "group relative flex flex-col items-center gap-1.5 rounded-lg p-2 transition-colors",
               active ? "bg-muted/60" : "hover:bg-muted/40"
             )}
             aria-label={`Set accent to ${opt.label}`}
@@ -271,7 +266,7 @@ function AccentPicker() {
           >
             <div
               className={cn(
-                "relative flex h-10 w-10 items-center justify-center rounded-full ring-2 ring-offset-2 ring-offset-background transition-all",
+                "relative flex h-10 w-10 items-center justify-center rounded-lg ring-2 ring-offset-2 ring-offset-background transition-colors",
                 active ? "ring-foreground" : "ring-transparent"
               )}
               style={accentSwatchStyle(opt.hue)}
@@ -497,7 +492,7 @@ function ResetDataDialog() {
           Reset All My Data
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="dashboard-surface rounded-lg border-border/70 p-5 shadow-2xl shadow-slate-950/20 dark:border-border/45 sm:max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -543,8 +538,8 @@ function ResetDataDialog() {
           </div>
         )}
 
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isWorking}>
+        <AlertDialogFooter className="gap-2">
+          <AlertDialogCancel disabled={isWorking} className="rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60">
             {state.status === "done" ? "Close" : "Cancel"}
           </AlertDialogCancel>
           {state.status !== "done" && (
@@ -554,7 +549,7 @@ function ResetDataDialog() {
                 void reset();
               }}
               disabled={isWorking}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              className="rounded-lg bg-destructive text-white shadow-md shadow-rose-500/20 hover:bg-destructive/90"
             >
               {isWorking ? (
                 <>
@@ -648,7 +643,7 @@ function DeleteAccountDialog() {
           Delete Account
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="dashboard-surface rounded-lg border-border/70 p-5 shadow-2xl shadow-slate-950/20 dark:border-border/45 sm:max-w-lg">
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -659,7 +654,7 @@ function DeleteAccountDialog() {
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="rounded-xl border border-destructive/25 bg-destructive/10 px-3 py-3 text-sm text-destructive">
+        <div className="dashboard-row border-destructive/25 bg-destructive/10 px-3 py-3 text-sm text-destructive">
           Click the delete button below to confirm. Your account and all related
           study data will be permanently removed.
         </div>
@@ -680,8 +675,8 @@ function DeleteAccountDialog() {
           </div>
         )}
 
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isWorking}>
+        <AlertDialogFooter className="gap-2">
+          <AlertDialogCancel disabled={isWorking} className="rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60">
             {state.status === "done" ? "Close" : "Cancel"}
           </AlertDialogCancel>
           {state.status !== "done" && (
@@ -691,7 +686,7 @@ function DeleteAccountDialog() {
                 void handleDeleteAccount();
               }}
               disabled={!canSubmit}
-              className="bg-destructive text-white hover:bg-destructive/90 disabled:opacity-50"
+              className="rounded-lg bg-destructive text-white shadow-md shadow-rose-500/20 hover:bg-destructive/90 disabled:opacity-50"
             >
               {isWorking ? (
                 <>
@@ -852,22 +847,19 @@ export function SettingsPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6 sm:space-y-8">
-        {/* Header */}
-        <div>
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+      <div className="space-y-4">
+        {/* Subtitle Bar */}
+        <div className="dashboard-surface space-y-1 p-4 sm:p-5">
+          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Customize your experience</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Sett<span className="text-gradient">ings</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Customize StudySpark to match your style and preferences.
+          <p className="text-sm text-muted-foreground">
+            Customize Study Sparks to match your style and preferences.
           </p>
         </div>
 
-        <StaggerContainer className="space-y-5 sm:space-y-6">
+        <div className="space-y-4">
           {/* Appearance */}
           <SettingsSection
             icon={Palette}
@@ -1040,12 +1032,11 @@ export function SettingsPage() {
 
 
           {/* About */}
-          <StaggerItem delay={0.15}>
-            <GlassCard className="p-5 sm:p-6">
+          <div className="dashboard-surface p-4 sm:p-5">
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg"
+                    className="flex h-12 w-12 items-center justify-center rounded-lg text-white shadow-lg"
                     style={accentGradientStyle("var(--accent-color)")}
                   >
                     <Sparkles className="h-6 w-6" />
@@ -1076,9 +1067,8 @@ export function SettingsPage() {
                   for students everywhere.
                 </div>
               </div>
-            </GlassCard>
-          </StaggerItem>
-        </StaggerContainer>
+          </div>
+        </div>
       </div>
     </PageTransition>
   );

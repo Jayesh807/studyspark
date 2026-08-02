@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -20,6 +20,7 @@ import {
   Trophy,
   CalendarRange,
   BookOpenCheck,
+  SearchCheck,
   Keyboard,
 } from "lucide-react";
 import { useAppStore, type AppView } from "@/lib/store";
@@ -54,8 +55,8 @@ const NAV_ITEMS: NavItem[] = [
   { view: "focus", label: "Focus Timer", icon: Timer, description: "Pomodoro timer", shortcut: "F" },
   { view: "typing", label: "Test Typing Speed", icon: Keyboard, description: "Speed & accuracy game" },
   { view: "analytics", label: "Analytics", icon: BarChart3, description: "Study insights" },
-  { view: "profile", label: "Profile", icon: User, description: "Your profile" },
   { view: "settings", label: "Settings", icon: Settings, description: "Preferences" },
+  { view: "studySearch", label: "Sparks AI", icon: Sparkles, description: "AI PDF assistant & quiz" },
 ];
 
 function BrandLogo({ collapsed }: { collapsed: boolean }) {
@@ -75,7 +76,7 @@ function BrandLogo({ collapsed }: { collapsed: boolean }) {
       {collapsed ? null : (
         <div className="flex flex-col items-start overflow-hidden">
           <span className="text-base font-bold leading-none tracking-tight text-gradient">
-            StudySpark
+            Study Sparks
           </span>
           <span className="text-[10px] font-medium text-muted-foreground leading-none mt-0.5">
             Student Analytics
@@ -98,61 +99,56 @@ function NavButton({
   onClick: () => void;
 }) {
   const Icon = item.icon;
-  const [sparkKey, setSparkKey] = useState(0);
-  const btnRef = useRef<HTMLButtonElement>(null);
+  const isAiItem = item.view === "studySearch";
 
   const handleClick = useCallback(() => {
-    setSparkKey((k) => k + 1);
     onClick();
   }, [onClick]);
 
   const button = (
-    <motion.button
-      ref={btnRef}
-      onClick={handleClick}
-      whileHover={{ x: collapsed ? 0 : 2 }}
-      whileTap={{ scale: 0.97 }}
+    <div
       className={cn(
-        "relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors overflow-hidden",
-        active
-          ? "text-white"
-          : "text-muted-foreground hover:text-foreground hover:bg-accent/60"
+        "relative transition-all duration-300",
+        isAiItem && "mt-2.5 rounded-lg border border-cyan-500/25 bg-cyan-500/5"
       )}
     >
-      {active && (
-        <motion.div
-          layoutId="sidebar-active"
-          className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500/95 to-fuchsia-500/95 shadow-lg shadow-violet-500/35"
-          transition={{ type: "spring", stiffness: 400, damping: 32 }}
-        />
-      )}
-      {/* Mini spark flash on click */}
-      {sparkKey > 0 && (
-        <span
-          key={sparkKey}
-          className="mini-spark pointer-events-none absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet-400/40"
-        />
-      )}
-      <Icon
+      <motion.button
+        onClick={handleClick}
         className={cn(
-          "relative z-10 h-[18px] w-[18px] shrink-0",
-          active && "text-white"
+          "relative flex w-full items-center gap-3 overflow-hidden rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200",
+          isAiItem
+            ? active
+              ? "bg-cyan-500 text-white font-bold"
+              : "text-cyan-600 hover:bg-background/70 dark:text-cyan-300"
+            : active
+              ? "bg-violet-500/16 text-violet-950 ring-1 ring-violet-500/35 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/25"
+              : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
         )}
-      />
-      {!collapsed && (
-        <span className="relative z-10 truncate">{item.label}</span>
-      )}
-      {!collapsed && item.shortcut && !active && (
-        <kbd className="kbd-hint relative z-10 ml-auto" aria-hidden="true">{item.shortcut}</kbd>
-      )}
-      {!collapsed && active && (
-        <motion.span
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative z-10 ml-auto h-1.5 w-1.5 rounded-full bg-white"
+      >
+        {active && !isAiItem && <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-violet-700 dark:bg-violet-500" />}
+        <Icon
+          className={cn(
+            "relative z-10 h-[18px] w-[18px] shrink-0",
+            isAiItem && !active && "text-cyan-500 dark:text-cyan-300",
+            active && !isAiItem && "text-violet-900 dark:text-violet-300",
+            active && isAiItem && "text-white"
+          )}
         />
-      )}
-    </motion.button>
+        {!collapsed && (
+          <span className={cn("relative z-10 truncate", isAiItem && "font-bold tracking-wide")}>
+            {item.label}
+          </span>
+        )}
+        {!collapsed && isAiItem && (
+          <span className="relative z-10 ml-auto rounded-full bg-cyan-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-cyan-600 ring-1 ring-cyan-500/25 dark:text-cyan-300">
+            AI
+          </span>
+        )}
+        {!collapsed && item.shortcut && !active && !isAiItem && (
+          <kbd className="kbd-hint relative z-10 ml-auto" aria-hidden="true">{item.shortcut}</kbd>
+        )}
+      </motion.button>
+    </div>
   );
 
   if (collapsed) {
@@ -195,9 +191,9 @@ export function Sidebar() {
       <div className="h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
 
       {/* Nav */}
-      <ScrollArea className="flex-1 px-3 py-4">
+      <ScrollArea className="flex-1 px-3.5 py-4">
         <TooltipProvider delayDuration={0}>
-          <nav className="space-y-1">
+          <nav className="space-y-1 pb-6">
             {!collapsed && (
               <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                 Menu
@@ -272,7 +268,7 @@ export function Sidebar() {
         initial={false}
         animate={{ width: collapsed ? 76 : 264 }}
         transition={{ type: "spring", stiffness: 300, damping: 32 }}
-        className="hidden lg:flex flex-col shrink-0 border-r border-sidebar-border/60 bg-sidebar/80 backdrop-blur-xl relative z-20"
+        className="relative z-20 hidden shrink-0 flex-col border-r border-sidebar-border/80 bg-sidebar/95 shadow-sm backdrop-blur-xl dark:border-sidebar-border/60 dark:bg-sidebar/80 dark:shadow-none lg:flex"
       >
         {sidebarContent}
         {/* Collapse toggle */}

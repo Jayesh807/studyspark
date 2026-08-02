@@ -97,6 +97,9 @@ const ExamsPage = dynamic(() => import("./pages/exams").then((m) => m.ExamsPage)
 const RevisionPlanPage = dynamic(() => import("./pages/revision-plan").then((m) => m.RevisionPlanPage), {
   loading: () => <PageLoader />
 });
+const StudySearchPage = dynamic(() => import("./pages/study-search").then((m) => m.StudySearchPage), {
+  loading: () => <PageLoader />
+});
 const SubjectsPage = dynamic(() => import("./pages/subjects").then((m) => m.SubjectsPage), {
   loading: () => <PageLoader />
 });
@@ -146,6 +149,8 @@ function PageRouter() {
         return <ExamsPage />;
       case "revision":
         return <RevisionPlanPage />;
+      case "studySearch":
+        return <StudySearchPage />;
       case "subjects":
         return <SubjectsPage />;
       case "focus":
@@ -167,7 +172,7 @@ function PageRouter() {
 
   return (
     <main ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin scroll-smooth">
-      <div className="mx-auto w-full max-w-[1400px] p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto w-full max-w-[1400px] p-3 sm:p-4 lg:p-5">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentView}

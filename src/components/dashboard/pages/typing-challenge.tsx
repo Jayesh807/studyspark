@@ -22,12 +22,7 @@ import { ApiError, apiFetch } from "@/lib/api";
 import { celebrateBurst, celebrateTrophy } from "@/lib/confetti";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import {
-  GlassCard,
-  PageTransition,
-  StaggerContainer,
-  StaggerItem,
-} from "@/components/shared/motion";
+import { PageTransition } from "@/components/shared/motion";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { Button } from "@/components/ui/button";
 import {
@@ -263,24 +258,24 @@ function StatCard({
   tone: string;
 }) {
   return (
-    <GlassCard className="relative overflow-hidden p-4 sm:p-5">
+    <div className="dashboard-surface relative overflow-hidden p-3 sm:p-4">
       <div className="relative flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <div className="mt-1.5 text-2xl font-bold tracking-tight sm:text-3xl">
+          <div className="mt-1 text-2xl font-bold tracking-tight">
             {value}
           </div>
         </div>
         <div
           className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-lg",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-sm ring-1 ring-white/20 dark:ring-white/10",
             tone
           )}
         >
           <Icon className="h-5 w-5" />
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -295,10 +290,10 @@ function LeaderboardRow({
 }) {
   const RankIcon = rank === 1 ? Trophy : rank && rank <= 3 ? Award : null;
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-background/70 p-3 ring-1 ring-border/50">
+    <div className="dashboard-row flex items-center gap-3 p-3">
       <div
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
           rank === 1
             ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
             : rank === 2
@@ -358,12 +353,7 @@ function PromptText({
   return (
     <div
       ref={panelRef}
-      className="h-[300px] overflow-y-auto rounded-[8px] bg-white p-3 font-mono text-[26px] font-medium leading-[58px] tracking-[0.16em] text-zinc-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-zinc-200 sm:h-[380px] sm:p-4 sm:text-[34px] sm:leading-[72px] sm:tracking-[0.2em] dark:bg-zinc-950/85 dark:text-zinc-200 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:ring-zinc-800"
-      style={{
-        backgroundImage:
-          "linear-gradient(to bottom, transparent calc(100% - 1px), hsl(var(--border) / 0.78) calc(100% - 1px))",
-        backgroundSize: "100% 72px",
-      }}
+      className="h-[300px] overflow-y-auto rounded-lg border border-slate-800/80 bg-[#05070d] p-3 font-mono text-[26px] font-medium leading-[58px] tracking-[0.16em] text-zinc-500 shadow-sm sm:h-[380px] sm:p-4 sm:text-[34px] sm:leading-[72px] sm:tracking-[0.2em]"
       aria-label="Typing prompt"
     >
       {words.map((word, wordIndex) => {
@@ -387,10 +377,10 @@ function PromptText({
                   ref={isCurrent ? currentCharRef : undefined}
                   key={`${char}-${index}`}
                   className={cn(
-                    "relative rounded-[5px] px-[3px]",
-                    state === "correct" && "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/18 dark:text-emerald-300",
-                    state === "wrong" && "bg-rose-100 text-rose-600 dark:bg-rose-500/18 dark:text-rose-300",
-                    isCurrent && "text-zinc-900 dark:text-white"
+                    "relative rounded-md px-[3px]",
+                    state === "correct" && "bg-emerald-500/18 text-emerald-300",
+                    state === "wrong" && "bg-rose-500/18 text-rose-300",
+                    isCurrent && "text-white"
                   )}
                 >
                   {char}
@@ -802,18 +792,15 @@ export function TypingChallengePage() {
 
   return (
     <>
-      <PageTransition className="space-y-6 sm:space-y-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <PageTransition className="space-y-4">
+      <header className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="space-y-1">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-700 ring-1 ring-cyan-500/20 dark:text-cyan-300">
+          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
             <Keyboard className="h-3.5 w-3.5" />
             Skill game
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Test Typing Speed
-          </h1>
           <p className="max-w-2xl text-sm text-muted-foreground">
-            Type the paragraph quickly and accurately. Build speed for notes, assignments, coding, and exam prep.
+            Type paragraphs quickly and accurately to build speed for notes and assignments.
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -825,11 +812,11 @@ export function TypingChallengePage() {
           >
             <SelectTrigger
               onClick={() => playTypingSound("button")}
-              className="w-full rounded-[5px] sm:w-40"
+              className="w-full rounded-lg border-border/70 bg-background/85 shadow-sm dark:border-border/60 dark:bg-background/60 sm:w-40"
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="dashboard-menu-surface p-1">
               {(Object.keys(DIFFICULTY_META) as Difficulty[]).map((item) => (
                 <SelectItem key={item} value={item}>
                   {DIFFICULTY_META[item].label}
@@ -840,7 +827,7 @@ export function TypingChallengePage() {
           <Button
             onClick={() => clickWithSound(nextPrompt)}
             variant="outline"
-            className="rounded-[5px]"
+            className="rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
           >
             <RefreshCw className="h-4 w-4" />
             New Text
@@ -881,11 +868,11 @@ export function TypingChallengePage() {
         />
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <GlassCard className="overflow-hidden p-5 sm:p-6">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-border/55 dark:bg-background/55 sm:p-5">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-600 ring-1 ring-violet-500/20 dark:text-violet-400">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-600 shadow-sm dark:border-border/55 dark:bg-background/60 dark:text-muted-foreground">
                 <Sparkles className="h-3.5 w-3.5" />
                 {prompt.title}
               </div>
@@ -893,18 +880,13 @@ export function TypingChallengePage() {
                 {status === "finished" ? "Challenge complete" : "Start typing below"}
               </h2>
             </div>
-            <div
-              className={cn(
-                "rounded-2xl bg-gradient-to-br px-4 py-3 text-sm font-bold text-white shadow-lg",
-                DIFFICULTY_META[difficulty].className
-              )}
-            >
+            <div className="rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-white shadow-md shadow-emerald-500/20">
               Target {targetWpm} WPM
             </div>
           </div>
 
           <div
-            className="relative cursor-text rounded-[8px] focus-within:ring-4 focus-within:ring-violet-500/20"
+            className="relative cursor-text rounded-lg focus-within:ring-4 focus-within:ring-violet-500/20"
             onClick={() => inputRef.current?.focus()}
           >
             <PromptText target={prompt.text} input={input} />
@@ -932,26 +914,26 @@ export function TypingChallengePage() {
             <Button
               onClick={() => clickWithSound(reset)}
               variant="outline"
-              className="rounded-[5px]"
+              className="rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
             >
               <RotateCcw className="h-4 w-4" />
               Retry
             </Button>
             <Button
               onClick={() => clickWithSound(nextPrompt)}
-              className="rounded-[5px] bg-gradient-to-r from-violet-500 to-cyan-500 text-white"
+              className="rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
             >
               <RefreshCw className="h-4 w-4" />
               New Challenge
             </Button>
           </div>
-        </GlassCard>
+        </div>
 
-        <aside className="space-y-6">
-          <GlassCard className="p-5">
+        <aside className="space-y-4">
+          <div className="dashboard-surface p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
                   <Trophy className="h-4.5 w-4.5" />
                 </div>
                 <div>
@@ -964,7 +946,7 @@ export function TypingChallengePage() {
               <button
                 type="button"
                 onClick={() => clickWithSound(() => void loadLeaderboard(true))}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
                 aria-label="Refresh leaderboard"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -976,12 +958,12 @@ export function TypingChallengePage() {
                 {Array.from({ length: 3 }).map((_, index) => (
                   <div
                     key={index}
-                    className="h-[66px] animate-pulse rounded-2xl bg-muted/45 ring-1 ring-border/40"
+                    className="dashboard-row h-[66px] animate-pulse bg-muted/45"
                   />
                 ))}
               </div>
             ) : leaderboard?.unavailable ? (
-              <div className="rounded-2xl border border-dashed border-border/70 p-5 text-center">
+              <div className="dashboard-row border-dashed p-5 text-center">
                 <Trophy className="mx-auto h-7 w-7 text-muted-foreground" />
                 <p className="mt-2 text-sm font-semibold">Leaderboard unavailable</p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -989,7 +971,7 @@ export function TypingChallengePage() {
                 </p>
               </div>
             ) : !leaderboard || leaderboard.top.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-border/70 p-5 text-center">
+              <div className="dashboard-row border-dashed p-5 text-center">
                 <Trophy className="mx-auto h-7 w-7 text-muted-foreground" />
                 <p className="mt-2 text-sm font-semibold">No scores yet</p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -1009,7 +991,7 @@ export function TypingChallengePage() {
             )}
 
             {leaderboard?.mine && (
-              <div className="mt-4 rounded-2xl bg-cyan-500/10 p-3 ring-1 ring-cyan-500/20">
+              <div className="dashboard-row mt-4 bg-cyan-500/10 p-3 ring-1 ring-cyan-500/20">
                 <p className="text-xs font-semibold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
                   Your total
                 </p>
@@ -1018,12 +1000,12 @@ export function TypingChallengePage() {
                 </p>
               </div>
             )}
-          </GlassCard>
+          </div>
 
           {leaderboard?.recent && leaderboard.recent.length > 0 && (
-            <GlassCard className="p-5">
+            <div className="dashboard-surface p-4 sm:p-5">
               <div className="mb-4 flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
                   <Zap className="h-4.5 w-4.5" />
                 </div>
                 <div>
@@ -1036,12 +1018,12 @@ export function TypingChallengePage() {
                   <LeaderboardRow key={result.id} result={result} compact />
                 ))}
               </div>
-            </GlassCard>
+            </div>
           )}
 
-          <GlassCard className="p-5">
+          <div className="dashboard-surface p-4 sm:p-5">
             <div className="mb-4 flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/15 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300">
                 <Award className="h-4.5 w-4.5" />
               </div>
               <div>
@@ -1053,21 +1035,21 @@ export function TypingChallengePage() {
             </div>
             {bestScore ? (
               <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-2xl bg-muted/35 p-3 text-center ring-1 ring-border/50">
+                <div className="dashboard-row p-3 text-center">
                   <p className="text-lg font-bold">{bestScore.wpm}</p>
                   <p className="text-[10px] text-muted-foreground">WPM</p>
                 </div>
-                <div className="rounded-2xl bg-muted/35 p-3 text-center ring-1 ring-border/50">
+                <div className="dashboard-row p-3 text-center">
                   <p className="text-lg font-bold">{bestScore.accuracy}%</p>
                   <p className="text-[10px] text-muted-foreground">ACC</p>
                 </div>
-                <div className="rounded-2xl bg-muted/35 p-3 text-center ring-1 ring-border/50">
+                <div className="dashboard-row p-3 text-center">
                   <p className="text-lg font-bold">{bestScore.score}</p>
                   <p className="text-[10px] text-muted-foreground">PTS</p>
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-border/70 p-5 text-center">
+              <div className="dashboard-row border-dashed p-5 text-center">
                 <Trophy className="mx-auto h-7 w-7 text-muted-foreground" />
                 <p className="mt-2 text-sm font-semibold">No best yet</p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -1076,15 +1058,15 @@ export function TypingChallengePage() {
               </div>
             )}
             {newBest && (
-              <div className="mt-4 rounded-2xl bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
+              <div className="dashboard-row mt-4 bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
                 New personal best!
               </div>
             )}
-          </GlassCard>
+          </div>
 
-          <GlassCard className="p-5">
+          <div className="dashboard-surface p-4 sm:p-5">
             <div className="mb-4 flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-600 dark:bg-cyan-500/20 dark:text-cyan-300">
                 <Zap className="h-4.5 w-4.5" />
               </div>
               <div>
@@ -1092,18 +1074,18 @@ export function TypingChallengePage() {
                 <p className="text-xs text-muted-foreground">Pick your training level.</p>
               </div>
             </div>
-            <StaggerContainer className="space-y-2">
+            <div className="space-y-2">
               {(Object.keys(DIFFICULTY_META) as Difficulty[]).map((item) => {
                 const active = item === difficulty;
                 return (
-                  <StaggerItem key={item}>
+                  <div key={item}>
                     <button
                       onClick={() => clickWithSound(() => changeDifficulty(item))}
                       className={cn(
-                        "flex w-full items-center justify-between rounded-2xl p-3 text-left transition-colors",
+                        "flex w-full items-center justify-between rounded-lg p-3 text-left transition-colors",
                         active
                           ? "bg-gradient-to-r from-violet-500/15 to-cyan-500/10 ring-1 ring-violet-500/25"
-                          : "bg-background/70 ring-1 ring-border/50 hover:bg-accent/60"
+                          : "dashboard-row hover:bg-muted/60"
                       )}
                     >
                       <span>
@@ -1116,11 +1098,11 @@ export function TypingChallengePage() {
                       </span>
                       {active && <CheckCircle2 className="h-4 w-4 text-violet-500" />}
                     </button>
-                  </StaggerItem>
+                  </div>
                 );
               })}
-            </StaggerContainer>
-          </GlassCard>
+            </div>
+          </div>
         </aside>
       </div>
       </PageTransition>
@@ -1131,10 +1113,10 @@ export function TypingChallengePage() {
           if (!open) setCompletionCelebration(null);
         }}
       >
-        <DialogContent className="overflow-hidden rounded-3xl border-violet-500/25 bg-background/95 p-0 shadow-2xl backdrop-blur-xl sm:max-w-md">
+        <DialogContent className="dashboard-surface overflow-hidden rounded-lg border-border/70 p-0 shadow-2xl shadow-slate-950/20 dark:border-border/45 sm:max-w-md">
           <div className="relative p-6 text-center sm:p-8">
             <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-amber-500/20 via-violet-500/10 to-transparent" />
-            <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/25">
+            <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/25">
               <Trophy className="h-8 w-8" />
             </div>
             <DialogHeader className="relative mt-5 text-center">
@@ -1154,7 +1136,7 @@ export function TypingChallengePage() {
 
             {completionCelebration && (
               <div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <div className="rounded-2xl bg-amber-500/10 p-3 ring-1 ring-amber-500/20">
+                <div className="dashboard-row bg-amber-500/10 p-3 ring-1 ring-amber-500/20">
                   <p className="text-xl font-bold">
                     {completionCelebration.rank ? `#${completionCelebration.rank}` : "-"}
                   </p>
@@ -1162,31 +1144,31 @@ export function TypingChallengePage() {
                     Rank
                   </p>
                 </div>
-                <div className="rounded-2xl bg-violet-500/10 p-3 ring-1 ring-violet-500/20">
+                <div className="dashboard-row bg-violet-500/10 p-3 ring-1 ring-violet-500/20">
                   <p className="text-xl font-bold">{completionCelebration.score}</p>
                   <p className="text-[10px] font-semibold uppercase text-muted-foreground">
                     Score
                   </p>
                 </div>
-                <div className="rounded-2xl bg-cyan-500/10 p-3 ring-1 ring-cyan-500/20">
+                <div className="dashboard-row bg-cyan-500/10 p-3 ring-1 ring-cyan-500/20">
                   <p className="text-xl font-bold">{completionCelebration.wpm}</p>
                   <p className="text-[10px] font-semibold uppercase text-muted-foreground">
                     WPM
                   </p>
                 </div>
-                <div className="rounded-2xl bg-emerald-500/10 p-3 ring-1 ring-emerald-500/20">
+                <div className="dashboard-row bg-emerald-500/10 p-3 ring-1 ring-emerald-500/20">
                   <p className="text-xl font-bold">{completionCelebration.accuracy}%</p>
                   <p className="text-[10px] font-semibold uppercase text-muted-foreground">
                     Accuracy
                   </p>
                 </div>
-                <div className="rounded-2xl bg-rose-500/10 p-3 ring-1 ring-rose-500/20">
+                <div className="dashboard-row bg-rose-500/10 p-3 ring-1 ring-rose-500/20">
                   <p className="text-xl font-bold">{completionCelebration.mistakes}</p>
                   <p className="text-[10px] font-semibold uppercase text-muted-foreground">
                     Mistakes
                   </p>
                 </div>
-                <div className="rounded-2xl bg-blue-500/10 p-3 ring-1 ring-blue-500/20">
+                <div className="dashboard-row bg-blue-500/10 p-3 ring-1 ring-blue-500/20">
                   <p className="text-xl font-bold">
                     {completionCelebration.durationSec.toFixed(1)}s
                   </p>
@@ -1198,14 +1180,14 @@ export function TypingChallengePage() {
             )}
 
             {completionCelebration?.isNewBest && (
-              <div className="relative mt-4 rounded-2xl bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
+              <div className="dashboard-row relative mt-4 bg-emerald-500/10 p-3 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300">
                 New personal best!
               </div>
             )}
 
             <Button
               onClick={() => clickWithSound(() => setCompletionCelebration(null))}
-              className="relative mt-6 w-full rounded-[5px] bg-gradient-to-r from-violet-500 to-cyan-500 text-white"
+              className="relative mt-6 w-full rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
             >
               Awesome
             </Button>

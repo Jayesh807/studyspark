@@ -40,12 +40,7 @@ import { apiFetch, handleError } from "@/lib/api";
 import { readPageCache, writePageCache } from "@/lib/page-cache";
 import { Analytics, colorOf } from "@/lib/types";
 import { useAppStore } from "@/lib/store";
-import {
-  PageTransition,
-  GlassCard,
-  StaggerContainer,
-  StaggerItem,
-} from "@/components/shared/motion";
+import { PageTransition } from "@/components/shared/motion";
 import { ContributionHeatmap } from "@/components/dashboard/contribution-heatmap";
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
@@ -152,21 +147,13 @@ export function AnalyticsPage() {
   }, [data]);
 
   return (
-    <PageTransition className="space-y-6">
+    <PageTransition className="space-y-4">
       {/* === Header === */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+      <div className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="space-y-1">
+          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Insights to power your growth</span>
-          </div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30">
-              <BarChart3 className="h-5 w-5" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              Analytics
-            </h1>
           </div>
           <p className="text-sm text-muted-foreground">
             Deep-dive into your study patterns, exam readiness, and productivity trends.
@@ -174,20 +161,20 @@ export function AnalyticsPage() {
         </div>
 
         {/* Period toggle */}
-        <div className="inline-flex items-center gap-1 rounded-2xl bg-muted/70 p-1 backdrop-blur w-fit">
+        <div className="inline-flex w-fit items-center gap-1 rounded-lg border border-border/70 bg-background/85 p-1 shadow-sm dark:border-border/60 dark:bg-background/60">
           {(["weekly", "monthly"] as Period[]).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               className={cn(
-                "relative px-4 py-1.5 text-sm font-medium rounded-xl transition-colors capitalize",
+                "relative rounded-lg px-4 py-1.5 text-sm font-medium capitalize transition-colors",
                 period === p ? "text-white" : "text-muted-foreground hover:text-foreground"
               )}
             >
               {period === p && (
                 <motion.div
                   layoutId="analytics-period-pill"
-                  className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow"
+                  className="absolute inset-0 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow"
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}
@@ -201,8 +188,8 @@ export function AnalyticsPage() {
       </div>
 
       {/* === KPI row === */}
-      <StaggerContainer className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StaggerItem>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div>
           <KpiCard
             icon={Clock}
             label="Total Focus Hours"
@@ -212,8 +199,8 @@ export function AnalyticsPage() {
             gradient="from-violet-500 to-purple-500"
             loading={loading}
           />
-        </StaggerItem>
-        <StaggerItem>
+        </div>
+        <div>
           <KpiCard
             icon={TrendingUp}
             label="Weekly Focus Hours"
@@ -223,8 +210,8 @@ export function AnalyticsPage() {
             gradient="from-fuchsia-500 to-pink-500"
             loading={loading}
           />
-        </StaggerItem>
-        <StaggerItem>
+        </div>
+        <div>
           <KpiCard
             icon={Gauge}
             label="Monthly Focus Hours"
@@ -234,8 +221,8 @@ export function AnalyticsPage() {
             gradient="from-rose-500 to-orange-500"
             loading={loading}
           />
-        </StaggerItem>
-        <StaggerItem>
+        </div>
+        <div>
           <KpiCard
             icon={Flame}
             label="Study Streak"
@@ -244,22 +231,19 @@ export function AnalyticsPage() {
             gradient="from-amber-500 to-yellow-500"
             loading={loading}
           />
-        </StaggerItem>
-      </StaggerContainer>
+        </div>
+      </div>
 
       {/* === Contribution heatmap === */}
-      <StaggerContainer>
-        <StaggerItem>
+      <div>
           <ContributionHeatmap />
-        </StaggerItem>
-      </StaggerContainer>
+      </div>
 
       {/* === Main charts grid === */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Study Hours over time */}
-        <StaggerContainer className="lg:col-span-2 space-y-6">
-          <StaggerItem>
-            <GlassCard className="p-5 sm:p-6">
+        <div className="space-y-4 lg:col-span-2">
+          <div className="dashboard-surface p-4 sm:p-5">
               <ChartHeader
                 icon={TrendingUp}
                 title="Study Hours Over Time"
@@ -319,12 +303,10 @@ export function AnalyticsPage() {
                   </ResponsiveContainer>
                 )}
               </div>
-            </GlassCard>
-          </StaggerItem>
+          </div>
 
           {/* Task completion trend */}
-          <StaggerItem>
-            <GlassCard className="p-5 sm:p-6">
+          <div className="dashboard-surface p-4 sm:p-5">
               <ChartHeader
                 icon={CheckCircle2}
                 title="Tasks Completed (14 days)"
@@ -372,16 +354,14 @@ export function AnalyticsPage() {
                   </ResponsiveContainer>
                 )}
               </div>
-            </GlassCard>
-          </StaggerItem>
+          </div>
 
-        </StaggerContainer>
+        </div>
 
         {/* Right column: distribution + exam progress */}
-        <StaggerContainer className="space-y-6">
+        <div className="space-y-4">
           {/* Focus distribution pie */}
-          <StaggerItem>
-            <GlassCard className="p-5 sm:p-6">
+          <div className="dashboard-surface p-4 sm:p-5">
               <ChartHeader
                 icon={PieIcon}
                 title="Focus Time by Subject"
@@ -424,12 +404,10 @@ export function AnalyticsPage() {
                   </ResponsiveContainer>
                 )}
               </div>
-            </GlassCard>
-          </StaggerItem>
+          </div>
 
           {/* Exam progress radial */}
-          <StaggerItem>
-            <GlassCard className="p-5 sm:p-6">
+          <div className="dashboard-surface p-4 sm:p-5">
               <ChartHeader
                 icon={Target}
                 title="Exam Readiness"
@@ -471,15 +449,12 @@ export function AnalyticsPage() {
                   </ResponsiveContainer>
                 )}
               </div>
-            </GlassCard>
-          </StaggerItem>
-        </StaggerContainer>
+          </div>
+        </div>
       </div>
 
       {/* === Subject Progress (full-width) === */}
-      <StaggerContainer>
-        <StaggerItem>
-          <GlassCard className="p-5 sm:p-6">
+      <div className="dashboard-surface p-4 sm:p-5">
             <ChartHeader
               icon={GraduationCap}
               title="Subject Progress"
@@ -529,15 +504,12 @@ export function AnalyticsPage() {
                 </ResponsiveContainer>
               )}
             </div>
-          </GlassCard>
-        </StaggerItem>
-      </StaggerContainer>
+      </div>
 
       {/* === Secondary charts grid === */}
-      <StaggerContainer className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Tasks by category */}
-        <StaggerItem>
-          <GlassCard className="p-5 sm:p-6">
+        <div className="dashboard-surface p-4 sm:p-5">
             <ChartHeader
               icon={Layers}
               title="Tasks by Category"
@@ -575,12 +547,10 @@ export function AnalyticsPage() {
                 </ResponsiveContainer>
               )}
             </div>
-          </GlassCard>
-        </StaggerItem>
+        </div>
 
         {/* Tasks by priority */}
-        <StaggerItem>
-          <GlassCard className="p-5 sm:p-6">
+        <div className="dashboard-surface p-4 sm:p-5">
             <ChartHeader
               icon={Award}
               title="Tasks by Priority"
@@ -624,12 +594,10 @@ export function AnalyticsPage() {
                 </ResponsiveContainer>
               )}
             </div>
-          </GlassCard>
-        </StaggerItem>
+        </div>
 
         {/* Attendance overview */}
-        <StaggerItem>
-          <GlassCard className="p-5 sm:p-6">
+        <div className="dashboard-surface p-4 sm:p-5">
             <ChartHeader
               icon={GraduationCap}
               title="Attendance Overview"
@@ -723,9 +691,8 @@ export function AnalyticsPage() {
                 </>
               )}
             </div>
-          </GlassCard>
-        </StaggerItem>
-      </StaggerContainer>
+        </div>
+      </div>
     </PageTransition>
   );
 }
@@ -750,11 +717,11 @@ function KpiCard({
   loading: boolean;
 }) {
   return (
-    <GlassCard className="p-5 relative overflow-hidden" hover>
+    <div className="dashboard-surface relative overflow-hidden p-3 sm:p-4">
       <div className="flex items-start justify-between mb-3">
         <div
           className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-lg bg-gradient-to-br",
+            "flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-sm ring-1 ring-white/20 dark:ring-white/10",
             gradient
           )}
         >
@@ -769,7 +736,7 @@ function KpiCard({
           <AnimatedCounter value={value} decimals={decimals} suffix={suffix} />
         </div>
       )}
-    </GlassCard>
+    </div>
   );
 }
 

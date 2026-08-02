@@ -51,9 +51,6 @@ import { FocusSession } from "@/lib/types";
 import { type FocusTimerMode, useAppStore } from "@/lib/store";
 import {
   PageTransition,
-  GlassCard,
-  StaggerContainer,
-  StaggerItem,
 } from "@/components/shared/motion";
 import { Skeleton, EmptyState } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
@@ -539,19 +536,11 @@ export function FocusTimerPage() {
   return (
     <PageTransition className="space-y-4">
       {/* === Header === */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-        <div>
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 dark:bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:text-violet-300">
+      <div className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div className="space-y-1">
+          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Deep focus, deep results</span>
-          </div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/30">
-              <Timer className="h-5 w-5" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              Focus Timer
-            </h1>
           </div>
           <p className="text-sm text-muted-foreground">
             Stay in the zone. Track deep work, take mindful breaks, and build your streak.
@@ -568,7 +557,7 @@ export function FocusTimerPage() {
             }}
             aria-label="Toggle sound effects"
             title={soundEnabled ? "Sound on — click to mute" : "Sound off — click to enable"}
-            className="rounded-full shrink-0 h-9 w-9"
+            className="h-9 w-9 shrink-0 rounded-lg border border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
           >
             {soundEnabled ? (
               <Volume2 className="h-4 w-4" />
@@ -579,7 +568,7 @@ export function FocusTimerPage() {
 
           <Badge
             variant="secondary"
-            className="w-fit gap-1.5 rounded-full px-3 py-1.5"
+            className="dashboard-chip w-fit gap-1.5 px-3 py-1.5"
           >
             <Sparkles className="h-3.5 w-3.5 text-violet-500" />
             <span className="text-xs">
@@ -589,11 +578,10 @@ export function FocusTimerPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* === Main timer card === */}
-        <StaggerContainer className="lg:col-span-2 space-y-6">
-          <StaggerItem>
-            <GlassCard className="p-6 sm:p-8 relative overflow-hidden">
+        <div className="space-y-4 lg:col-span-2">
+          <div className="dashboard-surface relative overflow-hidden p-5 sm:p-6">
               {/* Ambient glow for break modes (cyan for short, rose for long) */}
               {mode !== "focus" && (
                 <div
@@ -607,12 +595,12 @@ export function FocusTimerPage() {
 
               {/* Mode tabs */}
               <div className="flex justify-center mb-3">
-                <div className="inline-flex items-center gap-1 rounded-2xl bg-muted/70 p-1 backdrop-blur">
+                <div className="inline-flex items-center gap-1 rounded-lg border border-border/70 bg-background/85 p-1 shadow-sm dark:border-border/60 dark:bg-background/60">
                   {(Object.keys(MODE_CONFIG) as TimerMode[]).map((m) => (
                     <button
                       key={m}
                       onClick={() => switchMode(m)}
-                      className={`relative px-4 sm:px-5 py-2 text-sm font-medium rounded-xl transition-colors ${mode === m
+                      className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-colors sm:px-5 ${mode === m
                         ? "text-white"
                         : "text-muted-foreground hover:text-foreground"
                         }`}
@@ -620,7 +608,7 @@ export function FocusTimerPage() {
                       {mode === m && (
                         <motion.div
                           layoutId="timer-mode-pill"
-                          className="absolute inset-0 rounded-xl"
+                          className="absolute inset-0 rounded-lg"
                           style={{
                             background: `linear-gradient(135deg, ${MODE_CONFIG[m].ringFrom}, ${MODE_CONFIG[m].ringTo})`,
                           }}
@@ -744,7 +732,7 @@ export function FocusTimerPage() {
                   variant="ghost"
                   size="icon"
                   onClick={handleReset}
-                  className="rounded-full h-12 w-12 hover:bg-rose-500/10 hover:text-rose-500"
+                    className="h-12 w-12 rounded-lg hover:bg-rose-500/10 hover:text-rose-500"
                   aria-label="Reset timer"
                 >
                   <RotateCcw className="h-5 w-5" />
@@ -752,11 +740,9 @@ export function FocusTimerPage() {
 
                 {!isRunning ? (
                   <motion.button
-                    whileHover={reduceMotion ? undefined : { scale: 1.05 }}
-                    whileTap={reduceMotion ? undefined : { scale: 0.96 }}
                     onClick={handleStart}
                     disabled={saving}
-                    className="flex h-16 w-16 items-center justify-center rounded-full text-white shadow-xl disabled:opacity-70"
+                    className="flex h-16 w-16 items-center justify-center rounded-lg text-white shadow-xl disabled:opacity-70"
                     style={{
                       background: `linear-gradient(135deg, ${modeCfg.ringFrom}, ${modeCfg.ringTo})`,
                       boxShadow: `0 12px 30px -8px ${modeCfg.accent}80`,
@@ -767,10 +753,8 @@ export function FocusTimerPage() {
                   </motion.button>
                 ) : (
                   <motion.button
-                    whileHover={reduceMotion ? undefined : { scale: 1.05 }}
-                    whileTap={reduceMotion ? undefined : { scale: 0.96 }}
                     onClick={handlePause}
-                    className="flex h-16 w-16 items-center justify-center rounded-full text-white shadow-xl"
+                    className="flex h-16 w-16 items-center justify-center rounded-lg text-white shadow-xl"
                     style={{
                       background: `linear-gradient(135deg, ${modeCfg.ringFrom}, ${modeCfg.ringTo})`,
                       boxShadow: `0 12px 30px -8px ${modeCfg.accent}80`,
@@ -785,7 +769,7 @@ export function FocusTimerPage() {
                   variant="ghost"
                   size="icon"
                   onClick={handleSkip}
-                  className="rounded-full h-12 w-12 hover:bg-violet-500/10 hover:text-violet-500"
+                  className="h-12 w-12 rounded-lg hover:bg-violet-500/10 hover:text-violet-500"
                   aria-label="Skip to next"
                 >
                   <SkipForward className="h-5 w-5" />
@@ -814,7 +798,7 @@ export function FocusTimerPage() {
                     <button
                       key={p}
                       onClick={() => setDuration(p)}
-                      className={`px-3 py-1.5 text-xs rounded-full border transition-all ${durations[mode] === p
+                      className={`rounded-lg border px-3 py-1.5 text-xs transition-colors ${durations[mode] === p
                         ? "border-transparent text-white shadow"
                         : "border-border bg-background/60 hover:bg-accent text-muted-foreground"
                         }`}
@@ -839,7 +823,7 @@ export function FocusTimerPage() {
                         const v = parseInt(e.target.value, 10);
                         if (!isNaN(v)) setDuration(v);
                       }}
-                      className="h-8 w-16 text-xs text-center"
+                      className="h-8 w-16 rounded-lg border-border/70 bg-background/85 text-center text-xs shadow-sm dark:border-border/60 dark:bg-background/60"
                     />
                     <span className="text-xs text-muted-foreground">min</span>
                   </div>
@@ -857,11 +841,11 @@ export function FocusTimerPage() {
                     placeholder="e.g. Mathematics"
                     value={subject}
                     onChange={(e) => setFocusTimerSubject(e.target.value)}
-                    className="bg-background/60"
+                    className="rounded-lg border-border/70 bg-background/85 shadow-sm dark:border-border/60 dark:bg-background/60"
                   />
                 </div>
                 <div className="flex items-end">
-                  <div className="flex items-center justify-between w-full rounded-xl border border-border bg-background/60 px-3 py-2.5">
+                  <div className="dashboard-row flex w-full items-center justify-between px-3 py-2.5">
                     <div>
                       <p className="text-xs font-medium">Auto start break</p>
                       <p className="text-[11px] text-muted-foreground">
@@ -875,13 +859,11 @@ export function FocusTimerPage() {
                   </div>
                 </div>
               </div>
-            </GlassCard>
-          </StaggerItem>
+          </div>
 
           {/* === Break reminders === */}
           {(!stretchDismissed || !hydrateDismissed || customNudges.some(n => !n.dismissed) || mode !== "focus") && (
-            <StaggerItem>
-              <GlassCard className="p-5 sm:p-6">
+            <div className="dashboard-surface p-4 sm:p-5">
                 {(!stretchDismissed || !hydrateDismissed || customNudges.some(n => !n.dismissed)) && (
                   <>
                     <div className="flex items-center justify-between mb-4">
@@ -941,7 +923,7 @@ export function FocusTimerPage() {
                       })}
                       <button
                         onClick={() => setAddNudgeOpen(true)}
-                        className="flex flex-col items-center justify-center border border-dashed border-border hover:border-violet-500/50 bg-foreground/[0.01] hover:bg-violet-500/[0.02] rounded-2xl p-4 transition-all duration-300 min-h-[96px] gap-1.5"
+                        className="dashboard-row flex min-h-[96px] flex-col items-center justify-center gap-1.5 border-dashed p-4 transition-colors hover:border-violet-500/40 hover:bg-violet-500/[0.03]"
                       >
                         <Plus className="h-5 w-5 text-muted-foreground" />
                         <span className="text-xs font-semibold text-muted-foreground">Add custom nudge</span>
@@ -960,7 +942,7 @@ export function FocusTimerPage() {
                       transition={{ duration: 0.25 }}
                       className={cn(!stretchDismissed || !hydrateDismissed ? "mt-3" : "")}
                     >
-                      <div className="rounded-2xl border border-border bg-gradient-to-br from-violet-400/10 to-fuchsia-400/5 p-4">
+                      <div className="dashboard-row bg-gradient-to-br from-violet-400/10 to-fuchsia-400/5 p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <Sparkles className="h-4 w-4 text-violet-500" />
@@ -994,15 +976,13 @@ export function FocusTimerPage() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </GlassCard>
-            </StaggerItem>
+            </div>
           )}
-        </StaggerContainer>
+        </div>
 
         {/* === Right column: stats + recent === */}
-        <StaggerContainer className="space-y-6">
-          <StaggerItem>
-            <GlassCard className="p-5 sm:p-6">
+        <div className="space-y-4">
+          <div className="dashboard-surface p-4 sm:p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Flame className="h-4 w-4 text-rose-500" />
                 <h3 className="text-sm font-semibold">Focus statistics</h3>
@@ -1010,7 +990,7 @@ export function FocusTimerPage() {
               {loading ? (
                 <div className="grid grid-cols-2 gap-3">
                   {[0, 1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-20 rounded-2xl" />
+                    <Skeleton key={i} className="h-20 rounded-lg" />
                   ))}
                 </div>
               ) : (
@@ -1086,12 +1066,10 @@ export function FocusTimerPage() {
                   )}
                 </div>
               </div>
-            </GlassCard>
-          </StaggerItem>
+          </div>
 
           {/* Recent sessions */}
-          <StaggerItem>
-            <GlassCard className="p-5 sm:p-6">
+          <div className="dashboard-surface p-4 sm:p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <History className="h-4 w-4 text-violet-500" />
@@ -1122,24 +1100,27 @@ export function FocusTimerPage() {
                   ))}
                 </div>
               )}
-            </GlassCard>
-          </StaggerItem>
-        </StaggerContainer>
+          </div>
+        </div>
       </div>
       {/* Add Custom Nudge Dialog */}
       <Dialog open={addNudgeOpen} onOpenChange={setAddNudgeOpen}>
-        <DialogContent className="rounded-2xl border-border/50 max-w-sm">
+        <DialogContent className="dashboard-surface max-w-sm rounded-lg border-border/70 p-0 shadow-2xl shadow-slate-950/20 dark:border-border/45">
+          <div className="border-b border-border/60 p-4 sm:p-5">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-violet-500" />
+              <span className="dashboard-icon-tile dashboard-theme-glow-text">
+                <Sparkles className="h-4 w-4" />
+              </span>
               Add Wellness Nudge
             </DialogTitle>
             <DialogDescription>
               Create a custom reminder to help you stay mindful and healthy during your studies.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={submitNewNudge} className="space-y-4">
-            <div className="space-y-1.5">
+          </div>
+          <form onSubmit={submitNewNudge} className="space-y-3 p-4 sm:p-5">
+            <div className="dashboard-row space-y-1.5 p-3">
               <Label htmlFor="nudge-title">Reminder Title</Label>
               <Input
                 id="nudge-title"
@@ -1149,7 +1130,7 @@ export function FocusTimerPage() {
                 maxLength={40}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="dashboard-row space-y-1.5 p-3">
               <Label htmlFor="nudge-body">Instructions / Details</Label>
               <Input
                 id="nudge-body"
@@ -1159,7 +1140,7 @@ export function FocusTimerPage() {
                 maxLength={100}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="dashboard-row space-y-1.5 p-3">
               <Label>Icon / Theme</Label>
               <div className="grid grid-cols-5 gap-2 pt-1">
                 {(['coffee', 'droplets', 'eye', 'sparkles', 'brain'] as const).map((ic) => {
@@ -1171,7 +1152,7 @@ export function FocusTimerPage() {
                       type="button"
                       onClick={() => setNewNudgeIcon(ic)}
                       className={cn(
-                        "flex items-center justify-center p-2.5 rounded-xl border border-border hover:bg-muted transition-all",
+                        "flex items-center justify-center rounded-lg border border-border p-2.5 transition-colors hover:bg-muted",
                         newNudgeIcon === ic ? activeColor : "bg-background"
                       )}
                     >
@@ -1181,11 +1162,11 @@ export function FocusTimerPage() {
                 })}
               </div>
             </div>
-            <DialogFooter className="pt-2">
+            <DialogFooter className="gap-2 border-t border-border/60 bg-background/55 p-4 sm:p-5">
               <Button type="button" variant="outline" onClick={() => setAddNudgeOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+              <Button type="submit" className="rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20">
                 Add nudge
               </Button>
             </DialogFooter>
@@ -1214,10 +1195,7 @@ function ReminderCard({
   onDismiss: () => void;
 }) {
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      className={`relative rounded-2xl border border-border bg-gradient-to-br ${accent} p-4`}
-    >
+    <div className={`dashboard-row relative bg-gradient-to-br ${accent} p-4`}>
       <button
         onClick={onDismiss}
         className="absolute right-2 top-2 text-muted-foreground/60 hover:text-foreground transition-colors"
@@ -1226,7 +1204,7 @@ function ReminderCard({
         <X className="h-3.5 w-3.5" />
       </button>
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-background/70 shrink-0">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background/70">
           <Icon className={`h-4.5 w-4.5 ${iconColor}`} />
         </div>
         <div>
@@ -1234,7 +1212,7 @@ function ReminderCard({
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{body}</p>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -1254,7 +1232,7 @@ function StatBox({
   color: string;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-background/50 p-3">
+    <div className="dashboard-row p-3">
       <div className="flex items-center justify-between mb-1">
         <span className="text-[11px] text-muted-foreground">{label}</span>
         <Icon className={`h-3.5 w-3.5 ${color}`} />
@@ -1276,10 +1254,10 @@ function SessionRow({ session }: { session: FocusSession }) {
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.25 }}
-      className="flex items-center gap-3 rounded-xl border border-transparent hover:border-border hover:bg-background/40 p-2 transition-colors"
+      className="dashboard-row flex items-center gap-3 p-2 transition-colors hover:border-violet-500/30 hover:bg-violet-500/[0.03]"
     >
       <div
-        className={`flex h-9 w-9 items-center justify-center rounded-xl shrink-0 ${isFocus
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isFocus
           ? "bg-violet-500/10 text-violet-500"
           : "bg-cyan-500/10 text-cyan-500"
           }`}

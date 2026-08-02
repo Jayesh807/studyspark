@@ -29,12 +29,7 @@ import {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
-import {
-  GlassCard,
-  PageTransition,
-  StaggerContainer,
-  StaggerItem,
-} from "@/components/shared/motion";
+import { PageTransition } from "@/components/shared/motion";
 import { EmptyState, Skeleton } from "@/components/shared/feedback";
 import { AnimatedCounter } from "@/components/shared/animated-counter";
 import { Button } from "@/components/ui/button";
@@ -49,7 +44,7 @@ import {
 } from "@/components/ui/select";
 
 const FORM_FIELD_CLASS =
-  "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
+  "rounded-lg border-border/75 bg-background/90 shadow-sm transition-colors hover:bg-card focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20 dark:border-border/55 dark:bg-background/60 dark:hover:bg-background/75";
 const MAX_REVISION_TOPICS_PER_EXAM = 5;
 
 const STATUS_CONFIG: Record<
@@ -191,10 +186,10 @@ function TopicStatusSelect({
       disabled={busy}
       onValueChange={(value) => onChange(value as RevisionTopicStatus)}
     >
-      <SelectTrigger className="h-8 w-[132px] rounded-[5px] text-xs">
+      <SelectTrigger className="h-8 w-[132px] rounded-lg border-border/70 bg-background/85 text-xs shadow-sm dark:border-border/60 dark:bg-background/60">
         <SelectValue />
       </SelectTrigger>
-      <SelectContent align="end" className="rounded-[8px]">
+      <SelectContent align="end" className="dashboard-menu-surface p-1">
         {(Object.keys(STATUS_CONFIG) as RevisionTopicStatus[]).map((key) => (
           <SelectItem key={key} value={key}>
             <span className="flex items-center gap-2">
@@ -224,24 +219,24 @@ function StatCard({
   gradient: string;
 }) {
   return (
-    <GlassCard className="relative overflow-hidden p-4 sm:p-5">
+    <div className="dashboard-surface relative overflow-hidden p-3 sm:p-4">
       <div className="relative flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="mt-1.5 text-2xl font-bold tracking-tight sm:text-3xl">
+          <p className="mt-1 text-2xl font-bold tracking-tight">
             <AnimatedCounter value={value} suffix={suffix} />
           </p>
         </div>
         <div
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white ring-1 ring-white/20 dark:ring-white/10",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm ring-1 ring-white/20 dark:ring-white/10",
             gradient
           )}
         >
           <Icon className="h-4.5 w-4.5" />
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -253,16 +248,16 @@ function TodayTargets({
   onViewExam: () => void;
 }) {
   return (
-    <GlassCard className="overflow-hidden p-5 sm:p-6">
+    <div className="dashboard-surface overflow-hidden p-4 sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 ring-1 ring-emerald-500/20 dark:text-emerald-400">
+          <div className="dashboard-chip border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
             <Target className="h-3.5 w-3.5" />
             Today&apos;s Revision
           </div>
           <h2 className="text-lg font-bold tracking-tight">Study targets for today</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={onViewExam} className="rounded-[5px]">
+        <Button variant="outline" size="sm" onClick={onViewExam} className="rounded-lg border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60">
           <GraduationCap className="h-4 w-4" />
           Exams
         </Button>
@@ -273,14 +268,14 @@ function TodayTargets({
           icon={CheckCircle2}
           title="No revision target today"
           description="Add topics to upcoming exams and StudySpark will surface your next targets here."
-          className="rounded-2xl border border-dashed border-border/70 py-8"
+          className="dashboard-row border-dashed py-8"
         />
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {targets.map((topic) => (
             <div
               key={topic.id}
-              className="rounded-2xl bg-gradient-to-br from-emerald-500/12 to-cyan-500/8 p-4 ring-1 ring-emerald-500/20"
+              className="dashboard-row bg-gradient-to-br from-emerald-500/12 to-cyan-500/8 p-4 ring-1 ring-emerald-500/20"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -301,7 +296,7 @@ function TodayTargets({
           ))}
         </div>
       )}
-    </GlassCard>
+    </div>
   );
 }
 
@@ -345,7 +340,7 @@ function ExamRevisionCard({
   };
 
   return (
-    <GlassCard hover className="flex h-full flex-col gap-4 p-5">
+    <div className="dashboard-surface flex h-full flex-col gap-4 p-4 transition-colors hover:border-violet-500/30 hover:bg-violet-500/[0.03] sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Badge className={cn("mb-2 border-transparent text-white", color.bg)}>
@@ -383,7 +378,7 @@ function ExamRevisionCard({
       </div>
 
       {nextTopics.length > 0 && (
-        <div className="rounded-xl bg-muted/35 p-3 ring-1 ring-border/50">
+        <div className="dashboard-row p-3">
           <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
             <ListChecks className="h-3.5 w-3.5" />
             Suggested targets
@@ -418,7 +413,7 @@ function ExamRevisionCard({
         <Button
           type="submit"
           disabled={adding || hasReachedTopicLimit || !topicTitle.trim()}
-          className="shrink-0 bg-violet-500 text-white hover:bg-violet-600"
+          className="shrink-0 rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -429,7 +424,7 @@ function ExamRevisionCard({
 
       <div className="min-h-0 flex-1 space-y-2">
         {topics.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border/70 px-3 py-5 text-center">
+          <div className="dashboard-row border-dashed px-3 py-5 text-center">
             <p className="text-sm font-medium">No topics yet</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Add chapters or question sets for this exam.
@@ -442,7 +437,7 @@ function ExamRevisionCard({
             return (
               <div
                 key={topic.id}
-                className="flex items-center gap-2 rounded-xl bg-background/70 p-2.5 ring-1 ring-border/50"
+                className="dashboard-row flex items-center gap-2 p-2.5"
               >
                 <StatusIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -469,7 +464,7 @@ function ExamRevisionCard({
           })
         )}
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -481,9 +476,9 @@ function StatusBoard({
   const columns = Object.keys(STATUS_CONFIG) as RevisionTopicStatus[];
 
   return (
-    <GlassCard className="p-5 sm:p-6">
+    <div className="dashboard-surface p-4 sm:p-5">
       <div className="mb-4 flex items-center gap-2">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/10 text-violet-500">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 dark:bg-violet-500/20 dark:text-violet-300">
           <BookOpenCheck className="h-4.5 w-4.5" />
         </div>
         <div>
@@ -496,7 +491,7 @@ function StatusBoard({
           const config = STATUS_CONFIG[statusKey];
           const items = topics.filter((topic) => topic.status === statusKey);
           return (
-            <div key={statusKey} className="rounded-2xl bg-muted/30 p-3 ring-1 ring-border/50">
+            <div key={statusKey} className="dashboard-row p-3">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <Badge className={cn("border-transparent", config.className)}>
                   <span className={cn("h-1.5 w-1.5 rounded-full", config.dotClassName)} />
@@ -508,12 +503,12 @@ function StatusBoard({
               </div>
               <div className="space-y-2">
                 {items.length === 0 ? (
-                  <p className="rounded-xl border border-dashed border-border/70 px-3 py-4 text-center text-xs text-muted-foreground">
+                  <p className="dashboard-row border-dashed px-3 py-4 text-center text-xs text-muted-foreground">
                     Empty
                   </p>
                 ) : (
                   items.slice(0, 5).map((topic) => (
-                    <div key={topic.id} className="rounded-xl bg-background/75 p-3 ring-1 ring-border/40">
+                    <div key={topic.id} className="dashboard-row p-3">
                       <p className="truncate text-sm font-medium">{topic.title}</p>
                       <p className="mt-1 truncate text-xs text-muted-foreground">
                         {topic.exam.examName}
@@ -526,7 +521,7 @@ function StatusBoard({
           );
         })}
       </div>
-    </GlassCard>
+    </div>
   );
 }
 
@@ -722,23 +717,21 @@ export function RevisionPlanPage() {
   };
 
   return (
-    <PageTransition className="space-y-6 sm:space-y-8">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <PageTransition className="space-y-4">
+      {/* Subtitle & Actions Bar */}
+      <header className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="space-y-1">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-violet-500/5 px-3 py-1 text-xs font-semibold text-violet-950 ring-1 ring-violet-500/20 dark:bg-violet-500/15 dark:text-violet-300">
+          <div className="dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Your exam roadmap</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Revision Plan
-          </h1>
           <p className="text-sm text-muted-foreground">
             See every exam topic, today&apos;s revision targets, and progress in one place.
           </p>
         </div>
         <Button
           onClick={() => setView("exams")}
-          className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+          className="h-10 rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
         >
           <GraduationCap className="h-4 w-4" />
           Manage Exams
@@ -748,7 +741,7 @@ export function RevisionPlanPage() {
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
         {loading ? (
           Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-3xl" />
+            <Skeleton key={i} className="h-24 rounded-lg" />
           ))
         ) : (
           <>
@@ -763,8 +756,8 @@ export function RevisionPlanPage() {
 
       {loading ? (
         <div className="grid gap-4 lg:grid-cols-2">
-          <Skeleton className="h-72 rounded-3xl" />
-          <Skeleton className="h-72 rounded-3xl" />
+          <Skeleton className="h-72 rounded-lg" />
+          <Skeleton className="h-72 rounded-lg" />
         </div>
       ) : upcomingExams.length === 0 ? (
         <EmptyState
@@ -774,21 +767,21 @@ export function RevisionPlanPage() {
           action={
             <Button
               onClick={() => setView("exams")}
-              className="bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white"
+              className="rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
             >
               <Plus className="h-4 w-4" />
               Add exam
             </Button>
           }
-          className="glass rounded-3xl"
+          className="dashboard-surface"
         />
       ) : (
         <>
           <TodayTargets targets={todayTargets} onViewExam={() => setView("exams")} />
 
-          <StaggerContainer className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             {upcomingExams.map((exam) => (
-              <StaggerItem key={exam.id}>
+              <div key={exam.id}>
                 <ExamRevisionCard
                   exam={exam}
                   busyTopicId={busyTopicId}
@@ -796,9 +789,9 @@ export function RevisionPlanPage() {
                   onStatusChange={updateTopicStatus}
                   onDeleteTopic={deleteTopic}
                 />
-              </StaggerItem>
+              </div>
             ))}
-          </StaggerContainer>
+          </div>
 
           <StatusBoard topics={allTopics} />
         </>

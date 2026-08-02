@@ -203,6 +203,7 @@ const VIEW_TITLES: Record<AppView, { title: string; subtitle: string }> = {
   subjects: { title: "Subjects", subtitle: "Manage your courses" },
   exams: { title: "Upcoming Exams", subtitle: "Stay ahead of your exams" },
   revision: { title: "Revision Plan", subtitle: "Your exam revision roadmap" },
+  studySearch: { title: "Sparks AI", subtitle: "Quiz and ask doubts from your PDF" },
   focus: { title: "Focus Timer", subtitle: "Pomodoro focus sessions" },
   typing: { title: "Test Typing Speed", subtitle: "Improve typing speed and accuracy" },
   planner: { title: "Study Planner", subtitle: "Plan your weekly study sessions" },
@@ -326,7 +327,7 @@ function NotificationPopover({
           variant="ghost"
           size={showLabel ? "sm" : "icon"}
           className={cn(
-            "relative rounded-xl",
+            "relative rounded-lg",
             showLabel ? "h-11 justify-start gap-3 px-3" : "h-9 w-9",
             buttonClassName
           )}
@@ -487,7 +488,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/60 bg-background/70 px-4 backdrop-blur-xl lg:px-6">
+    <header className="sticky top-0 z-30 flex h-[70px] items-center gap-3 border-b border-border/70 bg-card/92 px-4 shadow-sm backdrop-blur-xl dark:border-border/60 dark:bg-background/78 dark:shadow-none lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,520px)_minmax(0,1fr)] lg:px-6">
       {/* Mobile menu */}
       <Button
         variant="ghost"
@@ -516,23 +517,25 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
       </motion.div>
 
       {/* Search — opens command palette */}
-      <button
-        type="button"
-        onClick={onOpenPalette}
-        className="group relative hidden h-9 w-44 items-center gap-2 rounded-xl border border-transparent bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground md:flex lg:w-56"
-        aria-label="Open command palette"
-      >
-        <Search className="h-4 w-4 shrink-0" />
-        <span className="flex-1 text-left">Search...</span>
-        <kbd className="pointer-events-none hidden select-none items-center gap-1 rounded border bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground group-hover:border-border/60 lg:flex">
-          <Command className="h-2.5 w-2.5" />K
-        </kbd>
-      </button>
+      <div className="relative hidden justify-center md:flex lg:w-full">
+        <button
+          type="button"
+          onClick={onOpenPalette}
+          className="group relative z-10 flex h-12 w-64 items-center gap-2 rounded-full border border-violet-500/20 bg-background/90 px-4 text-sm text-muted-foreground shadow-sm transition-colors hover:bg-muted/70 hover:text-foreground dark:border-violet-400/20 dark:bg-background/65 dark:shadow-none md:flex lg:w-80"
+          aria-label="Open command palette"
+        >
+          <Search className="h-4.5 w-4.5 shrink-0" />
+          <span className="flex-1 text-left">Search...</span>
+          <kbd className="pointer-events-none hidden select-none items-center gap-1 rounded border bg-background/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground group-hover:border-border/60 lg:flex">
+            <Command className="h-2.5 w-2.5" />K
+          </kbd>
+        </button>
+      </div>
       {/* Mobile search icon button */}
       <Button
         variant="ghost"
         size="icon"
-        className="h-9 w-9 rounded-xl md:hidden"
+        className="h-9 w-9 rounded-lg md:hidden"
         onClick={onOpenPalette}
         aria-label="Open command palette"
       >
@@ -540,6 +543,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
       </Button>
 
       {/* Study Radio popover */}
+      <div className="contents lg:flex lg:items-center lg:justify-end lg:gap-3">
       <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -550,7 +554,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
                     variant="ghost"
                     size="icon"
                     className={cn(
-                      "relative h-9 w-9 rounded-xl transition-colors",
+                      "relative h-9 w-9 rounded-lg transition-colors",
                       (desktopRadioOpen || isRadioPlaying) && "bg-violet-500/10 text-violet-500"
                     )}
                     aria-label="Study Radio"
@@ -588,7 +592,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               size="icon"
               onClick={() => setReminderOpen(true)}
               className={cn(
-                "relative hidden h-9 w-9 rounded-xl md:inline-flex",
+                "relative hidden h-9 w-9 rounded-lg md:inline-flex",
                 reminderOpen && "bg-violet-500/10 text-violet-500"
               )}
               aria-label="Open reminders"
@@ -608,7 +612,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="icon"
               onClick={() => setCalcOpen(true)}
-              className="relative hidden h-9 w-9 rounded-xl md:inline-flex"
+              className="relative hidden h-9 w-9 rounded-lg md:inline-flex"
               aria-label="Open calculator"
             >
               <CalculatorIcon className="h-[18px] w-[18px]" />
@@ -626,7 +630,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="relative hidden h-9 w-9 rounded-xl md:inline-flex"
+              className="relative hidden h-9 w-9 rounded-lg md:inline-flex"
               aria-label="Toggle theme"
             >
               <Sun className="h-[18px] w-[18px] rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
@@ -647,7 +651,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
         variant="ghost"
         size="icon"
         className={cn(
-          "relative h-9 w-9 rounded-xl md:hidden",
+          "relative h-9 w-9 rounded-lg md:hidden",
           mobileActionsOpen && "bg-violet-500/10 text-violet-500"
         )}
         onClick={() => setMobileActionsOpen((open) => !open)}
@@ -667,7 +671,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.18 }}
-            className="absolute left-3 right-3 top-full mt-2 grid grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-background/95 p-2 shadow-2xl backdrop-blur-xl md:hidden"
+            className="absolute left-3 right-3 top-full mt-2 grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-background/95 p-2 shadow-2xl backdrop-blur-xl md:hidden"
           >
             <Popover open={mobileRadioOpen} onOpenChange={setMobileRadioOpen}>
               <PopoverTrigger asChild>
@@ -675,7 +679,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "relative h-11 justify-start gap-3 rounded-xl px-3",
+                    "relative h-11 justify-start gap-3 rounded-lg px-3",
                     (mobileRadioOpen || isRadioPlaying) && "bg-violet-500/10 text-violet-500"
                   )}
                   aria-label="Study Radio"
@@ -705,7 +709,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
                 setReminderOpen(true);
                 setMobileActionsOpen(false);
               }}
-              className="h-11 justify-start gap-3 rounded-xl px-3"
+              className="h-11 justify-start gap-3 rounded-lg px-3"
               aria-label="Open reminders"
             >
               <AlarmClock className="h-[18px] w-[18px]" />
@@ -719,14 +723,14 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
                 setCalcOpen(true);
                 setMobileActionsOpen(false);
               }}
-              className="h-11 justify-start gap-3 rounded-xl px-3"
+              className="h-11 justify-start gap-3 rounded-lg px-3"
               aria-label="Open calculator"
             >
               <CalculatorIcon className="h-[18px] w-[18px]" />
               <span>Calculator</span>
             </Button>
 
-            <NotificationPopover showLabel buttonClassName="w-full rounded-xl" />
+            <NotificationPopover showLabel buttonClassName="w-full rounded-lg" />
 
             <Button
               variant="ghost"
@@ -735,7 +739,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
                 toggleTheme();
                 setMobileActionsOpen(false);
               }}
-              className="h-11 justify-start gap-3 rounded-xl px-3"
+              className="h-11 justify-start gap-3 rounded-lg px-3"
               aria-label="Toggle theme"
             >
               <span className="relative h-[18px] w-[18px]">
@@ -749,7 +753,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="sm"
               onClick={requestAppInstall}
-              className="col-span-2 h-11 justify-start gap-3 rounded-xl px-3"
+              className="col-span-2 h-11 justify-start gap-3 rounded-lg px-3"
               aria-label="Install StudySpark app"
             >
               <Download className="h-[18px] w-[18px]" />
@@ -766,7 +770,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
             <TooltipTrigger asChild>
               <button
                 onClick={() => useAppStore.getState().setView("profile")}
-                className="group flex items-center gap-2 rounded-xl px-1 py-1 transition-colors hover:bg-accent/60"
+                className="group flex items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-accent/60"
               >
                 <div className="relative h-8 w-8 shrink-0">
                   <Avatar className="h-full w-full rounded-lg shadow-sm ring-2 ring-transparent transition-all group-hover:ring-violet-500/30">
@@ -792,6 +796,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
           </Tooltip>
         </TooltipProvider>
       )}
+      </div>
 
       <CalculatorWidget open={calcOpen} onOpenChange={setCalcOpen} />
       <ReminderWidget

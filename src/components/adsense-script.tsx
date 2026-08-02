@@ -1,6 +1,6 @@
 "use client";
 
-import Script from "next/script";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 /**
@@ -20,8 +20,8 @@ const BLOCKED_PREFIXES = [
 
 /**
  * AdSenseScript — conditionally loads the Google AdSense script
- * only on public content pages. Prevents the "ads on screens
- * without publisher content" policy violation.
+ * only on public content pages via standard DOM injection to avoid
+ * the Next.js 'data-nscript' console warning.
  */
 export function AdSenseScript() {
   const pathname = usePathname();
@@ -30,14 +30,18 @@ export function AdSenseScript() {
     (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
   );
 
-  if (isBlocked) return null;
+  useEffect(() => {
+    if (isBlocked) return;
+    const existing = document.querySelector(`script[src*="adsbygoogle.js"]`);
+    if (!existing) {
+      const script = document.createElement("script");
+      script.src =
+        "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7098669863322522";
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      document.head.appendChild(script);
+    }
+  }, [isBlocked]);
 
-  return (
-    <Script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7098669863322522"
-      crossOrigin="anonymous"
-      strategy="lazyOnload"
-    />
-  );
+  return null;
 }

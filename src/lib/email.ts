@@ -20,10 +20,6 @@ export async function sendPasswordResetOtp({
   const fromName = process.env.RESET_EMAIL_FROM_NAME || "StudySpark";
 
   if (!isPasswordResetEmailConfigured() || !apiKey || !fromEmail) {
-    if (process.env.NODE_ENV !== "production") {
-      console.info(`Password reset OTP for ${to}: ${otp}`);
-      return;
-    }
     throw new Error("Password reset email is not configured");
   }
 
