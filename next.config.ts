@@ -8,7 +8,7 @@ const isNetlify = Boolean(process.env.NETLIFY);
 
 const nextConfig: NextConfig = {
   output: isNetlify ? undefined : "standalone",
-  serverExternalPackages: ["pdfkit"],
+  serverExternalPackages: ["pdfkit", "@sparticuz/chromium", "puppeteer-core"],
   typescript: {
     ignoreBuildErrors: true,
   },

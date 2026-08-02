@@ -1,278 +1,374 @@
 import fs from "node:fs";
 import path from "node:path";
-import PDFDocument from "pdfkit";
+import { pathToFileURL } from "node:url";
+import { inspectText, validateDocumentText, escapeHtml } from "./pdf-unicode";
 
-export interface PdfGenOptions {
+export interface HtmlPdfOptions {
   title?: string;
   subtitle?: string;
+  lang?: string;
+  includeMathJax?: boolean;
 }
 
-function getFontsDir() {
-  return path.join(process.cwd(), "public", "fonts");
+export function getLocalFontData() {
+  const fontsDir = path.join(process.cwd(), "public", "fonts");
+  const regularFontPath = path.join(fontsDir, "NotoSansDevanagari-Regular.ttf");
+  const boldFontPath = path.join(fontsDir, "NotoSansDevanagari-Bold.ttf");
+
+  if (!fs.existsSync(regularFontPath)) {
+    throw new Error(`Hindi font was not found: ${regularFontPath}`);
+  }
+  if (!fs.existsSync(boldFontPath)) {
+    throw new Error(`Hindi font was not found: ${boldFontPath}`);
+  }
+
+  const regularFontBuffer = fs.readFileSync(regularFontPath);
+  const boldFontBuffer = fs.readFileSync(boldFontPath);
+
+  return {
+    regularFontPath,
+    boldFontPath,
+    regularFontUrl: pathToFileURL(regularFontPath).href,
+    boldFontUrl: pathToFileURL(boldFontPath).href,
+    regularFontBase64: regularFontBuffer.toString("base64"),
+    boldFontBase64: boldFontBuffer.toString("base64"),
+  };
 }
 
-function hasFonts(): boolean {
-  const dir = getFontsDir();
-  return (
-    fs.existsSync(path.join(dir, "NotoSansDevanagari-Regular.ttf")) &&
-    fs.existsSync(path.join(dir, "NotoSansDevanagari-Bold.ttf"))
-  );
+export function buildCompleteHtmlDocument(bodyContentHtml: string, options: HtmlPdfOptions = {}): string {
+  const fontData = getLocalFontData();
+  const lang = options.lang || "hi";
+  const title = options.title ? escapeHtml(options.title) : "";
+  const subtitle = options.subtitle ? escapeHtml(options.subtitle) : "";
+
+  const mathJaxScript = options.includeMathJax !== false
+    ? `
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
+          displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
+          processEscapes: true
+        },
+        options: {
+          skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+        }
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    `
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="${lang}">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title || "Document"}</title>
+  ${mathJaxScript}
+  <style>
+    @font-face {
+      font-family: "HindiPDF";
+      src: url("data:font/ttf;charset=utf-8;base64,${fontData.regularFontBase64}") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "HindiPDF";
+      src: url("data:font/ttf;charset=utf-8;base64,${fontData.boldFontBase64}") format("truetype");
+      font-weight: 700;
+      font-style: normal;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family:
+        "HindiPDF",
+        "Noto Sans Devanagari",
+        "Mangal",
+        "Noto Sans",
+        "DejaVu Sans",
+        sans-serif;
+      font-size: 15px;
+      line-height: 1.75;
+      letter-spacing: 0;
+      word-break: normal;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      color: #1e293b;
+      background: #ffffff;
+    }
+
+    h1, h2, h3, h4, p, td, th, li, div, span {
+      font-family:
+        "HindiPDF",
+        "Noto Sans Devanagari",
+        "Mangal",
+        "Noto Sans",
+        sans-serif;
+    }
+
+    .doc-banner {
+      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      color: #ffffff;
+      padding: 36px 20mm 26px 20mm;
+      margin: 0 0 24px 0;
+      width: 100%;
+      box-sizing: border-box;
+      page-break-after: avoid;
+      box-shadow: 0 4px 14px rgba(29, 78, 216, 0.15);
+    }
+
+    .doc-banner h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.35;
+      margin: 0 0 6px 0;
+      border: none;
+      padding: 0;
+    }
+
+    .doc-banner .subtitle {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #bfdbfe;
+      margin: 0;
+      letter-spacing: 0.3px;
+    }
+
+    .doc-container {
+      max-width: 100%;
+      margin: 0;
+      padding: 0 20mm 20mm 20mm;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e3a8a;
+      border-left: 4px solid #2563eb;
+      padding-left: 12px;
+      margin: 20px 0 10px;
+      page-break-after: avoid;
+    }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #1d4ed8;
+      border-left: 4px solid #60a5fa;
+      padding-left: 10px;
+      margin: 18px 0 8px;
+      page-break-after: avoid;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      margin: 14px 0 6px;
+      page-break-after: avoid;
+    }
+
+    p {
+      margin: 8px 0 12px;
+      color: #334155;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 14px;
+      page-break-inside: avoid;
+    }
+
+    thead {
+      display: table-header-group;
+    }
+
+    th {
+      background: #1e293b;
+      color: #ffffff;
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 700;
+    }
+
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 10px 12px;
+      vertical-align: top;
+      color: #334155;
+    }
+
+    tr {
+      page-break-inside: avoid;
+    }
+
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .note-box {
+      background: #eff8ff;
+      border-left: 5px solid #0284c7;
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      margin: 16px 0;
+      line-height: 1.6;
+      page-break-inside: avoid;
+      color: #0369a1;
+    }
+
+    .code-block {
+      background: #0f172a;
+      color: #38bdf8;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      margin: 16px 0;
+      overflow: hidden;
+      page-break-inside: avoid;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px 16px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      font-family: "Consolas", "Courier New", "JetBrains Mono", monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #38bdf8;
+      background: #0f172a;
+    }
+
+    pre code {
+      font-family: "Consolas", "Courier New", "JetBrains Mono", monospace;
+      color: #38bdf8;
+      background: transparent;
+      padding: 0;
+      border: none;
+    }
+
+    .inline-code {
+      background-color: #f1f5f9;
+      color: #0284c7;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 1.5px 5px;
+      font-size: 12.5px;
+      font-family: "Consolas", "Courier New", "JetBrains Mono", monospace;
+      font-weight: 600;
+    }
+
+    ul, ol {
+      margin: 8px 0 8px 24px;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  ${title ? `<div class="doc-banner"><h1>${title}</h1>${subtitle ? `<div class="subtitle">${subtitle}</div>` : ""}</div>` : ""}
+  <div class="doc-container">
+    ${bodyContentHtml}
+  </div>
+</body>
+</html>`;
 }
 
-/**
- * Generates a PDF from structured markdown-like text using PDFKit.
- * Works 100% in Netlify serverless (no Chrome / Puppeteer needed).
- */
-export async function generatePdfFromMarkdown(
-  markdownText: string,
-  options: PdfGenOptions = {}
-): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const fontsDir = getFontsDir();
-    const useCustomFont = hasFonts();
+export async function generatePdfWithPuppeteer(html: string): Promise<Buffer> {
+  // On Netlify (cloud), use @sparticuz/chromium — a serverless-optimized Chromium binary.
+  // Locally (dev), use the regular puppeteer package with its bundled Chrome.
+  const isNetlify = Boolean(process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
-    const doc = new PDFDocument({
-      size: "A4",
-      margin: 50,
-      info: {
-        Title: options.title || "Study Notes",
-        Author: "Sparks AI",
+  let browser;
+
+  if (isNetlify) {
+    // Serverless path: use chromium binary from @sparticuz/chromium
+    const chromium = (await import("@sparticuz/chromium")).default;
+    const puppeteerCore = await import("puppeteer-core");
+
+    chromium.setGraphicsMode = false;
+
+    browser = await puppeteerCore.default.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  } else {
+    // Local dev path: use the full puppeteer package
+    const puppeteer = await import("puppeteer");
+    browser = await puppeteer.default.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-web-security",
+        "--allow-file-access-from-files",
+        "--font-render-hinting=medium",
+      ],
+    });
+  }
+
+  try {
+    const page = await browser.newPage();
+
+    await page.setContent(html, {
+      waitUntil: "networkidle0" as never,
+    });
+
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+
+      let attempts = 0;
+      while (!(window as never as { MathJax?: { typesetPromise?: () => Promise<void> } }).MathJax?.typesetPromise && attempts < 60) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        attempts++;
+      }
+
+      const mjx = (window as never as { MathJax?: { typesetPromise?: () => Promise<void> } }).MathJax;
+      if (mjx?.typesetPromise) {
+        await mjx.typesetPromise();
+      }
+    });
+
+    const pdfUint8Array = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: {
+        top: "18mm",
+        right: "16mm",
+        bottom: "18mm",
+        left: "16mm",
       },
     });
 
-    // Register fonts
-    if (useCustomFont) {
-      doc.registerFont(
-        "HindiRegular",
-        path.join(fontsDir, "NotoSansDevanagari-Regular.ttf")
-      );
-      doc.registerFont(
-        "HindiBold",
-        path.join(fontsDir, "NotoSansDevanagari-Bold.ttf")
-      );
-    }
-
-    const regularFont = useCustomFont ? "HindiRegular" : "Helvetica";
-    const boldFont = useCustomFont ? "HindiBold" : "Helvetica-Bold";
-
-    const PAGE_WIDTH = doc.page.width - 100; // left+right margin = 100
-
-    // Collect output
-    const buffers: Buffer[] = [];
-    doc.on("data", (chunk: Buffer) => buffers.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(buffers)));
-    doc.on("error", reject);
-
-    // ─── Banner ───────────────────────────────────────────────────────────
-    if (options.title) {
-      doc.rect(0, 0, doc.page.width, 80).fill("#1d4ed8");
-      doc
-        .font(boldFont)
-        .fontSize(20)
-        .fillColor("#ffffff")
-        .text(options.title, 50, 24, { width: PAGE_WIDTH });
-      if (options.subtitle) {
-        doc
-          .font(regularFont)
-          .fontSize(11)
-          .fillColor("#bfdbfe")
-          .text(options.subtitle, 50, 50, { width: PAGE_WIDTH });
-      }
-      doc.moveDown(3);
-    }
-
-    // ─── Parse & render markdown lines ───────────────────────────────────
-    const lines = markdownText.split(/\r?\n/);
-
-    let inCodeBlock = false;
-    let codeLines: string[] = [];
-
-    const flushCode = () => {
-      if (codeLines.length === 0) return;
-      const codeText = codeLines.join("\n");
-      // dark code block background
-      const startY = doc.y;
-      doc
-        .font("Courier")
-        .fontSize(10)
-        .fillColor("#38bdf8");
-
-      // Estimate height & draw background rect
-      const textHeight = doc.heightOfString(codeText, { width: PAGE_WIDTH - 20 });
-      doc
-        .rect(45, startY - 4, PAGE_WIDTH + 10, textHeight + 16)
-        .fill("#0f172a");
-
-      doc
-        .font("Courier")
-        .fontSize(10)
-        .fillColor("#38bdf8")
-        .text(codeText, 55, startY + 4, { width: PAGE_WIDTH - 20 });
-
-      doc.moveDown(1);
-      codeLines = [];
-    };
-
-    for (const rawLine of lines) {
-      const line = rawLine;
-      const trimmed = line.trim();
-
-      // Code block toggle
-      if (trimmed.startsWith("```")) {
-        if (inCodeBlock) {
-          flushCode();
-          inCodeBlock = false;
-        } else {
-          inCodeBlock = true;
-        }
-        continue;
-      }
-
-      if (inCodeBlock) {
-        codeLines.push(line);
-        continue;
-      }
-
-      // Empty line
-      if (!trimmed) {
-        doc.moveDown(0.4);
-        continue;
-      }
-
-      // Horizontal rule
-      if (/^---+$/.test(trimmed)) {
-        doc
-          .moveTo(50, doc.y)
-          .lineTo(50 + PAGE_WIDTH, doc.y)
-          .strokeColor("#cbd5e1")
-          .lineWidth(1)
-          .stroke();
-        doc.moveDown(0.5);
-        continue;
-      }
-
-      // H1
-      if (trimmed.startsWith("# ")) {
-        const text = trimmed.replace(/^# /, "");
-        doc
-          .rect(46, doc.y - 2, 4, doc.currentLineHeight(true) + 4)
-          .fill("#2563eb");
-        doc
-          .font(boldFont)
-          .fontSize(17)
-          .fillColor("#1e3a8a")
-          .text(text, 55, doc.y, { width: PAGE_WIDTH - 10 });
-        doc.moveDown(0.4);
-        continue;
-      }
-
-      // H2
-      if (trimmed.startsWith("## ")) {
-        const text = trimmed.replace(/^## /, "");
-        doc
-          .rect(46, doc.y - 2, 4, doc.currentLineHeight(true) + 4)
-          .fill("#60a5fa");
-        doc
-          .font(boldFont)
-          .fontSize(14)
-          .fillColor("#1d4ed8")
-          .text(text, 55, doc.y, { width: PAGE_WIDTH - 10 });
-        doc.moveDown(0.3);
-        continue;
-      }
-
-      // H3
-      if (trimmed.startsWith("### ")) {
-        const text = trimmed.replace(/^### /, "");
-        doc
-          .font(boldFont)
-          .fontSize(12)
-          .fillColor("#0f172a")
-          .text(text, 50, doc.y, { width: PAGE_WIDTH });
-        doc.moveDown(0.3);
-        continue;
-      }
-
-      // Blockquote / note box
-      if (trimmed.startsWith("> ")) {
-        const text = trimmed.replace(/^> /, "");
-        const noteText = stripInlineMd(text);
-        const textHeight = doc.heightOfString(noteText, { width: PAGE_WIDTH - 30 });
-        const startY = doc.y;
-        doc.rect(46, startY - 4, 5, textHeight + 8).fill("#0284c7");
-        doc
-          .rect(51, startY - 4, PAGE_WIDTH - 6, textHeight + 8)
-          .fill("#eff8ff");
-        doc
-          .font(regularFont)
-          .fontSize(11)
-          .fillColor("#0369a1")
-          .text(noteText, 60, startY, { width: PAGE_WIDTH - 20 });
-        doc.moveDown(0.5);
-        continue;
-      }
-
-      // Bullet list
-      if (/^[-*]\s/.test(trimmed)) {
-        const text = stripInlineMd(trimmed.replace(/^[-*]\s/, ""));
-        doc
-          .font(regularFont)
-          .fontSize(11)
-          .fillColor("#334155")
-          .text(`• ${text}`, 60, doc.y, { width: PAGE_WIDTH - 15 });
-        doc.moveDown(0.2);
-        continue;
-      }
-
-      // Numbered list
-      if (/^\d+\.\s/.test(trimmed)) {
-        const match = trimmed.match(/^(\d+)\.\s(.*)/);
-        if (match) {
-          const num = match[1];
-          const text = stripInlineMd(match[2]);
-          doc
-            .font(regularFont)
-            .fontSize(11)
-            .fillColor("#334155")
-            .text(`${num}. ${text}`, 60, doc.y, { width: PAGE_WIDTH - 15 });
-          doc.moveDown(0.2);
-          continue;
-        }
-      }
-
-      // Bold-only line (treat as a sub-heading)
-      if (/^\*\*(.+)\*\*$/.test(trimmed)) {
-        const text = trimmed.replace(/^\*\*/, "").replace(/\*\*$/, "");
-        doc
-          .font(boldFont)
-          .fontSize(11)
-          .fillColor("#0f172a")
-          .text(text, 50, doc.y, { width: PAGE_WIDTH });
-        doc.moveDown(0.2);
-        continue;
-      }
-
-      // Normal paragraph
-      const text = stripInlineMd(trimmed);
-      doc
-        .font(regularFont)
-        .fontSize(11)
-        .fillColor("#334155")
-        .text(text, 50, doc.y, { width: PAGE_WIDTH });
-      doc.moveDown(0.3);
-    }
-
-    if (inCodeBlock) flushCode();
-
-    doc.end();
-  });
-}
-
-/** Strip inline markdown (bold, italic, inline code, links) to plain text */
-function stripInlineMd(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+    return Buffer.from(pdfUint8Array);
+  } finally {
+    await browser.close();
+  }
 }

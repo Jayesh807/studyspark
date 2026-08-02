@@ -1,0 +1,44 @@
+1. Question? What does Ohm's Law state?
+A. The resistance is directly proportional to the voltage.
+B. The current is inversely proportional to the resistance.
+C. The potential difference across a conductor is equal to its resistance.
+D. The power dissipated in a resistor is equal to the product of voltage and current.
+
+Answer: D
+Explanation: Ohm's Law states that the power dissipated in a resistor is equal to the product of voltage and current, which is V = IR.
+
+2. Question? What happens if the resistance remains constant while increasing the voltage?
+A. The current increases.
+B. The current decreases.
+C. The current remains unchanged.
+D. The potential difference decreases.
+
+Answer: A
+Explanation: According to Ohm's Law (V = IR), when the resistance is constant, an increase in voltage results in an increase in current if no other factors change.
+
+3. Question? What does increasing the resistance do for a given voltage?
+A. Decreases the current.
+B. Increases the current.
+C. Has no effect on the current.
+D. The relationship between current and resistance cannot be determined without additional information.
+
+Answer: A
+Explanation: Increasing the resistance decreases the current, as stated in Ohm's Law (I = V/R).
+
+4. Question? What is the unit of resistance?
+A. Coulomb (C)
+B. Ampere (A)
+C. Volt (V)
+D. Ohm (Ω)
+
+Answer: D
+Explanation: The unit of resistance is Ohm (Ω), which represents the ratio of voltage to current.
+
+5. Question? Which statement correctly describes a valid application of Ohm's Law?
+A. A 10 Ω resistor connected to a 20 V battery carries a current of 2 A.
+B. Increasing the temperature increases the resistance in a conductor.
+C. The potential difference across a conductor is directly proportional to its length.
+D. The power dissipated in a resistor is independent of its resistance.
+
+Answer: A
+Explanation: According to Ohm's Law (P = IV), when the current remains constant, an increase in voltage results in an increase in power dissipation if no other factors change.
