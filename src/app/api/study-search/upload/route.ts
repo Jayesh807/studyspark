@@ -4,11 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
   chunkPageText,
-  countUsefulPageTextChars,
-  getPagesStudyTextQuality,
 } from "@/lib/study/chunking";
 import { createEmbedding } from "@/lib/study/ai";
-import { extractPdfPages } from "@/lib/study/pdf";
+import { PdfReadabilityError, extractPdfPagesWithDiagnostics } from "@/lib/study/pdf";
 import { STUDY_LIMITS } from "@/lib/study/types";
 
 export const runtime = "nodejs";
@@ -67,28 +65,28 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const pages = await extractPdfPages(buffer);
-    const extractedTextChars = countUsefulPageTextChars(pages);
-    const textQuality = getPagesStudyTextQuality(pages);
+    const extraction = await extractPdfPagesWithDiagnostics(buffer);
+    const pages = extraction.pages;
     const chunks = chunkPageText(pages);
 
     if (chunks.length === 0) {
       console.warn("[Study PDF Upload]: No indexable chunks extracted", {
-        fileName: file.name,
         fileType: file.type,
         fileSize: file.size,
         pageCount: pages.length,
-        extractedTextChars,
-        textQuality,
+        extractionSource: extraction.source,
+        usedOcr: extraction.usedOcr,
+        extractedTextChars: extraction.extractedTextChars,
+        textQuality: extraction.textQuality,
       });
       const looksLikePdfInternals =
-        textQuality.pdfInternalTokenRatio > STUDY_LIMITS.maxPdfInternalTokenRatio ||
-        textQuality.suspiciousTokenRatio > STUDY_LIMITS.maxSuspiciousTokenRatio;
+        extraction.textQuality.pdfInternalTokenRatio > STUDY_LIMITS.maxPdfInternalTokenRatio ||
+        extraction.textQuality.suspiciousTokenRatio > STUDY_LIMITS.maxSuspiciousTokenRatio;
       const errorMessage = looksLikePdfInternals
-        ? "Could not read useful study text from this PDF. It appears image-based or contains mostly PDF layout data. Please upload a text-selectable PDF or run OCR first."
-        : extractedTextChars > 0 && textQuality.wordCount > 0
+        ? "Could not read useful study text from this PDF. It appears image-based or contains mostly PDF layout data. Please upload a clearer text-selectable PDF."
+        : extraction.extractedTextChars > 0 && extraction.textQuality.wordCount > 0
           ? "This PDF has too little selectable text to generate a quiz. Please upload a PDF with more study content."
-          : "Could not read useful text from this PDF. Please upload a text-selectable PDF, not an image-only scan.";
+          : "Could not read useful text from this PDF. Please upload a text-selectable PDF or a clearer scanned PDF.";
 
       return NextResponse.json(
         { error: errorMessage },
@@ -134,6 +132,7 @@ export async function POST(req: NextRequest) {
           pageCount: document.pageCount,
           chunkCount: chunks.length,
           doubtCount: 0,
+          extractionSource: extraction.source,
         },
       },
       { status: 201 }
@@ -142,11 +141,13 @@ export async function POST(req: NextRequest) {
     console.error("Study PDF upload error:", error);
     const message =
       error instanceof Error ? error.message : "Could not process this PDF.";
-    const isReadablePdfError = message.startsWith("Could not extract text from this PDF");
+    const isReadablePdfError =
+      error instanceof PdfReadabilityError ||
+      message.startsWith("Could not extract text from this PDF");
     return NextResponse.json(
       {
         error: isReadablePdfError
-          ? "Could not read useful text from this PDF. Please upload a text-selectable PDF, not an image-only scan."
+          ? message
           : message,
       },
       { status: isReadablePdfError ? 400 : 500 }

@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { generateGroundedQuiz } from "@/lib/study/ai";
+import { StudyQuizGenerationError, generateGroundedQuiz } from "@/lib/study/ai";
 import { getStudyTextQuality } from "@/lib/study/chunking";
 import { STUDY_LIMITS } from "@/lib/study/types";
 
@@ -87,6 +87,14 @@ export async function POST(
     console.error("Study quiz error:", error);
     const message =
       error instanceof Error ? error.message : "Could not generate quiz.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status =
+      error instanceof StudyQuizGenerationError &&
+      error.code === "UNREADABLE_CONTEXT"
+        ? 422
+        : error instanceof StudyQuizGenerationError &&
+            error.code === "AI_OUTPUT_NOT_USABLE"
+          ? 422
+          : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

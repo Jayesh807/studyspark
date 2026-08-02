@@ -86,6 +86,15 @@ You should see: `🚀 Your database is now in sync with your Prisma schema.`
    | `NEXTAUTH_URL` | `https://YOUR_SITE_NAME.netlify.app` (use the URL Netlify assigns) |
    | `NODE_ENV` | `production` |
 
+   For Sparks AI Exam Mode and PDF OCR, also add at least one cloud AI key:
+
+   | Key | Value |
+   |---|---|
+   | `GROQ_API_KEY` | Your Groq API key for quiz generation |
+   | `GROQ_MODEL` | `openai/gpt-oss-120b` |
+   | `GEMINI_API_KEY` | Your Gemini API key for quiz generation, embeddings, and OCR fallback |
+   | `GEMINI_MODEL` | `gemini-2.0-flash` |
+
    > 💡 You can set env vars later under **Site settings → Environment variables** if you forgot one.
 
 6. Click **"Deploy site"** 🎉
@@ -126,6 +135,10 @@ If everything works, you now have a **24/7 live StudySpark** with a permanent Po
 ### Login works but data doesn't save
 - **Cause:** Tables weren't created on Neon (Step 3 was skipped).
 - **Fix:** Run `npx prisma db push --schema=prisma/schema.netlify.prisma` locally with your Neon `DATABASE_URL` set.
+
+### AI Exam Mode says it cannot read the PDF
+- **Cause:** The uploaded PDF is scanned/image-based, has too little selectable text, or the OCR/AI key is missing.
+- **Fix:** Upload a text-selectable PDF, or set `GEMINI_API_KEY` and `GEMINI_MODEL` so the app can run OCR fallback for scanned notes. Keep PDFs under the app's 5 MB limit.
 
 ### "Database connection error" at runtime
 - **Cause:** Neon's free tier "scales to zero" after inactivity — the first request after idle takes a few seconds to wake the DB.

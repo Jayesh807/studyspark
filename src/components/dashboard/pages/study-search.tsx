@@ -54,6 +54,7 @@ interface StudyDocument {
   pageCount: number;
   chunkCount: number;
   doubtCount: number;
+  extractionSource?: "pdf-text" | "gemini-ocr";
 }
 
 interface QuizQuestion {
@@ -2053,7 +2054,11 @@ export function StudySearchPage() {
       }
       setDocument(data.document);
       setRemainingDoubts(10);
-      toast.success("PDF indexed. Select a feature below to begin!");
+      toast.success(
+        data.document?.extractionSource === "gemini-ocr"
+          ? "PDF indexed with OCR. Select a feature below to begin!"
+          : "PDF indexed. Select a feature below to begin!"
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not upload PDF";
       setUploadError(message);
