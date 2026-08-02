@@ -63,11 +63,35 @@ export function DashboardRedirect() {
       window.removeEventListener("studyspark:session-expired", onSessionExpired);
   }, [handleSessionExpired]);
 
-  if (!showDashboard) return null;
+  const isNavigatingToDashboard = authLoading || (user && !showDashboard);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background">
-      <DashboardShell />
-    </div>
+    <>
+      {/* Top Progress Loading Line & Glass Redirect Badge */}
+      {isNavigatingToDashboard && (
+        <div className="fixed top-0 left-0 right-0 z-[99999] pointer-events-none select-none">
+          <div className="h-1 w-full bg-slate-900/60 overflow-hidden relative">
+            <div className="h-full w-full bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 shadow-[0_0_12px_rgba(52,211,153,0.9)] animate-pulse" />
+          </div>
+          {user && (
+            <div className="flex justify-center pt-3">
+              <div className="bg-slate-900/90 backdrop-blur-xl border border-emerald-500/40 text-emerald-300 px-4 py-1.5 rounded-full text-xs font-bold shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-300">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>Welcome back! Navigating to Dashboard...</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showDashboard && (
+        <div className="fixed inset-0 z-[100] bg-background">
+          <DashboardShell />
+        </div>
+      )}
+    </>
   );
 }

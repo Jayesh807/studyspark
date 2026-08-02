@@ -452,22 +452,29 @@ function buildSimpleVector(text: string, dimensions = 128): number[] {
 export async function createEmbedding(input: string): Promise<number[]> {
   if (process.env.GEMINI_API_KEY) {
     try {
-      const key = process.env.GEMINI_API_KEY;
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${key}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "models/gemini-embedding-001",
-            content: { parts: [{ text: input }] },
-          }),
-        }
-      );
-      if (res.ok) {
-        const data = (await res.json()) as { embedding?: { values?: number[] } };
-        if (data.embedding?.values?.length) {
-          return data.embedding.values;
+      const key = process.env.GEMINI_API_KEY.trim();
+      const modelsToTry = ["text-embedding-004", "embedding-001"];
+      for (const model of modelsToTry) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${key}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: `models/${model}`,
+                content: { parts: [{ text: input }] },
+              }),
+            }
+          );
+          if (res.ok) {
+            const data = (await res.json()) as { embedding?: { values?: number[] } };
+            if (data.embedding?.values?.length) {
+              return data.embedding.values;
+            }
+          }
+        } catch {
+          // ignore & fallback below
         }
       }
     } catch (err) {
