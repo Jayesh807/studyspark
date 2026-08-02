@@ -83,6 +83,7 @@ function SubPageHeader({
   onBack,
   onSelectTool,
   uploading,
+  onUpload,
 }: {
   activeTool: StudyTool;
   document: StudyDocument | null;
@@ -91,26 +92,26 @@ function SubPageHeader({
   onBack: () => void;
   onSelectTool: (tool: StudyTool) => void;
   uploading?: boolean;
+  onUpload?: (file: File) => Promise<void>;
 }) {
+  const headerFileInputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl bg-slate-900/80 p-3 sm:p-4 backdrop-blur-xl border border-slate-800 shadow-lg md:flex-row md:items-center md:justify-between animate-in fade-in slide-in-from-top-2 duration-300 w-full overflow-hidden">
-      {/* Top / Left section */}
-      <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0 w-full md:w-auto">
+    <div className="flex flex-col gap-3 rounded-2xl bg-slate-900/90 p-3 sm:p-4 backdrop-blur-xl border border-slate-800 shadow-xl animate-in fade-in slide-in-from-top-2 duration-300 w-full">
+      {/* Top row: Back button & Document / Active tool indicator */}
+      <div className="flex items-center justify-between gap-2 w-full min-w-0">
         <Button
           variant="outline"
           size="sm"
           onClick={onBack}
-          className="rounded-xl border-slate-700 bg-slate-800/80 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white shadow-sm transition-all shrink-0 whitespace-nowrap"
+          className="rounded-xl border-slate-700/80 bg-slate-800/90 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white shadow-sm transition-all shrink-0"
         >
           <ArrowLeft className="mr-1 sm:mr-1.5 h-3.5 w-3.5 text-cyan-400 shrink-0" />
-          <span className="hidden sm:inline">Back to Sparks AI Hub</span>
-          <span className="inline sm:hidden">Back to Hub</span>
+          <span className="hidden sm:inline">Back to Hub</span>
+          <span className="inline sm:hidden">Back</span>
         </Button>
 
-        <div className="h-5 w-px bg-slate-800 hidden sm:block shrink-0" />
-
-        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
-          <Badge className="border-transparent bg-cyan-500/10 text-cyan-400 px-2.5 py-1 font-bold text-xs ring-1 ring-cyan-500/30 shrink-0 whitespace-nowrap">
+        <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+          <Badge className="hidden md:inline-flex border-transparent bg-cyan-500/10 text-cyan-400 px-2.5 py-1 font-bold text-xs ring-1 ring-cyan-500/30 shrink-0">
             {activeTool === "quiz" && (
               <span className="flex items-center gap-1.5">
                 <BrainCircuit className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
@@ -135,16 +136,17 @@ function SubPageHeader({
             <motion.div
               initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/15 px-3 py-1 text-xs font-bold text-cyan-400 border border-cyan-500/30 shadow-md shadow-cyan-500/10 whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/15 px-2.5 sm:px-3 py-1 text-xs font-bold text-cyan-400 border border-cyan-500/30 shadow-md shadow-cyan-500/10 shrink-0"
             >
               <Loader2 className="h-3.5 w-3.5 text-cyan-400 animate-spin shrink-0" />
-              <span>Indexing PDF...</span>
+              <span className="hidden sm:inline">Indexing PDF...</span>
+              <span className="inline sm:hidden">Indexing...</span>
             </motion.div>
           ) : document ? (
             <motion.div
               initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 shadow-md shadow-emerald-500/10 max-w-[150px] sm:max-w-xs whitespace-nowrap"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 shadow-md shadow-emerald-500/10 max-w-[150px] sm:max-w-[180px] truncate shrink-0"
             >
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
               <span className="truncate">{document.fileName}</span>
@@ -153,11 +155,54 @@ function SubPageHeader({
         </div>
       </div>
 
-      {/* Right / Bottom controls section - Horizontally Scrollable on Mobile so text NEVER wraps */}
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5 max-w-full shrink-0">
+      {/* Bottom row: Mode pills & Qs selector */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 w-full">
+        {/* Tool selector tabs */}
+        <div className="flex items-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700/80 overflow-x-auto scrollbar-none max-w-full">
+          <button
+            type="button"
+            onClick={() => onSelectTool("quiz")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
+              activeTool === "quiz"
+                ? "bg-cyan-500 text-white shadow-sm font-bold"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
+            <span>Exam Mode</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectTool("doubt")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
+              activeTool === "doubt"
+                ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm font-bold"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            <span>Ask Doubts</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectTool("textToPdf")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
+              activeTool === "textToPdf"
+                ? "bg-emerald-600 text-white shadow-sm font-bold"
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <FileText className="h-3.5 w-3.5 shrink-0" />
+            <span>Text to PDF</span>
+          </button>
+        </div>
+
         {/* 5 Qs vs 10 Qs selector directly in Top Bar */}
         {activeTool === "quiz" && onCountChange && quizCount && (
-          <div className="flex items-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700 text-xs font-semibold shrink-0">
+          <div className="flex items-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700/80 text-xs font-semibold shrink-0">
             {([5, 10] as const).map((num) => (
               <button
                 key={num}
@@ -175,49 +220,6 @@ function SubPageHeader({
             ))}
           </div>
         )}
-
-        {/* Fast mode switcher pills */}
-        <div className="flex items-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700 shrink-0">
-          <button
-            type="button"
-            onClick={() => onSelectTool("quiz")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
-              activeTool === "quiz"
-                ? "bg-cyan-500 text-white shadow-sm font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
-            <span>Exam Mode</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelectTool("doubt")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
-              activeTool === "doubt"
-                ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            <span>Ask Doubts</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelectTool("textToPdf")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
-              activeTool === "textToPdf"
-                ? "bg-emerald-600 text-white shadow-sm font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <FileText className="h-3.5 w-3.5 shrink-0" />
-            <span>Text to PDF</span>
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -1214,7 +1216,7 @@ function QuizPanel({
   };
 
   return (
-    <div className="flex flex-col w-full flex-1 h-full justify-between py-2 sm:py-4">
+    <div className="flex flex-col items-center justify-center w-full flex-1 min-h-full my-auto py-4 sm:py-8">
       <input
         type="file"
         ref={fileInputRef}
@@ -1250,9 +1252,9 @@ function QuizPanel({
           </div>
         </div>
       ) : (
-        <div className="my-auto flex flex-col items-center justify-center py-6 text-center w-full max-w-xl mx-auto space-y-5 animate-in fade-in zoom-in-95 duration-300">
+        <div className="my-auto flex flex-col items-center justify-center py-6 text-center w-full max-w-xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-300">
           {/* Clean Title & Subtitle */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <h3
               style={{ fontFamily: "var(--font-poppins), sans-serif" }}
               className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-100 flex items-center justify-center gap-2 whitespace-nowrap"
@@ -1265,30 +1267,30 @@ function QuizPanel({
             </p>
           </div>
 
-          {/* Quiz metadata pills with 15px border radius */}
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
-            <span className="inline-flex items-center gap-1.5 rounded-[15px] bg-cyan-500/10 px-4 py-1.5 text-xs font-bold text-cyan-400 border border-cyan-500/30">
+          {/* 3 Pills aligned in 1 single row with uniform Cyan/Blue styling */}
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 max-w-full overflow-x-auto scrollbar-none pt-0.5 whitespace-nowrap">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-[15px] bg-cyan-500/10 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-cyan-400 border border-cyan-500/30 shrink-0">
               <BrainCircuit className="h-3.5 w-3.5" />
               {questions.length === quizCount ? questions.length : quizCount} MCQs
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-[15px] bg-violet-500/10 px-4 py-1.5 text-xs font-bold text-violet-400 border border-violet-500/30">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-[15px] bg-cyan-500/10 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-cyan-400 border border-cyan-500/30 shrink-0">
               <Clock className="h-3.5 w-3.5" />
               {questions.length === quizCount ? questions.length : quizCount} Mins Duration
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-[15px] bg-emerald-500/10 px-4 py-1.5 text-xs font-bold text-emerald-400 border border-emerald-500/30">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-[15px] bg-cyan-500/10 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-cyan-400 border border-cyan-500/30 shrink-0">
               <Zap className="h-3.5 w-3.5" />
               Interactive Test
             </span>
           </div>
 
-          {/* Perfectly Aligned Equal-Width Buttons with 15px Border Radius */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-xl pt-2">
+          {/* 4 Action Buttons in 2x2 Grid */}
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full max-w-xl pt-2">
             {questions.length === quizCount ? (
               <>
                 <Button
                   type="button"
                   onClick={() => setIsTestModeOpen(true)}
-                  className="h-12 flex-1 w-full rounded-[15px] bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-6 text-sm shadow-md transition-all flex items-center justify-center"
+                  className="h-11 sm:h-12 w-full rounded-[15px] bg-gradient-to-r from-cyan-500 via-teal-500 to-indigo-500 hover:from-cyan-400 hover:to-indigo-400 text-white font-extrabold px-3 text-xs sm:text-sm shadow-lg shadow-cyan-500/25 transition-all duration-300 hover:scale-[1.02] flex items-center justify-center border border-cyan-400/30"
                 >
                   <span className="truncate">Start Exam Mode ({quizCount} Qs)</span>
                 </Button>
@@ -1298,10 +1300,21 @@ function QuizPanel({
                   disabled={busy}
                   onClick={() => void onGenerate()}
                   variant="outline"
-                  className="h-12 flex-1 w-full rounded-[15px] border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 font-bold px-6 text-sm transition-all flex items-center justify-center"
+                  className="h-11 sm:h-12 w-full rounded-[15px] border border-indigo-500/40 bg-slate-800/80 hover:bg-slate-800 text-indigo-300 hover:text-indigo-200 font-bold px-3 text-xs sm:text-sm shadow-sm transition-all duration-300 hover:scale-[1.02] flex items-center justify-center"
                 >
-                  {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin shrink-0" /> : <RotateCcw className="mr-2 h-4 w-4 shrink-0" />}
+                  {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin shrink-0 text-indigo-400" /> : <RotateCcw className="mr-1.5 h-4 w-4 shrink-0 text-indigo-400" />}
                   <span className="truncate">{busy ? `Generating ${quizCount} Qs...` : `Re-generate ${quizCount} Qs`}</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="outline"
+                  className="h-11 sm:h-12 w-full rounded-[15px] border border-slate-700/80 bg-slate-800/80 hover:bg-slate-800 hover:border-slate-600 text-slate-300 hover:text-white font-bold px-3 text-xs sm:text-sm shadow-sm transition-all duration-300 hover:scale-[1.02] flex items-center justify-center"
+                >
+                  <UploadCloud className="mr-1.5 h-4 w-4 text-cyan-400 shrink-0" />
+                  <span className="truncate">Change PDF</span>
                 </Button>
 
                 <Button
@@ -1309,10 +1322,10 @@ function QuizPanel({
                   disabled={downloadingPdf}
                   onClick={handleDownloadQuizPdf}
                   variant="outline"
-                  title="Download Quiz PDF"
-                  className="h-12 shrink-0 rounded-[15px] border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold px-4 text-xs transition-all flex items-center justify-center"
+                  className="h-11 sm:h-12 w-full rounded-[15px] border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 font-bold px-3 text-xs sm:text-sm shadow-sm transition-all duration-300 hover:scale-[1.02] flex items-center justify-center"
                 >
-                  {downloadingPdf ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <Download className="h-4 w-4 shrink-0" />}
+                  {downloadingPdf ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin shrink-0 text-emerald-400" /> : <Download className="mr-1.5 h-4 w-4 shrink-0 text-emerald-400" />}
+                  <span className="truncate">Download Quiz</span>
                 </Button>
               </>
             ) : (
@@ -1320,7 +1333,7 @@ function QuizPanel({
                 type="button"
                 disabled={busy}
                 onClick={() => void onGenerate()}
-                className="h-12 w-full max-w-md rounded-[15px] bg-gradient-to-r from-cyan-500 via-teal-500 to-indigo-500 text-white font-bold px-6 text-sm shadow-xl shadow-cyan-500/25 hover:scale-105 transition-all flex items-center justify-center"
+                className="col-span-2 h-12 w-full rounded-[15px] bg-gradient-to-r from-cyan-500 via-teal-500 to-indigo-500 text-white font-bold px-6 text-sm shadow-xl shadow-cyan-500/25 hover:scale-105 transition-all flex items-center justify-center"
               >
                 {busy ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5 text-cyan-200" />}
                 <span className="truncate">{busy ? `Generating ${quizCount} Questions Quiz...` : `Generate ${quizCount} Questions Quiz`}</span>
@@ -1751,7 +1764,8 @@ function TextToPdfPanel({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center w-full flex-1 h-full py-2 sm:py-4 px-2 sm:px-4 overflow-y-auto">
+    <div className="flex flex-col items-center justify-between w-full flex-1 h-full py-2 sm:py-4 px-2 sm:px-4 overflow-y-auto min-h-full">
+      {/* Upper Content: Title, Subtitle, Tags & Actions */}
       <div className="my-auto flex flex-col items-center justify-center py-2 sm:py-6 text-center w-full max-w-2xl sm:max-w-3xl md:max-w-4xl mx-auto space-y-4 sm:space-y-6 animate-in fade-in zoom-in-95 duration-300">
         <div className="space-y-2 sm:space-y-3 w-full">
           <h3
@@ -1808,59 +1822,59 @@ function TextToPdfPanel({
             </div>
           )}
         </div>
+      </div>
 
-        {/* Input Form Placed Directly Below Tags */}
-        <form onSubmit={submit} className="flex flex-col items-center gap-3 w-full max-w-2xl sm:max-w-3xl mx-auto pt-2 pb-6 sm:pb-8">
+      {/* Input Form Pinned to Bottom Dock */}
+      <form onSubmit={submit} className="mt-auto flex flex-col items-center gap-3 w-full max-w-2xl sm:max-w-3xl mx-auto pt-2 pb-2 sm:pb-4 shrink-0">
+        <div
+          className={cn(
+            "relative group w-full mx-auto transition-all duration-500 ease-in-out",
+            isMultiLine ? "max-w-2xl sm:max-w-3xl" : "max-w-xl sm:max-w-2xl"
+          )}
+        >
           <div
             className={cn(
-              "relative group w-full mx-auto transition-all duration-500 ease-in-out",
-              isMultiLine ? "max-w-2xl sm:max-w-3xl" : "max-w-xl sm:max-w-2xl"
+              "absolute -inset-0.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 opacity-40 blur-md transition-all duration-500 group-hover:opacity-75 group-focus-within:opacity-100 group-focus-within:blur-lg",
+              isMultiLine ? "rounded-3xl" : "rounded-full"
+            )}
+          />
+          <div
+            className={cn(
+              "relative flex bg-slate-900/90 backdrop-blur-2xl px-4 sm:px-6 py-3 sm:py-4 shadow-2xl border border-slate-800 transition-all duration-300 focus-within:ring-2 focus-within:ring-emerald-500/60",
+              isMultiLine ? "rounded-3xl items-end" : "rounded-full items-center"
             )}
           >
-            <div
-              className={cn(
-                "absolute -inset-0.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 opacity-40 blur-md transition-all duration-500 group-hover:opacity-75 group-focus-within:opacity-100 group-focus-within:blur-lg",
-                isMultiLine ? "rounded-3xl" : "rounded-full"
-              )}
+            <textarea
+              rows={1}
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (canGenerate) submit(e);
+                }
+              }}
+              placeholder="Paste notes or summary to generate a PDF..."
+              className="w-full bg-transparent text-xs sm:text-base text-slate-100 placeholder:text-slate-500 focus:outline-none disabled:cursor-not-allowed resize-none min-h-[32px] max-h-[220px] overflow-y-auto leading-relaxed py-1 font-medium"
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = "auto";
+                target.style.height = `${Math.min(target.scrollHeight, 220)}px`;
+              }}
             />
-            <div
-              className={cn(
-                "relative flex bg-slate-900/90 backdrop-blur-2xl px-4 sm:px-6 py-3 sm:py-4 shadow-2xl border border-slate-800 transition-all duration-300 focus-within:ring-2 focus-within:ring-emerald-500/60",
-                isMultiLine ? "rounded-3xl items-end" : "rounded-full items-center"
-              )}
-            >
-              <textarea
-                rows={1}
-                value={text}
-                onChange={(event) => setText(event.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    if (canGenerate) submit(e);
-                  }
-                }}
-                placeholder="Paste notes or summary to generate a PDF..."
-                className="w-full bg-transparent text-xs sm:text-base text-slate-100 placeholder:text-slate-500 focus:outline-none disabled:cursor-not-allowed resize-none min-h-[32px] max-h-[220px] overflow-y-auto leading-relaxed py-1 font-medium"
-                onInput={(e) => {
-                  const target = e.target as HTMLTextAreaElement;
-                  target.style.height = "auto";
-                  target.style.height = `${Math.min(target.scrollHeight, 220)}px`;
-                }}
-              />
-              <div className="ml-2 sm:ml-3 flex items-center shrink-0 self-end pb-0.5">
-                <Button
-                  type="submit"
-                  disabled={!canGenerate}
-                  className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 p-0 text-white shadow-md transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
-                  aria-label="Generate PDF"
-                >
-                  {busy ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />}
-                </Button>
-              </div>
+            <div className="ml-2 sm:ml-3 flex items-center shrink-0 self-end pb-0.5">
+              <Button
+                type="submit"
+                disabled={!canGenerate}
+                className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 p-0 text-white shadow-md transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                aria-label="Generate PDF"
+              >
+                {busy ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />}
+              </Button>
             </div>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 }
@@ -2203,282 +2217,283 @@ export function StudySearchPage() {
   return (
     <div style={{ fontFamily: "var(--font-poppins), sans-serif" }}>
       <PageTransition className="relative space-y-4">
-      {/* Full Screen High-Tech Intro Splash Overlay */}
-      <AnimatePresence>
-        {showIntroSplash && (
-          <SparksIntroSplash onComplete={() => setShowIntroSplash(false)} />
+        {/* Full Screen High-Tech Intro Splash Overlay */}
+        <AnimatePresence>
+          {showIntroSplash && (
+            <SparksIntroSplash onComplete={() => setShowIntroSplash(false)} />
+          )}
+        </AnimatePresence>
+
+        {/* Ambient Mesh Backdrop Glow */}
+        <div className="pointer-events-none absolute -top-12 left-1/2 -z-10 h-72 w-full max-w-4xl -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400/25 via-indigo-400/20 to-purple-400/25 dark:from-cyan-500/15 dark:via-indigo-500/15 dark:to-purple-500/15 blur-3xl opacity-80 dark:opacity-70" />
+
+        {viewMode === "hub" ? (
+          /* MAIN SPARKS AI HUB VIEW */
+          <StaggerContainer delay={0.05} className="space-y-5 animate-in fade-in duration-300">
+            {/* Header Card */}
+            <StaggerItem>
+              <div className="dashboard-surface flex flex-col gap-4 p-5 sm:p-6 rounded-2xl shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 px-3.5 py-1 text-xs font-bold text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 shadow-sm shadow-cyan-500/10 mb-1">
+                      <Sparkles className="h-3.5 w-3.5 animate-pulse text-cyan-500" />
+                      <span>Sparks AI Workspace Hub</span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl">
+                      Launch any of the 3 dedicated AI tools below to generate quizzes, ask grounded doubts, or format notes into PDFs.
+                    </p>
+                  </div>
+
+                </div>
+
+                {/* Stat Widgets */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-border/40">
+                  <div className="flex items-center gap-3 rounded-xl bg-background/50 p-3 border border-border/50">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Indexed Document</p>
+                      <p className="text-xs font-bold truncate text-foreground">
+                        {document ? document.fileName : "No PDF Uploaded"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-xl bg-background/50 p-3 border border-border/50">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+                      <BrainCircuit className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Exam Quiz</p>
+                      <p className="text-xs font-bold text-foreground">
+                        {questions.length > 0 ? `${questions.length} MCQs Generated` : "Ready (5 or 10 Qs)"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-xl bg-background/50 p-3 border border-border/50">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
+                      <HelpCircle className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Daily Doubts</p>
+                      <p className="text-xs font-bold text-foreground">
+                        {remainingDoubts} / 10 Left
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 rounded-xl bg-background/50 p-3 border border-border/50">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                      <Download className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">PDF Exporter</p>
+                      <p className="text-xs font-bold text-foreground">
+                        15,000 Chars Limit
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </StaggerItem>
+
+            {/* 3 Interactive Feature Launcher Cards */}
+            <StaggerItem>
+              <div className="space-y-3 pt-2">
+                <h2 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-cyan-400" />
+                  Select AI Feature to Launch
+                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Card 1: Exam Mode */}
+                  <div
+                    onClick={() => handleOpenTool("quiz")}
+                    className="group relative cursor-pointer overflow-hidden rounded-3xl border border-cyan-500/30 bg-background/80 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400 hover:shadow-2xl hover:shadow-cyan-500/20 flex flex-col justify-between"
+                  >
+                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-500/10 blur-2xl group-hover:bg-cyan-500/20 transition-all" />
+
+                    <div className="space-y-4 relative z-10">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white shadow-lg shadow-cyan-500/25">
+                        <BrainCircuit className="h-6 w-6" />
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Feature #1</span>
+                        <h3 className="text-lg font-bold text-foreground group-hover:text-cyan-400 transition-colors">
+                          AI Exam Mode
+                        </h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                          Generate 5 or 10 interactive multiple-choice questions grounded in your course PDF and take timed exam tests.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 relative z-10">
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenTool("quiz");
+                        }}
+                        className="w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-xs font-bold text-white shadow-md transition-all group-hover:brightness-110"
+                      >
+                        Launch Exam Mode →
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Ask Doubts (Gemini UI) */}
+                  <div
+                    onClick={() => handleOpenTool("doubt")}
+                    className="group relative cursor-pointer overflow-hidden rounded-3xl border border-violet-500/30 bg-background/80 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-violet-400 hover:shadow-2xl hover:shadow-violet-500/20 flex flex-col justify-between"
+                  >
+                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-500/10 blur-2xl group-hover:bg-violet-500/20 transition-all" />
+
+                    <div className="space-y-4 relative z-10">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25">
+                        <Sparkles className="h-6 w-6" />
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider">Feature #2 • Sparks AI Chat</span>
+                        <h3 className="text-lg font-bold text-foreground group-hover:text-violet-400 transition-colors">
+                          Ask Doubts AI
+                        </h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                          Interactive AI chat grounded in your PDF notes with exact page citations & quick prompt chips.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 relative z-10">
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenTool("doubt");
+                        }}
+                        className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-xs font-bold text-white shadow-md transition-all group-hover:brightness-110"
+                      >
+                        Launch Ask Doubts →
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Text to PDF Studio */}
+                  <div
+                    onClick={() => handleOpenTool("textToPdf")}
+                    className="group relative cursor-pointer overflow-hidden rounded-3xl border border-emerald-500/30 bg-background/80 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400 hover:shadow-2xl hover:shadow-emerald-500/20 flex flex-col justify-between"
+                  >
+                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-all" />
+
+                    <div className="space-y-4 relative z-10">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25">
+                        <FileText className="h-6 w-6" />
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Feature #3</span>
+                        <h3 className="text-lg font-bold text-foreground group-hover:text-emerald-400 transition-colors">
+                          Text to PDF Studio
+                        </h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                          Convert notes, text summaries, and unicode formulas into beautifully formatted, printable PDF documents.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 relative z-10">
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenTool("textToPdf");
+                        }}
+                        className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-xs font-bold text-white shadow-md transition-all group-hover:brightness-110"
+                      >
+                        Launch Text to PDF →
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </StaggerItem>
+          </StaggerContainer>
+        ) : (
+          /* DEDICATED FULL-SCREEN SUB-PAGE VIEW (React Portal overlaying entire screen including sidebar & topbar) */
+          mounted && typeof window !== "undefined" ? (
+            createPortal(
+              <div
+                onDragEnter={handlePortalDragEnter}
+                onDragOver={handlePortalDragOver}
+                onDragLeave={handlePortalDragLeave}
+                onDrop={handlePortalDrop}
+                className="fixed inset-0 z-[9999] h-screen w-screen overflow-y-auto bg-slate-950 text-slate-100 p-3.5 sm:p-6 flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200"
+              >
+                {isPortalDragging && (
+                  <div className="absolute inset-3 z-50 pointer-events-none rounded-3xl border-2 border-dashed border-cyan-400/80 bg-cyan-500/5 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in duration-150">
+                    <div className="flex items-center gap-2.5 rounded-full bg-slate-900/95 px-5 py-2.5 text-xs sm:text-sm font-bold text-cyan-300 border border-cyan-500/50 shadow-2xl shadow-cyan-500/20">
+                      <UploadCloud className="h-5 w-5 text-cyan-400 animate-bounce" />
+                      <span>Drop PDF file to add & index...</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col space-y-4 h-full items-center">
+                  <SubPageHeader
+                    activeTool={activeTool}
+                    document={document}
+                    uploading={uploading}
+                    quizCount={quizCount}
+                    onCountChange={setQuizCount}
+                    onBack={() => setViewMode("hub")}
+                    onUpload={uploadPdf}
+                    onSelectTool={(tool) => {
+                      setActiveTool(tool);
+                      setViewMode(tool);
+                    }}
+                  />
+
+                  <div className="flex-1 flex flex-col items-center justify-between min-h-0 h-full w-full overflow-hidden">
+                    {activeTool === "quiz" ? (
+                      <QuizPanel
+                        document={document}
+                        questions={questions}
+                        busy={generatingQuiz || uploading}
+                        quizCount={quizCount}
+                        onCountChange={setQuizCount}
+                        onGenerate={generateQuiz}
+                        onUpload={uploadPdf}
+                      />
+                    ) : activeTool === "doubt" ? (
+                      <DoubtPanel
+                        document={document}
+                        messages={messages}
+                        busy={asking || uploading}
+                        remainingDoubts={remainingDoubts}
+                        onAsk={askDoubt}
+                        onUpload={uploadPdf}
+                      />
+                    ) : (
+                      <TextToPdfPanel
+                        busy={generatingPdf}
+                        pdfReady={Boolean(pdfBlobUrl)}
+                        onGenerate={generatePdf}
+                        onSaveAsPdf={saveAsPdf}
+                        onDownload={downloadPdf}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>,
+              window.document.body
+            )
+          ) : null
         )}
-      </AnimatePresence>
-
-      {/* Ambient Mesh Backdrop Glow */}
-      <div className="pointer-events-none absolute -top-12 left-1/2 -z-10 h-72 w-full max-w-4xl -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400/25 via-indigo-400/20 to-purple-400/25 dark:from-cyan-500/15 dark:via-indigo-500/15 dark:to-purple-500/15 blur-3xl opacity-80 dark:opacity-70" />
-
-      {viewMode === "hub" ? (
-        /* MAIN SPARKS AI HUB VIEW */
-        <StaggerContainer delay={0.05} className="space-y-5 animate-in fade-in duration-300">
-          {/* Header Card */}
-          <StaggerItem>
-            <div className="dashboard-surface flex flex-col gap-4 p-5 sm:p-6 rounded-2xl shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 px-3.5 py-1 text-xs font-bold text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 shadow-sm shadow-cyan-500/10 mb-1">
-                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-cyan-500" />
-                    <span>Sparks AI Workspace Hub</span>
-                  </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl">
-                    Launch any of the 3 dedicated AI tools below to generate quizzes, ask grounded doubts, or format notes into PDFs.
-                  </p>
-                </div>
-
-              </div>
-
-              {/* Stat Widgets */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-border/40">
-                <div className="flex items-center gap-3 rounded-xl bg-background/50 p-3 border border-border/50">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-500">
-                    <FileText className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Indexed Document</p>
-                    <p className="text-xs font-bold truncate text-foreground">
-                      {document ? document.fileName : "No PDF Uploaded"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 rounded-xl bg-background/50 p-3 border border-border/50">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
-                    <BrainCircuit className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Exam Quiz</p>
-                    <p className="text-xs font-bold text-foreground">
-                      {questions.length > 0 ? `${questions.length} MCQs Generated` : "Ready (5 or 10 Qs)"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 rounded-xl bg-background/50 p-3 border border-border/50">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-500">
-                    <HelpCircle className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Daily Doubts</p>
-                    <p className="text-xs font-bold text-foreground">
-                      {remainingDoubts} / 10 Left
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 rounded-xl bg-background/50 p-3 border border-border/50">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
-                    <Download className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">PDF Exporter</p>
-                    <p className="text-xs font-bold text-foreground">
-                      15,000 Chars Limit
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </StaggerItem>
-
-          {/* 3 Interactive Feature Launcher Cards */}
-          <StaggerItem>
-            <div className="space-y-3 pt-2">
-              <h2 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Zap className="h-4 w-4 text-cyan-400" />
-                Select AI Feature to Launch
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Card 1: Exam Mode */}
-                <div
-                  onClick={() => handleOpenTool("quiz")}
-                  className="group relative cursor-pointer overflow-hidden rounded-3xl border border-cyan-500/30 bg-background/80 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400 hover:shadow-2xl hover:shadow-cyan-500/20 flex flex-col justify-between"
-                >
-                  <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-cyan-500/10 blur-2xl group-hover:bg-cyan-500/20 transition-all" />
-                  
-                  <div className="space-y-4 relative z-10">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white shadow-lg shadow-cyan-500/25">
-                      <BrainCircuit className="h-6 w-6" />
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider">Feature #1</span>
-                      <h3 className="text-lg font-bold text-foreground group-hover:text-cyan-400 transition-colors">
-                        AI Exam Mode
-                      </h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                        Generate 5 or 10 interactive multiple-choice questions grounded in your course PDF and take timed exam tests.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 relative z-10">
-                    <Button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenTool("quiz");
-                      }}
-                      className="w-full rounded-2xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-xs font-bold text-white shadow-md transition-all group-hover:brightness-110"
-                    >
-                      Launch Exam Mode →
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Card 2: Ask Doubts (Gemini UI) */}
-                <div
-                  onClick={() => handleOpenTool("doubt")}
-                  className="group relative cursor-pointer overflow-hidden rounded-3xl border border-violet-500/30 bg-background/80 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-violet-400 hover:shadow-2xl hover:shadow-violet-500/20 flex flex-col justify-between"
-                >
-                  <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-violet-500/10 blur-2xl group-hover:bg-violet-500/20 transition-all" />
-
-                  <div className="space-y-4 relative z-10">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/25">
-                      <Sparkles className="h-6 w-6" />
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold text-violet-400 uppercase tracking-wider">Feature #2 • Sparks AI Chat</span>
-                      <h3 className="text-lg font-bold text-foreground group-hover:text-violet-400 transition-colors">
-                        Ask Doubts AI
-                      </h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                        Interactive AI chat grounded in your PDF notes with exact page citations & quick prompt chips.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 relative z-10">
-                    <Button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenTool("doubt");
-                      }}
-                      className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-xs font-bold text-white shadow-md transition-all group-hover:brightness-110"
-                    >
-                      Launch Ask Doubts →
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Card 3: Text to PDF Studio */}
-                <div
-                  onClick={() => handleOpenTool("textToPdf")}
-                  className="group relative cursor-pointer overflow-hidden rounded-3xl border border-emerald-500/30 bg-background/80 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400 hover:shadow-2xl hover:shadow-emerald-500/20 flex flex-col justify-between"
-                >
-                  <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl group-hover:bg-emerald-500/20 transition-all" />
-
-                  <div className="space-y-4 relative z-10">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/25">
-                      <FileText className="h-6 w-6" />
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Feature #3</span>
-                      <h3 className="text-lg font-bold text-foreground group-hover:text-emerald-400 transition-colors">
-                        Text to PDF Studio
-                      </h3>
-                      <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                        Convert notes, text summaries, and unicode formulas into beautifully formatted, printable PDF documents.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-6 relative z-10">
-                    <Button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenTool("textToPdf");
-                      }}
-                      className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-xs font-bold text-white shadow-md transition-all group-hover:brightness-110"
-                    >
-                      Launch Text to PDF →
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </StaggerItem>
-        </StaggerContainer>
-      ) : (
-        /* DEDICATED FULL-SCREEN SUB-PAGE VIEW (React Portal overlaying entire screen including sidebar & topbar) */
-        mounted && typeof window !== "undefined" ? (
-          createPortal(
-            <div
-              onDragEnter={handlePortalDragEnter}
-              onDragOver={handlePortalDragOver}
-              onDragLeave={handlePortalDragLeave}
-              onDrop={handlePortalDrop}
-              className="fixed inset-0 z-[9999] h-screen w-screen overflow-y-auto bg-slate-950 text-slate-100 p-3.5 sm:p-6 flex flex-col justify-between animate-in fade-in zoom-in-95 duration-200"
-            >
-              {isPortalDragging && (
-                <div className="absolute inset-3 z-50 pointer-events-none rounded-3xl border-2 border-dashed border-cyan-400/80 bg-cyan-500/5 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in duration-150">
-                  <div className="flex items-center gap-2.5 rounded-full bg-slate-900/95 px-5 py-2.5 text-xs sm:text-sm font-bold text-cyan-300 border border-cyan-500/50 shadow-2xl shadow-cyan-500/20">
-                    <UploadCloud className="h-5 w-5 text-cyan-400 animate-bounce" />
-                    <span>Drop PDF file to add & index...</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col space-y-4 h-full justify-between">
-                <SubPageHeader
-                  activeTool={activeTool}
-                  document={document}
-                  uploading={uploading}
-                  quizCount={quizCount}
-                  onCountChange={setQuizCount}
-                  onBack={() => setViewMode("hub")}
-                  onSelectTool={(tool) => {
-                    setActiveTool(tool);
-                    setViewMode(tool);
-                  }}
-                />
-
-                <div className="flex-1 flex flex-col justify-between min-h-0 h-full">
-                  {activeTool === "quiz" ? (
-                    <QuizPanel
-                      document={document}
-                      questions={questions}
-                      busy={generatingQuiz || uploading}
-                      quizCount={quizCount}
-                      onCountChange={setQuizCount}
-                      onGenerate={generateQuiz}
-                      onUpload={uploadPdf}
-                    />
-                  ) : activeTool === "doubt" ? (
-                    <DoubtPanel
-                      document={document}
-                      messages={messages}
-                      busy={asking || uploading}
-                      remainingDoubts={remainingDoubts}
-                      onAsk={askDoubt}
-                      onUpload={uploadPdf}
-                    />
-                  ) : (
-                    <TextToPdfPanel
-                      busy={generatingPdf}
-                      pdfReady={Boolean(pdfBlobUrl)}
-                      onGenerate={generatePdf}
-                      onSaveAsPdf={saveAsPdf}
-                      onDownload={downloadPdf}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>,
-            window.document.body
-          )
-        ) : null
-      )}
-    </PageTransition>
+      </PageTransition>
     </div>
   );
 }

@@ -249,31 +249,11 @@ function GreetingHeader({ username }: { username: string }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-      className="relative overflow-hidden pt-0 px-1 pb-1 sm:p-5 space-y-1.5 sm:space-y-3 sm:dashboard-surface"
+      className="relative overflow-hidden px-1 py-1 space-y-3 sm:space-y-4"
     >
-      {/* Floating Glassmorphic Quick Search Bar with Ambient Blue Glow */}
-      <div className="relative group">
-        <div className="absolute -inset-0.5 rounded-full bg-linear-to-r from-blue-600/35 via-cyan-500/30 to-violet-600/35 opacity-75 blur-md transition-all group-hover:opacity-100 group-hover:blur-lg" />
-        <button
-          type="button"
-          onClick={() => {
-            window.dispatchEvent(
-              new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true })
-            );
-          }}
-          className="relative flex w-full h-13 sm:h-14 items-center gap-3 rounded-full border border-cyan-500/30 bg-background/85 px-5 py-2 text-left text-sm text-muted-foreground shadow-xl backdrop-blur-xl transition-all hover:border-cyan-500/60 hover:bg-background/95 hover:text-foreground dark:bg-slate-950/80"
-        >
-          <Search className="h-4.5 w-4.5 text-cyan-400 transition-transform group-hover:scale-110 shrink-0" />
-          <span className="flex-1 font-medium truncate">Search tasks, subjects, exams, or study tools...</span>
-          <kbd className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-border/80 bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-            ⌘K
-          </kbd>
-        </button>
-      </div>
-
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="hidden md:inline-flex dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text mb-3">
+          <div className="!hidden md:!inline-flex dashboard-chip dashboard-theme-glow-chip dashboard-theme-glow-text mb-3">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Welcome back to your dashboard</span>
           </div>
@@ -298,6 +278,26 @@ function GreetingHeader({ username }: { username: string }) {
             </span>
           </span>
         </div>
+      </div>
+
+      {/* Floating Glassmorphic Quick Search Bar with Ambient Blue Glow */}
+      <div className="relative group pt-1 sm:pt-2">
+        <div className="absolute -inset-0.5 rounded-full bg-linear-to-r from-blue-600/35 via-cyan-500/30 to-violet-600/35 opacity-75 blur-md transition-all group-hover:opacity-100 group-hover:blur-lg" />
+        <button
+          type="button"
+          onClick={() => {
+            window.dispatchEvent(
+              new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true })
+            );
+          }}
+          className="relative flex w-full h-13 sm:h-14 items-center gap-3 rounded-full border border-cyan-500/30 bg-background/85 px-5 py-2 text-left text-sm text-muted-foreground shadow-xl backdrop-blur-xl transition-all hover:border-cyan-500/60 hover:bg-background/95 hover:text-foreground dark:bg-slate-950/80"
+        >
+          <Search className="h-4.5 w-4.5 text-cyan-400 transition-transform group-hover:scale-110 shrink-0" />
+          <span className="flex-1 font-medium truncate">Search tasks, subjects, exams, or study tools...</span>
+          <kbd className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-border/80 bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+            ⌘K
+          </kbd>
+        </button>
       </div>
     </motion.div>
   );
@@ -346,58 +346,62 @@ function StreakCard({
   }, [focusSessions]);
 
   return (
-    <StaggerItem className="h-full">
+    <StaggerItem className="col-span-2 sm:col-span-1 h-full">
       <GlassCard
-        className="dashboard-surface group relative h-full overflow-hidden rounded-lg p-4"
+        className="dashboard-surface group relative flex h-full flex-col justify-between overflow-hidden rounded-lg p-2.5 sm:p-4"
       >
-        <div className="relative flex items-start justify-between">
-          <div
-            className={cn(
-              "dashboard-icon-tile transition-colors duration-200",
-              "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
-              streak === 0 && "opacity-70 grayscale-[30%]"
-            )}
-          >
-            <Flame className="h-6 w-6" />
-          </div>
-          {/* Static status keeps the card calm while still showing momentum. */}
-          {streak > 0 && (
-            <span className="dashboard-chip text-cyan-700 dark:text-cyan-300">
-              Active
-            </span>
-          )}
-        </div>
-
-        <div className="relative mt-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Study Streak
-          </p>
-          {streak > 0 ? (
-            <>
-              <div className={cn("mt-1 text-3xl font-bold tracking-tight sm:text-4xl", "text-foreground")}>
-                <AnimatedCounter value={streak} />
-                <span className="ml-1 text-base font-medium text-muted-foreground">
-                  day{streak === 1 ? "" : "s"}
-                </span>
+        <div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className={cn(
+                  "dashboard-icon-tile h-7.5 w-7.5 sm:h-9 sm:w-9 shrink-0 transition-colors duration-200",
+                  "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+                  streak === 0 && "opacity-70 grayscale-[30%]"
+                )}
+              >
+                <Flame className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">keep it up!</p>
-            </>
-          ) : (
-            <>
-              <p className="mt-1 text-lg font-semibold text-foreground">
-                Start your streak!
+              <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-muted-foreground truncate">
+                Study Streak
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Study today to begin 🔥
-              </p>
-            </>
-          )}
+            </div>
+            {/* Static status keeps the card calm while still showing momentum. */}
+            {streak > 0 && (
+              <span className="dashboard-chip text-[10px] sm:text-xs text-cyan-700 dark:text-cyan-300 shrink-0">
+                Active
+              </span>
+            )}
+          </div>
+
+          <div className="relative mt-1.5 sm:mt-2.5">
+            {streak > 0 ? (
+              <>
+                <div className={cn("text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl", "text-foreground")}>
+                  <AnimatedCounter value={streak} />
+                  <span className="ml-1 text-xs sm:text-base font-medium text-muted-foreground">
+                    day{streak === 1 ? "" : "s"}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-[11px] sm:text-xs text-muted-foreground">keep it up!</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm sm:text-lg font-semibold text-foreground">
+                  Start your streak!
+                </p>
+                <p className="mt-0.5 text-[11px] sm:text-xs text-muted-foreground">
+                  Study today to begin 🔥
+                </p>
+              </>
+            )}
+          </div>
         </div>
 
         {/* 7-day circles */}
-        <div className="relative mt-4 grid grid-cols-7 gap-1.5 rounded-lg border border-border/50 bg-background/45 p-2">
+        <div className="relative mt-2.5 sm:mt-3 grid grid-cols-7 gap-1 rounded-lg border border-border/50 bg-background/45 p-1.5 sm:p-2">
           {last7Days.map((day, i) => (
-            <div key={i} className="flex flex-col items-center gap-1">
+            <div key={i} className="flex flex-col items-center gap-0.5 sm:gap-1">
               <motion.div
                 initial={false}
                 animate={
@@ -411,7 +415,7 @@ function StreakCard({
                   ease: [0.22, 1, 0.36, 1],
                 }}
                 className={cn(
-                  "h-4 w-4 rounded-full transition-colors duration-200",
+                  "h-3 w-3 sm:h-4 sm:w-4 rounded-full transition-colors duration-200",
                   day.hadSession
                     ? "bg-cyan-500 shadow-sm shadow-cyan-500/20"
                     : "bg-muted border border-border/60"
@@ -419,7 +423,7 @@ function StreakCard({
               />
               <span
                 className={cn(
-                  "text-[9px] font-medium",
+                  "text-[8px] sm:text-[9px] font-medium",
                   day.hadSession
                     ? "text-cyan-600 dark:text-cyan-400"
                     : "text-muted-foreground"
@@ -610,24 +614,25 @@ function StatCard({
   return (
     <StaggerItem className="h-full">
       <GlassCard
-        className={cn("dashboard-surface group relative h-full overflow-hidden rounded-lg p-4", isEmpty && "icon-chip-shimmer")}
+        className={cn("dashboard-surface group relative flex h-full flex-col justify-between overflow-hidden rounded-lg p-2.5 sm:p-4", isEmpty && "icon-chip-shimmer")}
       >
-        <div className="relative flex items-start justify-between">
-          <div
-            className={cn(
-              "dashboard-icon-tile transition-colors duration-200",
-              config.iconColorClass,
-              isEmpty && "opacity-70 grayscale-30"
-            )}
-          >
-            <Icon className="h-6 w-6" />
-          </div>
-          </div>
-          <div className="relative mt-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <div>
+          <div className="relative flex items-center gap-2">
+            <div
+              className={cn(
+                "dashboard-icon-tile h-7.5 w-7.5 sm:h-9 sm:w-9 shrink-0 transition-colors duration-200",
+                config.iconColorClass,
+                isEmpty && "opacity-70 grayscale-30"
+              )}
+            >
+              <Icon className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+            </div>
+            <p className="text-[10px] sm:text-xs font-medium uppercase tracking-wide text-muted-foreground truncate">
               {config.label}
             </p>
-            <div className={cn("tabular-nums mt-1 text-3xl font-bold tracking-tight sm:text-4xl", isEmpty ? "text-muted-foreground/60" : "text-foreground")}>
+          </div>
+          <div className="relative mt-1.5 sm:mt-2.5">
+            <div className={cn("tabular-nums text-2xl font-bold tracking-tight sm:text-3xl lg:text-4xl", isEmpty ? "text-muted-foreground/60" : "text-foreground")}>
               <AnimatedCounter
                 value={value}
                 suffix={config.suffix}
@@ -635,25 +640,26 @@ function StatCard({
                 decimals={config.decimals}
               />
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+            <p className="mt-0.5 text-[11px] sm:text-xs text-muted-foreground truncate">{subtitle}</p>
           </div>
+        </div>
 
-          {/* simple progress bar at the bottom */}
-          <div className="mt-4 space-y-2 border-t border-border/45 pt-3">
-            <div className="flex items-center justify-between text-[10px] font-medium text-muted-foreground">
-              <span>{progressLabel}</span>
-              <span className="tabular-nums">{progressPct}%</span>
-            </div>
-            <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPct}%` }}
-                transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className={cn("h-full rounded-full", config.progressBarBg)}
-              />
-            </div>
+        {/* simple progress bar at the bottom */}
+        <div className="mt-2.5 sm:mt-3 space-y-1 sm:space-y-1.5 border-t border-border/45 pt-2 sm:pt-2.5">
+          <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-medium text-muted-foreground">
+            <span className="truncate">{progressLabel}</span>
+            <span className="tabular-nums shrink-0 ml-1">{progressPct}%</span>
           </div>
-        </GlassCard>
+          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPct}%` }}
+              transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className={cn("h-full rounded-full", config.progressBarBg)}
+            />
+          </div>
+        </div>
+      </GlassCard>
     </StaggerItem>
   );
 }
@@ -1223,7 +1229,7 @@ function DashboardSkeleton() {
         <Skeleton className="h-9 w-72" />
         <Skeleton className="h-4 w-56" />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <CardSkeleton key={i} />
         ))}
@@ -1753,7 +1759,7 @@ export function DashboardHome() {
           )}
 
           {/* Stat cards + enhanced streak */}
-          <StaggerContainer className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <StaggerContainer className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3 xl:grid-cols-5">
             {STAT_CARDS.map((cfg) => (
               <StatCard
                 key={cfg.key}

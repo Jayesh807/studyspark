@@ -21,7 +21,7 @@ export function AnimatedCounter({
   className,
 }: CounterProps) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-50px" });
+  const inView = useInView(ref, { once: true });
   const [display, setDisplay] = useState(0);
   const hasStartedRef = useRef(false);
   const motionValue = useMotionValue(0);
@@ -65,7 +65,7 @@ export function AnimatedCounter({
       ref={ref}
       className={className}
       initial={{ opacity: 0 }}
-      animate={{ opacity: inView || display > 0 ? 1 : 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
     >
       {prefix}

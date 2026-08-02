@@ -169,27 +169,37 @@ export function PwaInstallPrompt() {
       return;
     }
 
-    const handleInstallRequest = () => {
+    const handleInstallRequest = async () => {
       if (isStandalone()) {
-        toast.info("StudySpark is already installed.");
+        toast.info("StudySpark is already installed on your device.");
         return;
       }
 
       window.localStorage.removeItem(DISMISS_KEY);
 
+      if (installPrompt) {
+        try {
+          await installPrompt.prompt();
+          const choice = await installPrompt.userChoice;
+          if (choice.outcome === "accepted") {
+            window.localStorage.setItem(INSTALLED_KEY, "true");
+            toast.success("StudySpark installed successfully!");
+          }
+          setInstallPrompt(null);
+          setShowPrompt(false);
+          return;
+        } catch {
+          // fallback to modal guide
+        }
+      }
+
       if (isIosSafari() && isMobileViewport()) {
         setShowIosGuide(true);
-        setShowPrompt(false);
-        return;
-      }
-
-      if (installPrompt) {
         setShowPrompt(true);
-        setShowIosGuide(false);
         return;
       }
 
-      setShowIosGuide(true);
+      setShowIosGuide(false);
       setShowPrompt(true);
     };
 

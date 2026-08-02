@@ -103,9 +103,10 @@ export function MobileBottomNav() {
               <div className="relative flex items-center justify-center h-8 w-8">
                 {isActive && (
                   <motion.div
-                    layoutId="mobile-dock-active-pill"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.15 }}
                     className="absolute inset-0 rounded-full bg-white/20 dark:bg-white/15 backdrop-blur-md shadow-inner"
-                    transition={{ type: "spring", stiffness: 450, damping: 32 }}
                   />
                 )}
                 <Icon
