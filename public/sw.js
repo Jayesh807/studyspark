@@ -127,3 +127,48 @@ self.addEventListener("notificationclick", (event) => {
     })
   );
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Background Reminder Scheduler in Service Worker Thread
+// Allows notifications to trigger even when app/tab is closed
+// ─────────────────────────────────────────────────────────────────────────────
+
+const activeReminderTimers = new Map();
+
+self.addEventListener("message", (event) => {
+  if (!event.data || !event.data.type) return;
+
+  if (event.data.type === "SCHEDULE_REMINDER") {
+    const { id, title, note, remindAt } = event.data.payload || {};
+    if (!id || !remindAt) return;
+
+    const delay = new Date(remindAt).getTime() - Date.now();
+    if (delay <= 0) return;
+
+    if (activeReminderTimers.has(id)) {
+      clearTimeout(activeReminderTimers.get(id));
+    }
+
+    const timerId = setTimeout(() => {
+      self.registration.showNotification(`Reminder: ${title}`, {
+        body: note || "Time for your study task!",
+        icon: "/icon-192.png",
+        badge: "/favicon-48x48.png",
+        vibrate: [200, 100, 200, 100, 200],
+        tag: `studyspark-reminder-${id}`,
+        data: { url: "/" },
+      });
+      activeReminderTimers.delete(id);
+    }, delay);
+
+    activeReminderTimers.set(id, timerId);
+  }
+
+  if (event.data.type === "CANCEL_REMINDER") {
+    const { id } = event.data.payload || {};
+    if (id && activeReminderTimers.has(id)) {
+      clearTimeout(activeReminderTimers.get(id));
+      activeReminderTimers.delete(id);
+    }
+  }
+});

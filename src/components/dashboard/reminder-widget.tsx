@@ -86,8 +86,35 @@ function writeReminders(storageKey: string, reminders: Reminder[]) {
   window.localStorage.setItem(storageKey, JSON.stringify(reminders));
 }
 
+function syncReminderWithServiceWorker(
+  reminder: Reminder,
+  action: "SCHEDULE_REMINDER" | "CANCEL_REMINDER"
+) {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+  const message = {
+    type: action,
+    payload: {
+      id: reminder.id,
+      title: reminder.title,
+      note: reminder.note,
+      remindAt: reminder.remindAt,
+    },
+  };
+
+  if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage(message);
+  } else {
+    navigator.serviceWorker.ready
+      .then((reg) => {
+        reg.active?.postMessage(message);
+      })
+      .catch(() => undefined);
+  }
+}
+
 export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetProps) {
-  const storageKey = userId ? `${REMINDER_KEY_PREFIX}${userId}` : null;
+  const storageKey = `${REMINDER_KEY_PREFIX}${userId || "guest"}`;
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(todayInputValue);
@@ -110,17 +137,19 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
   const persist = useCallback(
     (next: Reminder[]) => {
       setReminders(next);
-      if (storageKey) writeReminders(storageKey, next);
+      writeReminders(storageKey, next);
     },
     [storageKey]
   );
 
   useEffect(() => {
-    if (!storageKey) {
-      setReminders([]);
-      return;
-    }
-    setReminders(readReminders(storageKey));
+    const loaded = readReminders(storageKey);
+    setReminders(loaded);
+    loaded.forEach((r) => {
+      if (!r.fired && new Date(r.remindAt).getTime() > Date.now()) {
+        syncReminderWithServiceWorker(r, "SCHEDULE_REMINDER");
+      }
+    });
   }, [storageKey]);
 
   const requestPermission = useCallback(() => {
@@ -129,6 +158,61 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
       void Notification.requestPermission();
     }
   }, []);
+
+  const sendTestNotification = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      toast.error("Your browser does not support desktop notifications.");
+      return;
+    }
+
+    let perm = Notification.permission;
+    if (perm === "default") {
+      perm = await Notification.requestPermission();
+    }
+
+    if (perm !== "granted") {
+      toast.error("Notification permission is blocked. Please allow notifications in your browser settings.");
+      return;
+    }
+
+    playBell("focus-end");
+    toast.success("Test notification sent!", {
+      description: "You should see a system push notification banner now.",
+    });
+
+    const titleText = "StudySpark Test Notification 🔔";
+    const bodyText = "Success! Notifications are working properly on your phone.";
+
+    if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready
+        .then((reg) => {
+          void reg.showNotification(titleText, {
+            body: bodyText,
+            icon: "/icon-192.png",
+            badge: "/favicon-48x48.png",
+            vibrate: [100, 50, 100],
+            tag: "studyspark-test-notification",
+            data: { url: "/" },
+          } as NotificationOptions);
+        })
+        .catch(() => {
+          const notif = new Notification(titleText, { body: bodyText, icon: "/favicon.ico" });
+          notif.onclick = () => {
+            window.focus();
+            notif.close();
+          };
+        });
+    } else {
+      const desktopNotification = new Notification(titleText, {
+        body: bodyText,
+        icon: "/favicon.ico",
+      });
+      desktopNotification.onclick = () => {
+        window.focus();
+        desktopNotification.close();
+      };
+    }
+  };
 
   const fireReminder = useCallback((reminder: Reminder) => {
     for (let i = 0; i < REMINDER_SOUND_REPEATS; i += 1) {
@@ -221,14 +305,21 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
     };
 
     persist([reminder, ...reminders]);
+    syncReminderWithServiceWorker(reminder, "SCHEDULE_REMINDER");
     setTitle("");
     setDate(todayInputValue());
     setTime(timeInputValue());
     setNote("");
-    toast.success("Reminder set");
+    toast.success("Reminder set", {
+      description: "Service Worker will alert you even if the app is closed.",
+    });
   };
 
   const handleDelete = (id: string) => {
+    const target = reminders.find((r) => r.id === id);
+    if (target) {
+      syncReminderWithServiceWorker(target, "CANCEL_REMINDER");
+    }
     persist(reminders.filter((reminder) => reminder.id !== id));
   };
 
@@ -399,23 +490,35 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
           </ScrollArea>
         </div>
 
-        <DialogFooter className="p-7 pt-0">
+        <DialogFooter className="flex-col gap-2 p-7 pt-0 sm:flex-row sm:justify-between">
           <Button
             type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="h-11 rounded-[5px] px-6"
+            variant="secondary"
+            onClick={sendTestNotification}
+            className="h-11 justify-center gap-2 rounded-[5px] px-4 font-medium"
           >
-            Close
+            <BellRing className="h-4 w-4 text-violet-500" />
+            Test Notification
           </Button>
-          <Button
-            type="button"
-            onClick={handleAddReminder}
-            className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
-          >
-            <Plus className="h-4 w-4" />
-            Add Reminder
-          </Button>
+
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="h-11 rounded-[5px] px-6"
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAddReminder}
+              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+            >
+              <Plus className="h-4 w-4" />
+              Add Reminder
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
