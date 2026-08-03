@@ -156,9 +156,9 @@ function SubPageHeader({
       </div>
 
       {/* Bottom row: Mode pills & Qs selector */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 w-full">
+      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2 pt-2 border-t border-slate-800/80 w-full">
         {/* Tool selector tabs */}
-        <div className="flex items-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700/80 overflow-x-auto scrollbar-none max-w-full">
+        <div className="flex items-center justify-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700/80 overflow-x-auto scrollbar-none max-w-full mx-auto sm:mx-0">
           <button
             type="button"
             onClick={() => onSelectTool("quiz")}
@@ -202,7 +202,7 @@ function SubPageHeader({
 
         {/* 5 Qs vs 10 Qs selector directly in Top Bar */}
         {activeTool === "quiz" && onCountChange && quizCount && (
-          <div className="flex items-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700/80 text-xs font-semibold shrink-0">
+          <div className="flex items-center justify-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700/80 text-xs font-semibold shrink-0 mx-auto sm:mx-0">
             {([5, 10] as const).map((num) => (
               <button
                 key={num}
@@ -1345,7 +1345,7 @@ function QuizPanel({
 
       {/* Centered Bottom Input Bar (ChatGPT & Gemini Style) */}
       {questions.length === 0 && (
-        <div className="relative group w-full max-w-xl sm:max-w-2xl mx-auto mt-auto pt-4">
+        <div className="relative group w-full max-w-xl sm:max-w-2xl mx-auto mt-auto pt-4 pb-16 sm:pb-0 px-2 sm:px-0">
           <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 opacity-40 blur-md transition duration-500 group-hover:opacity-80 group-focus-within:opacity-100 group-focus-within:blur-lg" />
           <div
             onClick={() => {
@@ -1356,11 +1356,11 @@ function QuizPanel({
               }
               void onGenerate();
             }}
-            className="relative flex items-center justify-between rounded-full bg-slate-900/90 px-6 py-4 sm:py-4.5 shadow-2xl backdrop-blur-2xl border border-slate-800 cursor-pointer select-none focus-within:ring-2 focus-within:ring-cyan-500/70"
+            className="relative flex items-center justify-between rounded-full bg-slate-900/90 px-4 sm:px-6 py-3.5 sm:py-4.5 shadow-2xl backdrop-blur-2xl border border-slate-800 cursor-pointer select-none focus-within:ring-2 focus-within:ring-cyan-500/70"
           >
-            <div className="flex items-center min-w-0 flex-1 mr-3">
-              <BrainCircuit className="h-5 w-5 text-cyan-400 shrink-0 mr-3 animate-pulse" />
-              <span className="text-sm sm:text-base text-slate-100 font-medium truncate">
+            <div className="flex items-center min-w-0 flex-1 mr-2 sm:mr-3">
+              <BrainCircuit className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-cyan-400 shrink-0 mr-2 sm:mr-3 animate-pulse" />
+              <span className="text-xs sm:text-base text-slate-100 font-medium truncate">
                 {document
                   ? busy
                     ? "Generating interactive quiz..."
@@ -1369,7 +1369,7 @@ function QuizPanel({
               </span>
             </div>
 
-            <div className="ml-3 flex items-center shrink-0">
+            <div className="ml-2 sm:ml-3 flex items-center shrink-0">
               <Button
                 disabled={busy}
                 onClick={(e) => {
@@ -1382,13 +1382,13 @@ function QuizPanel({
                   setChecked(false);
                   void onGenerate();
                 }}
-                className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-600 p-0 text-white shadow-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center"
+                className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-600 p-0 text-white shadow-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center"
                 aria-label="Generate Quiz"
               >
                 {busy ? (
                   <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                 ) : (
-                  <Play className="h-4 w-4 sm:h-5 sm:w-5 fill-current ml-0.5" />
+                  <Play className="h-3.5 w-3.5 sm:h-5 sm:w-5 fill-current ml-0.5" />
                 )}
               </Button>
             </div>
@@ -1552,7 +1552,7 @@ function DoubtPanel({
           </div>
 
           {/* Gemini Centered Bottom Floating Input Bar */}
-          <form onSubmit={submit} className="relative group w-full max-w-xl sm:max-w-2xl mx-auto mt-auto pt-4">
+          <form onSubmit={submit} className="relative group w-full max-w-xl sm:max-w-2xl mx-auto mt-auto pt-4 pb-16 sm:pb-0 px-2 sm:px-0">
             <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-500 opacity-40 blur-md transition duration-500 group-hover:opacity-80 group-focus-within:opacity-100 group-focus-within:blur-lg" />
             <div
               onClick={() => {
@@ -1561,11 +1561,11 @@ function DoubtPanel({
                 }
               }}
               className={cn(
-                "relative flex items-center rounded-full bg-slate-900/90 px-6 py-4 sm:py-4.5 shadow-2xl backdrop-blur-2xl border border-slate-800 focus-within:ring-2 focus-within:ring-violet-500",
+                "relative flex items-center rounded-full bg-slate-900/90 px-4 sm:px-6 py-3.5 sm:py-4.5 shadow-2xl backdrop-blur-2xl border border-slate-800 focus-within:ring-2 focus-within:ring-violet-500",
                 !document && "cursor-pointer"
               )}
             >
-              <Sparkles className="h-5 w-5 text-violet-400 shrink-0 mr-3 animate-pulse" />
+              <Sparkles className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-violet-400 shrink-0 mr-2 sm:mr-3 animate-pulse" />
               <input
                 type="text"
                 value={question}
@@ -1825,7 +1825,7 @@ function TextToPdfPanel({
       </div>
 
       {/* Input Form Pinned to Bottom Dock */}
-      <form onSubmit={submit} className="mt-auto flex flex-col items-center gap-3 w-full max-w-2xl sm:max-w-3xl mx-auto pt-2 pb-2 sm:pb-4 shrink-0">
+      <form onSubmit={submit} className="mt-auto flex flex-col items-center gap-3 w-full max-w-2xl sm:max-w-3xl mx-auto pt-2 pb-16 sm:pb-4 shrink-0 px-2 sm:px-0">
         <div
           className={cn(
             "relative group w-full mx-auto transition-all duration-500 ease-in-out",
