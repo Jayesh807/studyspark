@@ -282,7 +282,7 @@ function GreetingHeader({ username }: { username: string }) {
 
       {/* Floating Glassmorphic Quick Search Bar with Ambient Blue Glow (Mobile Only) */}
       <div className="relative group pt-1 sm:pt-2 md:hidden">
-        <div className="absolute -inset-0.5 rounded-full bg-linear-to-r from-blue-600/35 via-cyan-500/30 to-violet-600/35 opacity-75 blur-md transition-all group-hover:opacity-100 group-hover:blur-lg" />
+        <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-blue-600/35 via-cyan-500/30 to-violet-600/35 opacity-75 blur-md transition-all group-hover:opacity-100 group-hover:blur-lg" />
         <button
           type="button"
           onClick={() => {
@@ -290,9 +290,9 @@ function GreetingHeader({ username }: { username: string }) {
               new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true })
             );
           }}
-          className="relative flex w-full h-13 sm:h-14 items-center gap-3 rounded-full border border-cyan-500/30 bg-background/85 px-5 py-2 text-left text-sm text-muted-foreground shadow-xl backdrop-blur-xl transition-all hover:border-cyan-500/60 hover:bg-background/95 hover:text-foreground dark:bg-slate-950/80"
+          className="relative flex w-full h-13 sm:h-14 items-center gap-3 rounded-full border border-slate-300/80 bg-white/90 px-5 py-2 text-left text-sm text-slate-700 shadow-md backdrop-blur-xl transition-all hover:border-cyan-500/60 hover:bg-white hover:text-slate-900 dark:border-cyan-500/30 dark:bg-slate-950/85 dark:text-muted-foreground dark:hover:bg-slate-900/95 dark:hover:text-foreground"
         >
-          <Search className="h-4.5 w-4.5 text-cyan-400 transition-transform group-hover:scale-110 shrink-0" />
+          <Search className="h-4.5 w-4.5 text-cyan-600 dark:text-cyan-400 transition-transform group-hover:scale-110 shrink-0" />
           <span className="flex-1 font-medium truncate">Search tasks, subjects, exams, or study tools...</span>
           <kbd className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-border/80 bg-muted/60 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
             ⌘K
