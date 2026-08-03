@@ -631,7 +631,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
         </Tooltip>
       </TooltipProvider>
 
-      {/* Install App toggle — visible on mobile */}
+      {/* Install App toggle — visible on mobile & desktop */}
       <TooltipProvider delayDuration={0}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -639,7 +639,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="icon"
               onClick={requestAppInstall}
-              className="relative flex h-9 w-9 rounded-lg md:hidden"
+              className="relative flex h-9 w-9 rounded-lg"
               aria-label="Install App"
             >
               <Download className="h-[18px] w-[18px]" />
@@ -750,6 +750,17 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
             >
               <CalculatorIcon className="h-[18px] w-[18px]" />
               <span>Calculator</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={requestAppInstall}
+              className="h-11 justify-start gap-3 rounded-lg px-3"
+              aria-label="Install App"
+            >
+              <Download className="h-[18px] w-[18px]" />
+              <span>Install App</span>
             </Button>
 
             <NotificationPopover showLabel buttonClassName="w-full rounded-lg" />

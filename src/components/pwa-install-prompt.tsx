@@ -187,9 +187,10 @@ export function PwaInstallPrompt() {
           }
           setInstallPrompt(null);
           setShowPrompt(false);
+          setShowIosGuide(false);
           return;
         } catch {
-          // fallback to modal guide
+          // fallback if prompt fails
         }
       }
 
@@ -199,6 +200,7 @@ export function PwaInstallPrompt() {
         return;
       }
 
+      // If browser supports install but beforeinstallprompt event hasn't fired yet
       setShowIosGuide(false);
       setShowPrompt(true);
     };

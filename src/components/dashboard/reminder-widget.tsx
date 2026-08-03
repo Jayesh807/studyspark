@@ -140,15 +140,39 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
     });
 
     if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-      const desktopNotification = new Notification(`Reminder: ${reminder.title}`, {
-        body: reminder.note || formatReminderTime(reminder.remindAt),
-        icon: "/favicon.ico",
-        tag: `studyspark-reminder-${reminder.id}`,
-      });
-      desktopNotification.onclick = () => {
-        window.focus();
-        desktopNotification.close();
-      };
+      const title = `Reminder: ${reminder.title}`;
+      const body = reminder.note || formatReminderTime(reminder.remindAt);
+
+      if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.ready
+          .then((reg) => {
+            void reg.showNotification(title, {
+              body,
+              icon: "/icon-192.png",
+              badge: "/favicon-48x48.png",
+              vibrate: [100, 50, 100],
+              tag: `studyspark-reminder-${reminder.id}`,
+              data: { url: "/" },
+            } as NotificationOptions);
+          })
+          .catch(() => {
+            const notif = new Notification(title, { body, icon: "/favicon.ico" });
+            notif.onclick = () => {
+              window.focus();
+              notif.close();
+            };
+          });
+      } else {
+        const desktopNotification = new Notification(title, {
+          body,
+          icon: "/favicon.ico",
+          tag: `studyspark-reminder-${reminder.id}`,
+        });
+        desktopNotification.onclick = () => {
+          window.focus();
+          desktopNotification.close();
+        };
+      }
     }
   }, []);
 
