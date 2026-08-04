@@ -631,7 +631,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
         </Tooltip>
       </TooltipProvider>
 
-      {/* Install App toggle — visible on mobile & desktop */}
+      {/* Install App toggle — prominent button visible on mobile & desktop */}
       <TooltipProvider delayDuration={0}>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -639,13 +639,18 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="icon"
               onClick={requestAppInstall}
-              className="relative flex h-9 w-9 rounded-lg"
+              className="relative flex h-9 w-9 rounded-lg bg-gradient-to-r from-violet-500/10 to-blue-500/10 hover:from-violet-500/20 hover:to-blue-500/20 border border-violet-500/20 dark:border-violet-400/20"
               aria-label="Install App"
             >
-              <Download className="h-[18px] w-[18px]" />
+              <Download className="h-[18px] w-[18px] text-violet-600 dark:text-violet-400" />
+              {/* Pulsing attention dot */}
+              <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-violet-500" />
+              </span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Install App</TooltipContent>
+          <TooltipContent>📲 Install StudySpark App</TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
@@ -756,11 +761,11 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="sm"
               onClick={requestAppInstall}
-              className="h-11 justify-start gap-3 rounded-lg px-3"
+              className="h-11 justify-start gap-3 rounded-lg px-3 bg-gradient-to-r from-violet-500/10 to-blue-500/10 hover:from-violet-500/20 hover:to-blue-500/20 border border-violet-500/20"
               aria-label="Install App"
             >
-              <Download className="h-[18px] w-[18px]" />
-              <span>Install App</span>
+              <Download className="h-[18px] w-[18px] text-violet-500" />
+              <span className="font-semibold">📲 Install App</span>
             </Button>
 
             <NotificationPopover showLabel buttonClassName="w-full rounded-lg" />

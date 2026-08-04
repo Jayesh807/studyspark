@@ -71,7 +71,7 @@ function buildHtmlDocument(params: {
 
     @page {
       size: A4;
-      margin: 18mm 16mm 18mm 16mm;
+      margin: 0;
     }
 
     body {
@@ -88,15 +88,15 @@ function buildHtmlDocument(params: {
     .page-wrapper {
       max-width: 794px;
       margin: 0 auto;
-      padding: 0 0 40px;
+      padding: 32px 48px 48px;
     }
 
-    /* ── Document Header Banner ── */
+    /* ── Document Header Banner (Full width top, left, right edge-to-edge) ── */
     .doc-header {
       background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%);
       color: #fff;
-      padding: 28px 36px 22px;
-      margin-bottom: 32px;
+      padding: 32px 48px 24px;
+      margin: -32px -48px 32px -48px;
       page-break-after: avoid;
     }
 
@@ -321,9 +321,77 @@ function buildHtmlDocument(params: {
     strong { font-weight: 700; color: #0f172a; }
     em { font-style: italic; color: #475569; }
 
+    /* ── Sticky Action Bar ── */
+    .doc-action-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid #e2e8f0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+      font-family: "Segoe UI", Roboto, sans-serif;
+    }
+    .doc-action-bar button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .doc-action-bar .btn-download {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+    }
+    .doc-action-bar .btn-download:hover { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); }
+    .doc-action-bar .btn-print {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .doc-action-bar .btn-print:hover { background: #e2e8f0; }
+    .doc-action-bar .btn-copy {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .doc-action-bar .btn-copy:hover { background: #e2e8f0; }
+    .doc-action-bar .btn-copy.copied { background: #dcfce7; color: #166534; border-color: #86efac; }
+    .doc-action-bar .bar-label {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 500;
+      margin-right: 4px;
+    }
+
+    body { padding-bottom: 72px; }
+
     /* ── Page Numbers (via CSS counter) ── */
     @media print {
-      body { font-size: 10pt; }
+      body { font-size: 10pt; padding-bottom: 0; }
+
+      .page-wrapper {
+        margin: 0;
+        padding: 32px 48px 48px;
+        max-width: 100%;
+        box-shadow: none;
+        border-radius: 0;
+        overflow: hidden;
+      }
 
       .doc-header {
         -webkit-print-color-adjust: exact;
@@ -334,6 +402,10 @@ function buildHtmlDocument(params: {
 
       table, figure, pre, .note-box, .formula-box, .code-block {
         page-break-inside: avoid;
+      }
+
+      .doc-action-bar {
+        display: none !important;
       }
 
       .page-number::before { content: counter(page); }
@@ -356,7 +428,8 @@ function buildHtmlDocument(params: {
         box-shadow: 0 4px 24px rgba(0,0,0,0.10);
         padding: 32px 48px 48px;
         margin: 24px auto;
-        border-radius: 4px;
+        border-radius: 6px;
+        overflow: hidden;
       }
     }
   </style>
@@ -377,8 +450,54 @@ function buildHtmlDocument(params: {
       ${bodyContent}
     </div>
   </div>
+
+  <!-- Sticky Action Bar -->
+  <div class="doc-action-bar" id="doc-action-bar">
+    <span class="bar-label">📄 StudySpark</span>
+    <button class="btn-download" onclick="window.print()" title="Save as PDF via browser print dialog">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download PDF
+    </button>
+    <button class="btn-print" onclick="window.print()" title="Print this document">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print
+    </button>
+    <button class="btn-copy" id="copy-btn" title="Copy all text to clipboard">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy All
+    </button>
+  </div>
+
+  <script>
+    document.getElementById('copy-btn').addEventListener('click', async function() {
+      var btn = this;
+      try {
+        var wrapper = document.querySelector('.page-wrapper');
+        var text = wrapper ? wrapper.innerText : document.body.innerText;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        btn.classList.add('copied');
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+        setTimeout(function() {
+          btn.classList.remove('copied');
+          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy All';
+        }, 2000);
+      } catch(e) { alert('Could not copy text.'); }
+    });
+  </script>
 </body>
 </html>`;
+
 }
 
 // ─── Escape HTML ─────────────────────────────────────────────────────────────

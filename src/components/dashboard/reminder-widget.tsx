@@ -86,12 +86,54 @@ function writeReminders(storageKey: string, reminders: Reminder[]) {
   window.localStorage.setItem(storageKey, JSON.stringify(reminders));
 }
 
-function syncReminderWithServiceWorker(
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function getOrRegisterPushSubscription(): Promise<PushSubscription | null> {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return null;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      // Get public VAPID key from server
+      const keyRes = await fetch("/api/push/subscribe").catch(() => null);
+      if (!keyRes || !keyRes.ok) return null;
+      const { publicKey } = await keyRes.json();
+      if (!publicKey) return null;
+
+      const convertedKey = urlBase64ToUint8Array(publicKey);
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedKey,
+      });
+    }
+
+    return subscription;
+  } catch (err) {
+    console.warn("[Web Push Subscription Warning]:", err);
+    return null;
+  }
+}
+
+async function syncReminderWithServiceWorker(
   reminder: Reminder,
   action: "SCHEDULE_REMINDER" | "CANCEL_REMINDER"
 ) {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
+  // 1. Post to local Service Worker thread
   const message = {
     type: action,
     payload: {
@@ -110,6 +152,29 @@ function syncReminderWithServiceWorker(
         reg.active?.postMessage(message);
       })
       .catch(() => undefined);
+  }
+
+  // 2. Sync with Server Web Push API for background notifications when app is closed
+  try {
+    const subscription = await getOrRegisterPushSubscription();
+    if (subscription) {
+      await fetch("/api/push/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: action === "SCHEDULE_REMINDER" ? "SCHEDULE" : "CANCEL",
+          reminder: {
+            id: reminder.id,
+            title: reminder.title,
+            note: reminder.note,
+            remindAt: reminder.remindAt,
+          },
+          subscription,
+        }),
+      });
+    }
+  } catch {
+    // Graceful fallback to client-side SW
   }
 }
 
