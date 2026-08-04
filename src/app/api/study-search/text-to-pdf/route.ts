@@ -21,16 +21,36 @@ function formatInlineMarkdown(text: string): string {
     .replace(/\x09ext/g, "\\text")
     .replace(/\right/g, "\\right");
 
+  // Protect display math blocks \[...\] and inline \(...\) before HTML escaping
+  const mathBlocks: string[] = [];
+  formatted = formatted.replace(/(\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g, (match) => {
+    mathBlocks.push(match);
+    return `%%MATHBLOCK_${mathBlocks.length - 1}%%`;
+  });
+
+  // Protect $...$ and $$...$$ blocks
+  const dollarBlocks: string[] = [];
+  formatted = formatted.replace(/(\$\$[\s\S]*?\$\$|\$[^\s$][^$]*?\$)/g, (match) => {
+    dollarBlocks.push(match);
+    return `%%DOLLARMATH_${dollarBlocks.length - 1}%%`;
+  });
+
   formatted = formatted
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  formatted = formatted.replace(/(\$\$?[\s\S]*?\$\$?)/g, (match) => {
-    return match
+  // Restore dollar math blocks (un-escape any HTML entities inside them)
+  formatted = formatted.replace(/%%DOLLARMATH_(\d+)%%/g, (_match, idx) => {
+    return dollarBlocks[Number(idx)]
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&amp;/g, "&");
+  });
+
+  // Restore backslash math blocks
+  formatted = formatted.replace(/%%MATHBLOCK_(\d+)%%/g, (_match, idx) => {
+    return mathBlocks[Number(idx)];
   });
 
   formatted = formatted.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
@@ -38,6 +58,7 @@ function formatInlineMarkdown(text: string): string {
 
   return formatted;
 }
+
 
 function markdownToBodyHtml(markdown: string): string {
   const lines = markdown.split(/\r?\n/);

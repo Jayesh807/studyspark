@@ -93,7 +93,7 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
 
     @page {
       size: A4;
-      margin: 15mm 15mm 15mm 15mm;
+      margin: 0;
     }
 
     html,
@@ -126,9 +126,10 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
     .doc-banner {
       background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
       color: #ffffff;
-      padding: 28px 24px;
+      padding: 32px 32px 24px;
       margin: 0 0 24px 0;
-      border-radius: 12px;
+      width: 100%;
+      border-radius: 0;
       box-shadow: 0 4px 14px rgba(29, 78, 216, 0.15);
     }
 
@@ -271,13 +272,82 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
       margin: 4px 0;
     }
 
+    /* Fallback: show raw math in monospace until MathJax renders */
+    mjx-container, .MathJax { font-family: inherit; }
+    .math-fallback { font-family: "Consolas", "Courier New", monospace; font-size: 0.95em; color: #1e3a8a; background: #f0f4ff; padding: 1px 4px; border-radius: 3px; }
+    body.mathjax-ready .math-fallback { font-family: inherit; background: none; padding: 0; color: inherit; }
+
+    /* Sticky Action Bar */
+    .doc-action-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid #e2e8f0;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+      font-family: "Segoe UI", Roboto, sans-serif;
+    }
+    .doc-action-bar button {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .doc-action-bar .btn-download {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+    }
+    .doc-action-bar .btn-download:hover { background: linear-gradient(135deg, #1d4ed8, #1e3a8a); }
+    .doc-action-bar .btn-print {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .doc-action-bar .btn-print:hover { background: #e2e8f0; }
+    .doc-action-bar .btn-copy {
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+    .doc-action-bar .btn-copy:hover { background: #e2e8f0; }
+    .doc-action-bar .btn-copy.copied { background: #dcfce7; color: #166534; border-color: #86efac; }
+    .doc-action-bar .bar-label {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 500;
+      margin-right: 4px;
+    }
+
+    /* Add bottom padding to body so action bar doesn't cover content */
+    body { padding-bottom: 72px; }
+
     @media print {
       body {
         background: #ffffff;
+        padding-bottom: 0;
       }
       .doc-banner {
         border-radius: 0;
         box-shadow: none;
+      }
+      .doc-action-bar {
+        display: none !important;
       }
     }
   </style>
@@ -287,6 +357,68 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
   <div class="doc-container">
     ${bodyContentHtml}
   </div>
+
+  <!-- Sticky Action Bar -->
+  <div class="doc-action-bar" id="doc-action-bar">
+    <span class="bar-label">📄 StudySpark</span>
+    <button class="btn-download" onclick="window.print()" title="Save as PDF via browser print dialog">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download PDF
+    </button>
+    <button class="btn-print" onclick="window.print()" title="Print this document">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print
+    </button>
+    <button class="btn-copy" id="copy-btn" title="Copy all text to clipboard">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy All
+    </button>
+  </div>
+
+  <script>
+    // Copy all text functionality
+    document.getElementById('copy-btn').addEventListener('click', async function() {
+      var btn = this;
+      try {
+        var container = document.querySelector('.doc-container');
+        var text = container ? container.innerText : document.body.innerText;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        btn.classList.add('copied');
+        btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+        setTimeout(function() {
+          btn.classList.remove('copied');
+          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy All';
+        }, 2000);
+      } catch(e) { alert('Could not copy text. Please select and copy manually.'); }
+    });
+
+    // MathJax ready detection
+    function checkMathJax() {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().then(function() {
+          document.body.classList.add('mathjax-ready');
+        }).catch(function() {});
+      } else {
+        setTimeout(checkMathJax, 300);
+      }
+    }
+    if (document.querySelector('[class*="math"], mjx-container') || document.body.innerHTML.match(/\$[^$]+\$|\\\[|\\\(/)) {
+      checkMathJax();
+    } else {
+      document.body.classList.add('mathjax-ready');
+    }
+  </script>
 </body>
 </html>`;
 }
@@ -329,7 +461,7 @@ export async function generatePdfWithPuppeteer(html: string): Promise<{ buffer: 
           format: "A4",
           printBackground: true,
           preferCSSPageSize: true,
-          margin: { top: "18mm", right: "16mm", bottom: "18mm", left: "16mm" },
+          margin: { top: "0", right: "0", bottom: "15mm", left: "0" },
         });
 
         return { buffer: Buffer.from(pdfUint8Array), isHtml: false };
@@ -346,12 +478,28 @@ export async function generatePdfWithPuppeteer(html: string): Promise<{ buffer: 
     "</body>",
     `<script>
       window.onload = function() {
-        setTimeout(function() {
-          window.print();
-        }, 600);
+        function doPrint() { setTimeout(function() { window.print(); }, 400); }
+        if (window.MathJax && window.MathJax.typesetPromise) {
+          window.MathJax.typesetPromise().then(doPrint).catch(doPrint);
+        } else if (document.body.innerHTML.match(/\\$[^$]+\\$|\\\\\\[|\\\\\\(/)) {
+          var attempts = 0;
+          var waitForMathJax = setInterval(function() {
+            attempts++;
+            if (window.MathJax && window.MathJax.typesetPromise) {
+              clearInterval(waitForMathJax);
+              window.MathJax.typesetPromise().then(doPrint).catch(doPrint);
+            } else if (attempts > 30) {
+              clearInterval(waitForMathJax);
+              doPrint();
+            }
+          }, 200);
+        } else {
+          doPrint();
+        }
       };
     </script></body>`
   );
+
 
   return { buffer: Buffer.from(autoPrintHtml, "utf-8"), isHtml: true };
 }

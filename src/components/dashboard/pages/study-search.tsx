@@ -84,6 +84,8 @@ function SubPageHeader({
   onSelectTool,
   uploading,
   onUpload,
+  onDownloadQuiz,
+  hasQuestions,
 }: {
   activeTool: StudyTool;
   document: StudyDocument | null;
@@ -93,17 +95,34 @@ function SubPageHeader({
   onSelectTool: (tool: StudyTool) => void;
   uploading?: boolean;
   onUpload?: (file: File) => Promise<void>;
+  onDownloadQuiz?: () => void;
+  hasQuestions?: boolean;
 }) {
   const headerFileInputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-slate-900/90 p-3 sm:p-4 backdrop-blur-xl border border-slate-800 shadow-xl animate-in fade-in slide-in-from-top-2 duration-300 w-full">
+    <div className="flex flex-col gap-3 rounded-2xl bg-slate-950/40 backdrop-blur-md border border-white/10 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300 w-full p-3 sm:p-4">
+      {/* Hidden file input for header Change PDF button */}
+      {onUpload && (
+        <input
+          type="file"
+          ref={headerFileInputRef}
+          accept=".pdf,application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void onUpload(file);
+            e.target.value = "";
+          }}
+        />
+      )}
+
       {/* Top row: Back button & Document / Active tool indicator */}
       <div className="flex items-center justify-between gap-2 w-full min-w-0">
         <Button
           variant="outline"
           size="sm"
           onClick={onBack}
-          className="rounded-xl border-slate-700/80 bg-slate-800/90 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white shadow-sm transition-all shrink-0"
+          className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 text-xs font-bold text-slate-200 shadow-md transition-all shrink-0"
         >
           <ArrowLeft className="mr-1 sm:mr-1.5 h-3.5 w-3.5 text-cyan-400 shrink-0" />
           <span className="hidden sm:inline">Back to Hub</span>
@@ -155,71 +174,130 @@ function SubPageHeader({
         </div>
       </div>
 
-      {/* Bottom row: Mode pills & Qs selector */}
-      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2 pt-2 border-t border-slate-800/80 w-full">
-        {/* Tool selector tabs */}
-        <div className="flex items-center justify-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700/80 overflow-x-auto scrollbar-none max-w-full mx-auto sm:mx-0">
-          <button
-            type="button"
-            onClick={() => onSelectTool("quiz")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
-              activeTool === "quiz"
-                ? "bg-cyan-500 text-white shadow-sm font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
-            <span>Exam Mode</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelectTool("doubt")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
-              activeTool === "doubt"
-                ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            <span>Ask Doubts</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => onSelectTool("textToPdf")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
-              activeTool === "textToPdf"
-                ? "bg-emerald-600 text-white shadow-sm font-bold"
-                : "text-slate-400 hover:text-slate-200"
-            )}
-          >
-            <FileText className="h-3.5 w-3.5 shrink-0" />
-            <span>Text to PDF</span>
-          </button>
+      {/* Bottom row: Mode pills & Right Action Group (5 Qs, 10 Qs, Change PDF, Download Quiz) */}
+      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2 pt-2 border-t border-white/5 w-full">
+        {/* Tool selector tabs with Glassmorphism and Sliding Animation */}
+        <div className="flex items-center justify-center gap-1 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner overflow-x-auto scrollbar-none max-w-full mx-auto sm:mx-0">
+          {(["quiz", "doubt", "textToPdf"] as const).map((tool) => {
+            const isActive = activeTool === tool;
+            let label = "";
+            let Icon = BrainCircuit;
+            let activeBg = "";
+
+            if (tool === "quiz") {
+              label = "Exam Mode";
+              Icon = BrainCircuit;
+              activeBg = "bg-cyan-500/80";
+            } else if (tool === "doubt") {
+              label = "Ask Doubts";
+              Icon = Sparkles;
+              activeBg = "bg-gradient-to-r from-violet-600/80 to-fuchsia-600/80";
+            } else {
+              label = "Text to PDF";
+              Icon = FileText;
+              activeBg = "bg-emerald-600/80";
+            }
+
+            return (
+              <button
+                key={tool}
+                type="button"
+                onClick={() => onSelectTool(tool)}
+                className="relative flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap focus:outline-none"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                {isActive && (
+                  <motion.span
+                    layoutId="activeSubTab"
+                    className={cn(
+                      "absolute inset-0 rounded-full backdrop-blur-sm shadow-sm z-0",
+                      activeBg
+                    )}
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <Icon
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0 transition-colors z-10",
+                    isActive ? "text-white" : "text-slate-400"
+                  )}
+                />
+                <span
+                  className={cn(
+                    "transition-colors z-10",
+                    isActive
+                      ? "text-white font-bold"
+                      : "text-slate-400 hover:text-slate-200"
+                  )}
+                >
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* 5 Qs vs 10 Qs selector directly in Top Bar */}
-        {activeTool === "quiz" && onCountChange && quizCount && (
-          <div className="flex items-center justify-center gap-1 rounded-full bg-slate-800/90 p-1 ring-1 ring-slate-700/80 text-xs font-semibold shrink-0 mx-auto sm:mx-0">
-            {([5, 10] as const).map((num) => (
-              <button
-                key={num}
-                type="button"
-                onClick={() => onCountChange(num)}
-                className={cn(
-                  "rounded-full px-2.5 py-1 text-xs transition-all whitespace-nowrap",
-                  quizCount === num
-                    ? "bg-cyan-500 text-white shadow-sm font-bold"
-                    : "text-slate-400 hover:text-slate-200"
-                )}
-              >
-                {num} Qs
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Action Group: 5 Qs, 10 Qs, Change PDF, Download Quiz with Glassmorphism */}
+        <div className="flex items-center justify-center gap-1.5 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner text-xs font-semibold shrink-0 mx-auto sm:mx-0 overflow-x-auto max-w-full">
+          {/* 5 Qs / 10 Qs buttons with Sliding Animation */}
+          {activeTool === "quiz" && onCountChange && quizCount && (
+            <>
+              {([5, 10] as const).map((num) => {
+                const isActive = quizCount === num;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => onCountChange(num)}
+                    className="relative h-8 rounded-full px-3 text-xs transition-all whitespace-nowrap flex items-center justify-center font-semibold focus:outline-none"
+                    style={{ WebkitTapHighlightColor: "transparent" }}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="activeQuizCount"
+                        className="absolute inset-0 rounded-full bg-cyan-500/80 backdrop-blur-sm shadow-sm z-0"
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    <span
+                      className={cn(
+                        "z-10 transition-colors",
+                        isActive
+                          ? "text-white font-bold"
+                          : "text-slate-400 hover:text-slate-200"
+                      )}
+                    >
+                      {num} Qs
+                    </span>
+                  </button>
+                );
+              })}
+            </>
+          )}
+
+          {/* Change PDF button */}
+          {onUpload && (
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => headerFileInputRef.current?.click()}
+              className="h-8 rounded-full px-3 text-xs font-semibold transition-all whitespace-nowrap bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 flex items-center justify-center disabled:opacity-50"
+            >
+              {uploading ? "Indexing..." : "Change PDF"}
+            </button>
+          )}
+
+          {/* Download Quiz button */}
+          {activeTool === "quiz" && hasQuestions && onDownloadQuiz && (
+            <button
+              type="button"
+              onClick={onDownloadQuiz}
+              className="h-8 rounded-full px-3 text-xs font-bold transition-all whitespace-nowrap bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shadow-sm"
+            >
+              Download Quiz
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1257,10 +1335,10 @@ function QuizPanel({
           <div className="space-y-1.5">
             <h3
               style={{ fontFamily: "var(--font-poppins), sans-serif" }}
-              className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-slate-100 flex items-center justify-center gap-2 whitespace-nowrap"
+              className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-100 flex items-center justify-center gap-2.5 whitespace-nowrap"
             >
               <span>Ready for Exam Practice!</span>
-              <Rocket className="h-7 w-7 sm:h-8 sm:w-8 text-pink-500 animate-bounce shrink-0" />
+              <Rocket className="h-8 w-8 sm:h-10 sm:w-10 text-pink-500 animate-bounce shrink-0" />
             </h3>
             <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto truncate">
               Grounded in <span className="font-semibold text-slate-200">{document?.fileName || "your study PDF"}</span>
@@ -1283,7 +1361,7 @@ function QuizPanel({
             </span>
           </div>
 
-          {/* 4 Action Buttons in 2x2 Grid */}
+          {/* Action Buttons in 1 Row */}
           <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full max-w-xl pt-2">
             {questions.length === quizCount ? (
               <>
@@ -1305,28 +1383,6 @@ function QuizPanel({
                   {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin shrink-0 text-indigo-400" /> : <RotateCcw className="mr-1.5 h-4 w-4 shrink-0 text-indigo-400" />}
                   <span className="truncate">{busy ? `Generating ${quizCount} Qs...` : `Re-generate ${quizCount} Qs`}</span>
                 </Button>
-
-                <Button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="outline"
-                  className="h-11 sm:h-12 w-full rounded-[15px] border border-slate-700/80 bg-slate-800/80 hover:bg-slate-800 hover:border-slate-600 text-slate-300 hover:text-white font-bold px-3 text-xs sm:text-sm shadow-sm transition-all duration-300 hover:scale-[1.02] flex items-center justify-center"
-                >
-                  <UploadCloud className="mr-1.5 h-4 w-4 text-cyan-400 shrink-0" />
-                  <span className="truncate">Change PDF</span>
-                </Button>
-
-                <Button
-                  type="button"
-                  disabled={downloadingPdf}
-                  onClick={handleDownloadQuizPdf}
-                  variant="outline"
-                  className="h-11 sm:h-12 w-full rounded-[15px] border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 font-bold px-3 text-xs sm:text-sm shadow-sm transition-all duration-300 hover:scale-[1.02] flex items-center justify-center"
-                >
-                  {downloadingPdf ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin shrink-0 text-emerald-400" /> : <Download className="mr-1.5 h-4 w-4 shrink-0 text-emerald-400" />}
-                  <span className="truncate">Download Quiz</span>
-                </Button>
               </>
             ) : (
               <Button
@@ -1346,7 +1402,7 @@ function QuizPanel({
       {/* Centered Bottom Input Bar (ChatGPT & Gemini Style) */}
       {questions.length === 0 && (
         <div className="relative group w-full max-w-xl sm:max-w-2xl mx-auto mt-auto pt-4 pb-16 sm:pb-0 px-2 sm:px-0">
-          <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 opacity-40 blur-md transition duration-500 group-hover:opacity-80 group-focus-within:opacity-100 group-focus-within:blur-lg" />
+          <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-500 opacity-15 blur-sm transition duration-500 group-hover:opacity-30 group-focus-within:opacity-40 group-focus-within:blur-md" />
           <div
             onClick={() => {
               if (busy) return;
@@ -1356,7 +1412,7 @@ function QuizPanel({
               }
               void onGenerate();
             }}
-            className="relative flex items-center justify-between rounded-full bg-slate-900/90 px-4 sm:px-6 py-3.5 sm:py-4.5 shadow-2xl backdrop-blur-2xl border border-slate-800 cursor-pointer select-none focus-within:ring-2 focus-within:ring-cyan-500/70"
+            className="relative flex items-center justify-between rounded-full bg-white/5 px-4 sm:px-6 py-3.5 sm:py-4.5 shadow-2xl backdrop-blur-md border border-white/10 cursor-pointer select-none focus-within:ring-2 focus-within:ring-cyan-500/70 hover:bg-white/10 transition-all"
           >
             <div className="flex items-center min-w-0 flex-1 mr-2 sm:mr-3">
               <BrainCircuit className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-cyan-400 shrink-0 mr-2 sm:mr-3 animate-pulse" />
@@ -1382,7 +1438,7 @@ function QuizPanel({
                   setChecked(false);
                   void onGenerate();
                 }}
-                className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-gradient-to-r from-cyan-500 via-indigo-500 to-purple-600 p-0 text-white shadow-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center"
+                className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-gradient-to-r from-cyan-500/80 via-indigo-500/80 to-purple-600/80 p-0 text-white shadow-lg backdrop-blur-sm transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center border border-white/10"
                 aria-label="Generate Quiz"
               >
                 {busy ? (
@@ -1553,7 +1609,7 @@ function DoubtPanel({
 
           {/* Gemini Centered Bottom Floating Input Bar */}
           <form onSubmit={submit} className="relative group w-full max-w-xl sm:max-w-2xl mx-auto mt-auto pt-4 pb-16 sm:pb-0 px-2 sm:px-0">
-            <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-500 opacity-40 blur-md transition duration-500 group-hover:opacity-80 group-focus-within:opacity-100 group-focus-within:blur-lg" />
+            <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-500 opacity-15 blur-sm transition duration-500 group-hover:opacity-30 group-focus-within:opacity-40 group-focus-within:blur-md" />
             <div
               onClick={() => {
                 if (!document && !busy) {
@@ -1561,7 +1617,7 @@ function DoubtPanel({
                 }
               }}
               className={cn(
-                "relative flex items-center rounded-full bg-slate-900/90 px-4 sm:px-6 py-3.5 sm:py-4.5 shadow-2xl backdrop-blur-2xl border border-slate-800 focus-within:ring-2 focus-within:ring-violet-500",
+                "relative flex items-center rounded-full bg-white/5 px-4 sm:px-6 py-3.5 sm:py-4.5 shadow-2xl backdrop-blur-md border border-white/10 focus-within:ring-2 focus-within:ring-violet-500 hover:bg-white/10 transition-all",
                 !document && "cursor-pointer"
               )}
             >
@@ -1597,7 +1653,7 @@ function DoubtPanel({
                       fileInputRef.current?.click();
                     }
                   }}
-                  className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 p-0 text-white shadow-lg transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center"
+                  className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-gradient-to-r from-violet-600/80 to-fuchsia-600/80 p-0 text-white shadow-lg backdrop-blur-sm transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center border border-white/10"
                   aria-label="Ask doubt"
                 >
                   <Send className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -1696,8 +1752,8 @@ function DoubtPanel({
 
           {/* Active Chat Input Bar */}
           <form onSubmit={submit} className="relative group mt-3">
-            <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-500 opacity-40 blur-md transition duration-500 group-hover:opacity-80 group-focus-within:opacity-100 group-focus-within:blur-lg" />
-            <div className="relative flex items-center rounded-full bg-slate-900/95 px-6 py-4.5 sm:py-5 shadow-2xl backdrop-blur-xl ring-1 ring-slate-800 focus-within:ring-2 focus-within:ring-violet-500/70">
+            <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-500 opacity-15 blur-sm transition duration-500 group-hover:opacity-30 group-focus-within:opacity-40 group-focus-within:blur-md" />
+            <div className="relative flex items-center rounded-full bg-white/5 px-6 py-4.5 sm:py-5 shadow-2xl backdrop-blur-md border border-white/10 focus-within:ring-2 focus-within:ring-violet-500/70 hover:bg-white/10 transition-all">
               <input
                 type="text"
                 value={question}
@@ -1716,7 +1772,7 @@ function DoubtPanel({
                 <Button
                   type="submit"
                   disabled={!canAsk}
-                  className="h-11 w-11 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 p-0 text-white shadow-md transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                  className="h-11 w-11 rounded-full bg-gradient-to-r from-violet-600/80 to-fuchsia-600/80 p-0 text-white shadow-md backdrop-blur-sm transition-all hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center border border-white/10"
                   aria-label="Ask doubt"
                 >
                   <Send className="h-5 w-5" />
@@ -2451,6 +2507,44 @@ export function StudySearchPage() {
                     onCountChange={setQuizCount}
                     onBack={() => setViewMode("hub")}
                     onUpload={uploadPdf}
+                    hasQuestions={questions.length > 0}
+                    onDownloadQuiz={async () => {
+                      if (!questions || questions.length === 0) return;
+                      toast.loading("Generating Quiz PDF...", { id: "quiz-pdf" });
+                      try {
+                        const res = await fetch("/api/study-search/quiz-to-pdf", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            documentTitle: document?.fileName || "Course Study Material",
+                            questions,
+                          }),
+                        });
+                        if (!res.ok) throw new Error("Failed to generate Quiz PDF");
+                        const contentType = res.headers.get("content-type") || "";
+                        const blob = await res.blob();
+                        const downloadUrl = window.URL.createObjectURL(blob);
+                        if (contentType.includes("text/html")) {
+                          const win = window.open(downloadUrl, "_blank");
+                          if (!win) {
+                            toast.error("Pop-up blocked. Please allow pop-ups.", { id: "quiz-pdf" });
+                          } else {
+                            toast.success("Quiz PDF ready in print view!", { id: "quiz-pdf" });
+                          }
+                        } else {
+                          const a = window.document.createElement("a");
+                          a.href = downloadUrl;
+                          a.download = `${(document?.fileName || "Quiz_Paper").replace(/[^a-zA-Z0-9_\-]/g, "_")}_Quiz_Exam_Paper.pdf`;
+                          window.document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                          window.URL.revokeObjectURL(downloadUrl);
+                          toast.success("Quiz PDF downloaded!", { id: "quiz-pdf" });
+                        }
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Failed to download Quiz PDF", { id: "quiz-pdf" });
+                      }
+                    }}
                     onSelectTool={(tool) => {
                       setActiveTool(tool);
                       setViewMode(tool);

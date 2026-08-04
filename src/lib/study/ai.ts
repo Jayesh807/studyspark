@@ -850,8 +850,11 @@ export async function formatStudyTextForPdf(
     case "maths":
       modeInstructions = [
         "MODE REQUIREMENT: SCIENCE & MATHS FORMULAS.",
-        "- Convert all mathematical equations, formulas, fractions, square roots, integrals, and physics/chemistry laws into clean TeX ($...$ or $$...$$) notation.",
+        "- Convert all mathematical equations, formulas, fractions, square roots, integrals, and physics/chemistry laws into clean TeX notation.",
+        "- ALWAYS use $...$ for inline math and $$...$$ for display math (block equations on their own line).",
+        "- NEVER use \\[...\\] or \\(...\\) delimiters — ONLY use dollar-sign notation.",
         "- Format equations like $V = IR$, $\\frac{a}{b}$, $\\sqrt{x^2 + y^2}$, $\\Omega$, $\\theta$, $\\pi$.",
+        "- For block-level equations use $$...$$ on its own line, e.g.:\n$$I = \\frac{Q}{t}$$",
         "- Preserve all underlying questions, variables, and explanations."
       ].join("\n");
       break;
@@ -908,7 +911,7 @@ export async function formatStudyTextForPdf(
 
   try {
     const formatted = await generateText(prompt, 16384);
-    
+
     // For summary mode, allow shorter summarized text. For verbatim modes (english/code/hindi), check length safety.
     if (tag === "summary" && formatted && formatted.trim().length > 50) {
       return formatted;
