@@ -148,7 +148,7 @@ export default function AgeCalculatorPage() {
             <div className="not-prose my-12 rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 text-center text-white shadow-2xl">
               <h3 className="text-2xl font-bold">Plan Your Semester with StudySpark</h3>
               <p className="mt-2 text-sm text-white/90 max-w-xl mx-auto">
-                Keep your assignments, exams, focus sessions, and study tools organized in one workspace. Free forever.
+                Keep your assignments, exams, focus sessions, and study tools organized in one workspace. Core tools are currently free.
               </p>
               <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
                 <Link

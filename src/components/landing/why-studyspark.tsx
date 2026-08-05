@@ -3,17 +3,17 @@
 import { m } from "framer-motion";
 import {
   LayoutDashboard,
-  Users,
   Palette,
-  Zap,
   Shield,
   Smartphone,
+  Target,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import {
+  GlassCard,
   StaggerContainer,
   StaggerItem,
-  GlassCard,
 } from "@/components/shared/motion";
 import { SectionHeading } from "./section-heading";
 
@@ -29,42 +29,42 @@ const REASONS: Reason[] = [
     icon: LayoutDashboard,
     title: "One Unified Workspace",
     description:
-      "Most students juggle between a task app, a calendar, a timer, and a spreadsheet for grades. StudySpark unifies all of these into a single beautifully designed workspace. No more context switching — everything you need for your studies lives in one place, connected and in sync.",
+      "Tasks, calendar planning, focus sessions, exam dates, and study analytics can be managed from one student workspace instead of several disconnected tabs.",
     gradient: "from-violet-500 to-purple-500",
   },
   {
-    icon: Users,
-    title: "Built by Students, for Students",
+    icon: Target,
+    title: "Built Around Study Workflows",
     description:
-      "StudySpark isn't a generic productivity app repurposed for education. It was designed from day one around the rhythms of student life — semesters, exams, subjects, deadlines, and study sessions. Every feature exists because a real student needed it.",
+      "StudySpark is organized around subjects, deadlines, revision topics, and weekly review so the app structure matches common academic routines.",
     gradient: "from-fuchsia-500 to-pink-500",
   },
   {
     icon: Palette,
-    title: "Beautiful & Calming Design",
+    title: "Calm Interface",
     description:
-      "Study tools should reduce anxiety, not add to it. StudySpark uses gentle gradients, generous spacing, and thoughtful animations to create a workspace that feels calm and inviting. It's a dashboard you'll actually want to open every day.",
+      "The interface uses clear spacing, light and dark themes, and focused views to keep planning approachable during busy study weeks.",
     gradient: "from-emerald-500 to-teal-500",
   },
   {
     icon: Zap,
-    title: "Free Forever — No Catch",
+    title: "Core Tools Currently Free",
     description:
-      "StudySpark's core experience is completely free. No trial periods, no feature gates, no hidden upsells. Every student deserves access to powerful study tools regardless of their budget. A premium tier is planned for power users, but the essentials will always be free.",
+      "Students can start with the core workspace without a credit card. Pricing and feature availability may change as StudySpark develops.",
     gradient: "from-amber-500 to-orange-500",
   },
   {
     icon: Shield,
-    title: "Privacy-First Architecture",
+    title: "Privacy-Aware Planning",
     description:
-      "Your study data belongs to you, not advertisers. StudySpark doesn't sell your data, doesn't track your behavior for marketing, and gives you full control over your information. Study with confidence knowing your privacy is respected.",
+      "Private study records belong in the signed-in workspace, while public guides and feature pages avoid exposing personal study data.",
     gradient: "from-cyan-500 to-blue-500",
   },
   {
     icon: Smartphone,
-    title: "Works on Every Device",
+    title: "Works Across Devices",
     description:
-      "StudySpark is a progressive web app that works seamlessly on laptops, tablets, and phones. Install it on your home screen for an app-like experience without downloading anything from an app store. Your study data syncs everywhere you go.",
+      "StudySpark is a progressive web app that can be used on laptops, tablets, and phones through a modern browser.",
     gradient: "from-rose-500 to-fuchsia-500",
   },
 ];
@@ -79,9 +79,9 @@ export function WhyStudySpark() {
       <div className="mx-auto max-w-6xl">
         <SectionHeading
           eyebrow="Why StudySpark"
-          title="Why Students Choose StudySpark"
-          highlight="Over Other Apps"
-          description="A single, thoughtfully designed workspace that replaces the five disconnected apps you're currently juggling. Here's what makes StudySpark different."
+          title="Why StudySpark Works"
+          highlight="For Student Planning"
+          description="A thoughtfully designed workspace for the recurring routines students handle every week: tasks, revision, deadlines, focus, and review."
         />
 
         <StaggerContainer className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

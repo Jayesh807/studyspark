@@ -229,7 +229,7 @@ export default function CgpaCalculatorPage() {
             <div className="not-prose my-12 rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 text-center text-white shadow-2xl">
               <h3 className="text-2xl font-bold">Organize Your Studies with StudySpark</h3>
               <p className="mt-2 text-sm text-white/90 max-w-xl mx-auto">
-                Track tasks, focus sessions, exam countdowns, study analytics, and tools like this calculator in one calm student workspace. Free forever.
+                Track tasks, focus sessions, exam countdowns, study analytics, and tools like this calculator in one calm student workspace. Core tools are currently free.
               </p>
               <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
                 <Link

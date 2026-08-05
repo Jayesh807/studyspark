@@ -2,13 +2,15 @@ import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-// Trigger layout cache refresh
 
-import { Toaster } from "@/components/ui/sonner";
-import { ThemeProvider } from "@/components/theme-provider";
 import { AccentColorApplier } from "@/components/accent-color-applier";
-import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { AdSenseScript } from "@/components/adsense-script";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { JsonLd } from "@/components/seo/json-ld";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { createDefaultMetadata } from "@/lib/seo/metadata";
+import { organizationSchema, websiteSchema } from "@/lib/seo/schema";
 
 const GOOGLE_ANALYTICS_ID = "G-G3PFDZL17W";
 
@@ -26,101 +28,44 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
+  ...createDefaultMetadata(),
   metadataBase: new URL("https://studysparks.cloud"),
-
   title: {
-    default: "Study Sparks – Student Productivity Platform",
+    default: "Study Sparks - Student Productivity Platform",
     template: "%s | Study Sparks",
   },
-
   description:
-    "Study Sparks helps students stay organized with task management, focus timer, calendar, study tools (GPA, Age & Unit calculators), Study Radio, and productivity analytics. Plan smarter and achieve your study goals.",
-
+    "StudySpark helps students plan revision, focus with timers, organize study tasks, and review progress with practical educational tools.",
   applicationName: "Study Sparks",
-
   keywords: [
     "StudySpark",
     "student planner",
     "student productivity",
     "study planner",
+    "revision planner",
     "study tracker",
     "task manager",
     "focus timer",
     "pomodoro timer",
-    "calendar",
     "exam planner",
-    "assignment tracker",
     "study analytics",
     "student dashboard",
-    "online planner",
     "gpa calculator",
     "cgpa calculator",
-    "age calculator",
-    "lofi study music",
-    "study radio",
-    "unit converter",
+    "study guides",
   ],
-
   authors: [
     {
       name: "StudySpark",
       url: "https://studysparks.cloud",
     },
   ],
-
   creator: "StudySpark",
-
   publisher: "StudySpark",
-
-  alternates: {
-    canonical: "/",
-  },
-
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
-  },
-
-  openGraph: {
-    type: "website",
-    url: "https://studysparks.cloud",
-    title: "StudySpark – Student Productivity Platform",
-    description:
-      "Manage tasks, events, focus sessions and study analytics in one beautiful dashboard.",
-    siteName: "StudySpark",
-    locale: "en_US",
-
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "StudySpark",
-      },
-    ],
-  },
-
-  twitter: {
-    card: "summary_large_image",
-    title: "StudySpark – Student Productivity Platform",
-    description:
-      "Organize tasks, focus better and track study progress with StudySpark.",
-    images: ["/og-image.png"],
-  },
-
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
@@ -132,9 +77,7 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
-
   manifest: "/site.webmanifest",
-
   category: "education",
 };
 
@@ -166,65 +109,9 @@ export default function RootLayout({
             `,
           }}
         />
-        {/* Google AdSense — conditional, only on content pages */}
         <AdSenseScript />
-
-        {/* Structured Data — WebApplication */}
-        <Script
-          id="structured-data"
-          type="application/ld+json"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebApplication",
-              name: "StudySpark",
-              url: "https://studysparks.cloud",
-              applicationCategory: "EducationalApplication",
-              operatingSystem: "Web",
-              offers: {
-                "@type": "Offer",
-                price: "0",
-                priceCurrency: "USD",
-              },
-              aggregateRating: {
-                "@type": "AggregateRating",
-                ratingValue: "4.9",
-                ratingCount: "312",
-                bestRating: "5",
-              },
-              description:
-                "StudySpark is a free all-in-one student productivity platform with task management, Pomodoro focus timer, calendar planning, study analytics, exam tracking, CGPA calculator, and study radio. Designed for students by students.",
-            }),
-          }}
-        />
-
-        {/* Structured Data — Organization */}
-        <Script
-          id="org-schema"
-          type="application/ld+json"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "StudySpark",
-              url: "https://studysparks.cloud",
-              logo: "https://studysparks.cloud/icon-512.png",
-              sameAs: [
-                "https://www.instagram.com/studysparks.cloud/",
-                "https://x.com/Jayesho1",
-                "https://www.linkedin.com/in/jayesh-malviya-b30229318/",
-                "https://www.youtube.com/channel/UCpygC2ZTTUE8RKpt9SuA9Ow",
-              ],
-              contactPoint: {
-                "@type": "ContactPoint",
-                email: "support@studysparks.cloud",
-                contactType: "customer support",
-              },
-            }),
-          }}
-        />
+        <JsonLd id="website-schema" data={websiteSchema()} />
+        <JsonLd id="organization-schema" data={organizationSchema()} />
 
         <ThemeProvider
           attribute="class"

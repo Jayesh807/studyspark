@@ -11,8 +11,8 @@ export const metadata: Metadata = {
     canonical: "/privacy-policy",
   },
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
   },
 };
 
@@ -110,7 +110,7 @@ export default function PrivacyPolicyPage() {
 
           <h2>10. Google AdSense</h2>
           <p>
-            StudySpark uses Google AdSense to display advertisements on certain pages of the website. Google AdSense may use cookies and similar technologies to serve ads based on your prior visits to our website or other websites. You can opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer">Google Ads Settings</a>. For more information about how Google uses data, please visit <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google&apos;s Privacy & Terms page</a>.
+            StudySpark may use Google AdSense verification and advertising scripts on eligible public content pages. Google AdSense may use cookies and similar technologies if ads are enabled. You can opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer">Google Ads Settings</a>. For more information about how Google uses data, please visit <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer">Google&apos;s Privacy & Terms page</a>.
           </p>
 
           <h2>11. Changes to This Policy</h2>
