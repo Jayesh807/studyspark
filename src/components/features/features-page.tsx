@@ -440,7 +440,7 @@ export function FeaturesPage() {
                     </tr>
                     <tr>
                       <td className="p-4 font-medium text-foreground">Pricing</td>
-                      <td className="p-4 text-emerald-600 dark:text-emerald-400 font-semibold">100% Free Core</td>
+                      <td className="p-4 text-emerald-600 dark:text-emerald-400 font-semibold">Core tools currently free</td>
                       <td className="p-4">Multiple paid subscriptions</td>
                     </tr>
                   </tbody>
@@ -454,7 +454,7 @@ export function FeaturesPage() {
             <div className="mx-auto max-w-4xl rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-8 sm:p-12 text-center text-white shadow-2xl">
               <h2 className="text-3xl font-bold tracking-tight">Ready to Organize Your Studies?</h2>
               <p className="mt-3 text-sm sm:text-base text-white/85 max-w-xl mx-auto">
-                Join thousands of students who plan, focus, and succeed with StudySpark. Free forever.
+                Create a StudySpark workspace to plan tasks, focus sessions, and study progress with core tools that are currently free.
               </p>
               <div className="mt-8 flex justify-center">
                 <Button

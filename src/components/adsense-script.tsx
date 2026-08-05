@@ -2,36 +2,24 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useAppStore } from "@/lib/store";
+import { isAdScriptAllowed } from "@/lib/seo/route-policy";
 
 /**
- * Blocked routes where AdSense should NOT load:
- *  - Auth pages (no publisher content)
- *  - Dashboard (behind auth wall)
- *  - Legal pages (policy content)
- */
-const BLOCKED_PREFIXES = [
-  "/login",
-  "/signup",
-  "/dashboard",
-  "/privacy-policy",
-  "/terms",
-  "/cookie-policy",
-];
-
-/**
- * AdSenseScript — conditionally loads the Google AdSense script
- * only on public content pages via standard DOM injection to avoid
- * the Next.js 'data-nscript' console warning.
+ * Loads the AdSense verification script only on eligible public pages.
+ * Visible ad units stay disabled until a post-approval placement plan exists.
  */
 export function AdSenseScript() {
   const pathname = usePathname();
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
+  const currentView = useAppStore((state) => state.currentView);
 
-  const isBlocked = BLOCKED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
-  );
+  const isPrivateAppState =
+    isAuthenticated && currentView !== "landing" && currentView !== "login" && currentView !== "signup";
+  const canLoadScript = isAdScriptAllowed(pathname, isPrivateAppState);
 
   useEffect(() => {
-    if (isBlocked) return;
+    if (!canLoadScript) return;
     const existing = document.querySelector(`script[src*="adsbygoogle.js"]`);
     if (!existing) {
       const script = document.createElement("script");
@@ -41,7 +29,7 @@ export function AdSenseScript() {
       script.crossOrigin = "anonymous";
       document.head.appendChild(script);
     }
-  }, [isBlocked]);
+  }, [canLoadScript]);
 
   return null;
 }

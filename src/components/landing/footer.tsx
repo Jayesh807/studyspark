@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Instagram, Linkedin, Heart, Youtube } from "lucide-react";
 import { Logo } from "./logo";
+import { FOOTER_LINK_GROUPS } from "@/content/navigation";
 
 function XIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -23,42 +24,7 @@ interface FooterColumn {
   links: { label: string; href: string }[];
 }
 
-const COLUMNS: FooterColumn[] = [
-  {
-    title: "Product",
-    links: [
-      { label: "Features", href: "/features" },
-      { label: "Pricing", href: "/#pricing" },
-      { label: "Dashboard Preview", href: "/#dashboard-overview" },
-      { label: "Study Radio", href: "/features#study-radio" },
-    ],
-  },
-  {
-    title: "Free Tools",
-    links: [
-      { label: "Pomodoro Timer", href: "/tools/pomodoro-timer" },
-      { label: "CGPA Calculator", href: "/tools/cgpa-calculator" },
-      { label: "Percentage Calculator", href: "/tools/percentage-calculator" },
-      { label: "Age Calculator", href: "/tools/age-calculator" },
-    ],
-  },
-  {
-    title: "Resources",
-    links: [
-      { label: "Blog & Articles", href: "/blog" },
-      { label: "Productivity Tips", href: "/#productivity-tips" },
-      { label: "FAQ Center", href: "/faq" },
-    ],
-  },
-  {
-    title: "Legal Policies",
-    links: [
-      { label: "Privacy Policy", href: "/privacy-policy" },
-      { label: "Terms of Service", href: "/terms" },
-      { label: "Cookie Policy", href: "/cookie-policy" },
-    ],
-  },
-];
+const COLUMNS: FooterColumn[] = FOOTER_LINK_GROUPS;
 
 const SOCIALS = [
   {

@@ -11,8 +11,8 @@ export const metadata: Metadata = {
     canonical: "/cookie-policy",
   },
   robots: {
-    index: true,
-    follow: true,
+    index: false,
+    follow: false,
   },
 };
 
@@ -42,7 +42,7 @@ export default function CookiePolicyPage() {
           <ul>
             <li><strong>Essential Session Cookies:</strong> Used to authenticate your login state and secure your user session when accessing your study workspace.</li>
             <li><strong>Preference Local Storage:</strong> Remembers your chosen UI theme (light/dark mode) and accent color preferences across page reloads.</li>
-            <li><strong>AdSense Cookies:</strong> Used by Google AdSense on public content pages to serve relevant non-intrusive advertisements.</li>
+            <li><strong>Advertising and verification cookies:</strong> Google AdSense may use cookies if advertising or verification is enabled on eligible public pages.</li>
           </ul>
 
           <h2>3. Managing Cookie Preferences</h2>

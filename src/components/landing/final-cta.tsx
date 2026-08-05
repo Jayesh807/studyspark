@@ -4,11 +4,8 @@ import Link from "next/link";
 import { m } from "framer-motion";
 import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 
 export function FinalCta() {
-  const router = useRouter();
-
   return (
     <section
       className="relative px-4 py-20 sm:py-28"
@@ -25,20 +22,12 @@ export function FinalCta() {
           <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600" />
           <m.div
             animate={{ x: [0, 40, 0], y: [0, -30, 0], scale: [1, 1.1, 1] }}
-            transition={{
-              duration: 14,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
+            transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
             className="absolute -left-20 -top-20 size-72 rounded-full bg-white/20 blur-3xl"
           />
           <m.div
             animate={{ x: [0, -30, 0], y: [0, 40, 0], scale: [1, 0.9, 1] }}
-            transition={{
-              duration: 16,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
+            transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
             className="absolute -bottom-20 -right-20 size-80 rounded-full bg-fuchsia-300/30 blur-3xl"
           />
           <div
@@ -53,15 +42,15 @@ export function FinalCta() {
           <div className="relative flex flex-col items-center gap-6 px-6 py-16 text-center sm:px-12 sm:py-20">
             <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
               <CheckCircle2 className="size-3.5" />
-              Free forever — no credit card required
+              Core tools are currently free - no credit card required
             </span>
             <h2 className="max-w-2xl text-balance text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl">
-              Ready to Transform Your Study Habits?
+              Ready to organize your study week?
             </h2>
             <p className="max-w-xl text-pretty text-base leading-relaxed text-white/85 sm:text-lg">
-              Join thousands of students who've already organized their academic
-              life with StudySpark. One workspace for tasks, focus sessions,
-              analytics, and everything in between.
+              Start with one workspace for tasks, focus sessions, analytics, and
+              practical study tools. Keep your academic planning calmer without
+              juggling separate tabs.
             </p>
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
               <Button

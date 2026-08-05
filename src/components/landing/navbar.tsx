@@ -30,7 +30,6 @@ import {
 import { useAppStore } from "@/lib/store";
 import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
-import { scrollToSection } from "./scroll-helpers";
 
 const TOOLS = [
   {
@@ -82,15 +81,6 @@ export function Navbar() {
       return;
     }
     router.push("/");
-  };
-
-  const handlePricingClick = () => {
-    setOpen(false);
-    if (pathname !== "/") {
-      router.push("/#pricing");
-      return;
-    }
-    scrollToSection("pricing");
   };
 
   const openAuth = (view: "login" | "signup") => {
@@ -173,24 +163,38 @@ export function Navbar() {
 
             <li>
               <Link
-                href="/blog"
+                href="/guides"
                 className={cn(
                   "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors hover:bg-violet-500/10 hover:text-foreground inline-block",
-                  pathname.startsWith("/blog") ? "text-foreground font-semibold bg-violet-500/10" : "text-muted-foreground"
+                  pathname.startsWith("/guides") ? "text-foreground font-semibold bg-violet-500/10" : "text-muted-foreground"
                 )}
               >
-                Blog
+                Study Guides
               </Link>
             </li>
 
             <li>
-              <button
-                type="button"
-                onClick={handlePricingClick}
-                className="rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-violet-500/10 hover:text-foreground"
+              <Link
+                href="/about"
+                className={cn(
+                  "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors hover:bg-violet-500/10 hover:text-foreground inline-block",
+                  pathname === "/about" ? "text-foreground font-semibold bg-violet-500/10" : "text-muted-foreground"
+                )}
               >
-                Pricing
-              </button>
+                About
+              </Link>
+            </li>
+
+            <li>
+              <Link
+                href="/contact"
+                className={cn(
+                  "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors hover:bg-violet-500/10 hover:text-foreground inline-block",
+                  pathname === "/contact" ? "text-foreground font-semibold bg-violet-500/10" : "text-muted-foreground"
+                )}
+              >
+                Contact
+              </Link>
             </li>
           </ul>
 
@@ -250,22 +254,31 @@ export function Navbar() {
                     </Link>
 
                     <Link
-                      href="/blog"
+                      href="/guides"
                       onClick={() => setOpen(false)}
                       className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
                     >
-                      Blog & Articles
+                      Study Guides
                       <ArrowRight className="size-4 text-muted-foreground" />
                     </Link>
 
-                    <button
-                      type="button"
-                      onClick={handlePricingClick}
+                    <Link
+                      href="/about"
+                      onClick={() => setOpen(false)}
                       className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
                     >
-                      Pricing
+                      About
                       <ArrowRight className="size-4 text-muted-foreground" />
-                    </button>
+                    </Link>
+
+                    <Link
+                      href="/contact"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
+                    >
+                      Contact
+                      <ArrowRight className="size-4 text-muted-foreground" />
+                    </Link>
 
                     {/* Mobile Tools Subsection */}
                     <div className="my-2 border-y border-violet-500/10 py-2">

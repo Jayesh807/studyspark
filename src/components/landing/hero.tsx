@@ -11,7 +11,6 @@ import {
   Clock,
   Target,
   Calendar,
-  Zap,
   Shield,
   Heart,
 } from "lucide-react";
@@ -24,7 +23,7 @@ import { scrollToSection } from "./scroll-helpers";
 import { cn } from "@/lib/utils";
 
 const TRUST_BADGES = [
-  { label: "Free forever", icon: Zap },
+  { label: "Core tools free", icon: CheckCircle2 },
   { label: "No credit card", icon: CheckCircle2 },
   { label: "Privacy-first", icon: Shield },
 ];
@@ -130,7 +129,7 @@ export function Hero() {
               >
                 <Icon className="size-4 text-violet-500" />
                 <span>{label}</span>
-                {label === "Free forever" && (
+                {label === "Core tools free" && (
                   <span className="glow-dot ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-violet-500" />
                 )}
               </m.li>
