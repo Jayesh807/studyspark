@@ -29,6 +29,8 @@ export interface StudyQuizItem {
   options: string[];
   answer: string;
   explanation: string;
+  type?: "single" | "numerical" | "multiple" | "fill_blank" | "true_false";
+  answers?: string[];
 }
 
 export interface StudySource {

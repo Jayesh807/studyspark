@@ -4,7 +4,9 @@ import "@/styles/dashboard.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { useAppStore } from "@/lib/store";
+import { getViewForRoute } from "@/lib/routes";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { CommandPalette } from "./command-palette";
@@ -140,6 +142,9 @@ function PageRouter() {
 
   const renderPage = () => {
     switch (currentView) {
+      case "landing":
+      case "login":
+      case "signup":
       case "dashboard":
         return <DashboardHome />;
       case "todos":
@@ -190,9 +195,29 @@ function PageRouter() {
   );
 }
 
-export function DashboardShell() {
+export function DashboardShell({ children }: { children?: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteSession, setPaletteSession] = useState(0);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const rawView = getViewForRoute(window.location.pathname);
+      const view = (rawView === "landing" || rawView === "login" || rawView === "signup") ? "dashboard" : rawView;
+      useAppStore.getState().setView(view);
+      if (window.location.pathname === "/" || window.location.pathname === "/login" || window.location.pathname === "/signup") {
+        window.history.replaceState({ view: "dashboard" }, "", "/dashboard");
+      }
+    }
+
+    const handlePopState = () => {
+      if (typeof window !== "undefined") {
+        const rawView = getViewForRoute(window.location.pathname);
+        const view = (rawView === "landing" || rawView === "login" || rawView === "signup") ? "dashboard" : rawView;
+        useAppStore.getState().setView(view);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const openPalette = useCallback(() => {
     setPaletteSession((s) => s + 1);

@@ -3,15 +3,24 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { StudyQuizGenerationError, generateGroundedQuiz } from "@/lib/study/ai";
+import {
+  StudyQuizGenerationError,
+  generateGroundedQuiz,
+} from "@/lib/study/ai";
 import { getStudyTextQuality } from "@/lib/study/chunking";
-import { STUDY_LIMITS } from "@/lib/study/types";
 
 export const runtime = "nodejs";
 
 const quizSchema = z.object({
-  count: z.union([z.literal(5), z.literal(10)]).optional().default(5),
+  count: z
+    .union([z.literal(5), z.literal(10)])
+    .optional()
+    .default(5),
 });
+
+function toPrismaJson(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
 
 export async function POST(
   req: NextRequest,
@@ -34,12 +43,14 @@ export async function POST(
       );
     }
 
+    const requestedCount = parsed.data.count;
+
     const document = await db.studyDocument.findFirst({
       where: { id: documentId, userId: user.id },
       include: {
         chunks: {
           orderBy: [{ pageNumber: "asc" }, { createdAt: "asc" }],
-          take: 12,
+          take: 40,
         },
       },
     });
@@ -63,16 +74,13 @@ export async function POST(
     }
 
     const context = usefulChunks.map((chunk) => chunk.content).join("\n\n");
-    const questions = await generateGroundedQuiz(
-      context,
-      parsed.data.count as (typeof STUDY_LIMITS.allowedQuizCounts)[number]
-    );
+    const questions = await generateGroundedQuiz(context, requestedCount);
 
     const quiz = await db.studyQuiz.create({
       data: {
         documentId: document.id,
         questionCount: questions.length,
-        itemsJson: questions as unknown as Prisma.InputJsonValue,
+        itemsJson: toPrismaJson(questions),
       },
     });
 
@@ -89,10 +97,10 @@ export async function POST(
       error instanceof Error ? error.message : "Could not generate quiz.";
     const status =
       error instanceof StudyQuizGenerationError &&
-      error.code === "UNREADABLE_CONTEXT"
+        error.code === "UNREADABLE_CONTEXT"
         ? 422
         : error instanceof StudyQuizGenerationError &&
-            error.code === "AI_OUTPUT_NOT_USABLE"
+          error.code === "AI_OUTPUT_NOT_USABLE"
           ? 422
           : 500;
     return NextResponse.json({ error: message }, { status });

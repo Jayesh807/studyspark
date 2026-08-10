@@ -24,6 +24,7 @@ import {
   Keyboard,
 } from "lucide-react";
 import { useAppStore, type AppView } from "@/lib/store";
+import { getRouteForView, navigateToView } from "@/lib/routes";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ const NAV_ITEMS: NavItem[] = [
 function BrandLogo({ collapsed }: { collapsed: boolean }) {
   return (
     <button
-      onClick={() => useAppStore.getState().setView("dashboard")}
+      onClick={() => navigateToView("dashboard")}
       className="flex items-center gap-2.5 w-full group"
     >
       <motion.div
@@ -181,6 +182,10 @@ export function Sidebar() {
     logout();
   };
 
+  const handleNavigate = (view: AppView) => {
+    navigateToView(view);
+  };
+
   const sidebarContent = (
     <div className="flex h-full flex-col">
       {/* Brand */}
@@ -205,7 +210,7 @@ export function Sidebar() {
                 item={item}
                 active={currentView === item.view}
                 collapsed={collapsed}
-                onClick={() => setView(item.view)}
+                onClick={() => handleNavigate(item.view)}
               />
             ))}
           </nav>

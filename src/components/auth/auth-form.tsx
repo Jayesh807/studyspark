@@ -984,9 +984,9 @@ export function AuthForm({ initialMode = "login" }: AuthFormProps) {
   };
 
   const handleAuthenticated = () => {
-    if (pathname !== "/") {
-      router.push("/");
-    }
+    const redirectParam = searchParams.get("redirect");
+    const target = redirectParam ? decodeURIComponent(redirectParam) : "/dashboard";
+    router.push(target);
   };
 
   useEffect(() => {

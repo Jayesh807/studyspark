@@ -3,9 +3,11 @@ import { Poppins } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
+import { Suspense } from "react";
 import { AccentColorApplier } from "@/components/accent-color-applier";
 import { AdSenseScript } from "@/components/adsense-script";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { TopProgressBar } from "@/components/shared/top-progress-bar";
 import { JsonLd } from "@/components/seo/json-ld";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -119,6 +121,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <Suspense fallback={null}>
+            <TopProgressBar />
+          </Suspense>
           <AccentColorApplier />
           {children}
           <PwaInstallPrompt />

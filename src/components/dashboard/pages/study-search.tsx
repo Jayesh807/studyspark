@@ -47,6 +47,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import type { GeneratedResume, ResumeMakerInput } from "@/lib/resume/schema";
 
 interface StudyDocument {
   id: string;
@@ -62,6 +63,8 @@ interface QuizQuestion {
   options: string[];
   answer: string;
   explanation: string;
+  type?: "single" | "numerical" | "multiple" | "fill_blank" | "true_false";
+  answers?: string[];
 }
 
 interface ChatMessage {
@@ -72,8 +75,41 @@ interface ChatMessage {
   sources?: Array<{ pageNumber: number; score: number }>;
 }
 
-type StudyTool = "quiz" | "doubt" | "textToPdf";
-type ViewMode = "hub" | "quiz" | "doubt" | "textToPdf";
+type StudyTool = "quiz" | "doubt" | "textToPdf" | "resume";
+type ViewMode = "hub" | "quiz" | "doubt" | "textToPdf" | "resume";
+type QuizCount = 5 | 10;
+
+const ANSWER_SEPARATOR = " || ";
+const TEXT_TO_PDF_MIN_CHARS = 10;
+const TEXT_TO_PDF_MAX_CHARS = 15000;
+
+function getQuestionTypeLabel(type?: QuizQuestion["type"]) {
+  if (type === "numerical") return "Numerical MCQ";
+  if (type === "multiple") return "Multiple Correct";
+  if (type === "fill_blank") return "Fill in the Blank";
+  if (type === "true_false") return "True / False";
+  return "Single Correct";
+}
+
+function getCorrectAnswers(question: QuizQuestion) {
+  const answers =
+    question.type === "multiple" && question.answers?.length
+      ? question.answers
+      : question.type === "multiple"
+        ? question.answer.split(/\s*,\s*/)
+        : [question.answer];
+  return answers.map((answer) => answer.trim()).filter(Boolean);
+}
+
+function getSelectedAnswers(value?: string) {
+  return value ? value.split(ANSWER_SEPARATOR).map((answer) => answer.trim()).filter(Boolean) : [];
+}
+
+function isQuizAnswerCorrect(question: QuizQuestion, selected?: string) {
+  const expected = getCorrectAnswers(question).map((answer) => answer.toLowerCase()).sort();
+  const actual = getSelectedAnswers(selected).map((answer) => answer.toLowerCase()).sort();
+  return expected.length === actual.length && expected.every((answer, index) => answer === actual[index]);
+}
 
 function SubPageHeader({
   activeTool,
@@ -89,8 +125,8 @@ function SubPageHeader({
 }: {
   activeTool: StudyTool;
   document: StudyDocument | null;
-  quizCount?: 5 | 10;
-  onCountChange?: (count: 5 | 10) => void;
+  quizCount?: QuizCount;
+  onCountChange?: (count: QuizCount) => void;
   onBack: () => void;
   onSelectTool: (tool: StudyTool) => void;
   uploading?: boolean;
@@ -149,6 +185,12 @@ function SubPageHeader({
                 <span>Text to PDF Studio</span>
               </span>
             )}
+            {activeTool === "resume" && (
+              <span className="flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span>AI Resume Maker</span>
+              </span>
+            )}
           </Badge>
 
           {uploading ? (
@@ -175,10 +217,10 @@ function SubPageHeader({
       </div>
 
       {/* Bottom row: Mode pills & Right Action Group (5 Qs, 10 Qs, Change PDF, Download Quiz) */}
-      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2 pt-2 border-t border-white/5 w-full">
+      <div className="flex w-full flex-col items-stretch justify-center gap-2 border-t border-white/5 pt-2 sm:flex-row sm:items-center sm:justify-between">
         {/* Tool selector tabs with Glassmorphism and Sliding Animation */}
-        <div className="flex items-center justify-center gap-1 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner overflow-x-auto scrollbar-none max-w-full mx-auto sm:mx-0">
-          {(["quiz", "doubt", "textToPdf"] as const).map((tool) => {
+        <div className="flex w-full max-w-full items-center justify-start gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 p-1 shadow-inner scrollbar-none sm:w-auto sm:justify-center">
+          {(["quiz", "doubt", "textToPdf", "resume"] as const).map((tool) => {
             const isActive = activeTool === tool;
             let label = "";
             let Icon = BrainCircuit;
@@ -192,10 +234,14 @@ function SubPageHeader({
               label = "Ask Doubts";
               Icon = Sparkles;
               activeBg = "bg-gradient-to-r from-violet-600/80 to-fuchsia-600/80";
-            } else {
+            } else if (tool === "textToPdf") {
               label = "Text to PDF";
               Icon = FileText;
               activeBg = "bg-emerald-600/80";
+            } else {
+              label = "Resume";
+              Icon = FileText;
+              activeBg = "bg-amber-600/80";
             }
 
             return (
@@ -203,7 +249,7 @@ function SubPageHeader({
                 key={tool}
                 type="button"
                 onClick={() => onSelectTool(tool)}
-                className="relative flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap focus:outline-none"
+                className="relative flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap focus:outline-none"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 {isActive && (
@@ -238,7 +284,7 @@ function SubPageHeader({
         </div>
 
         {/* Action Group: 5 Qs, 10 Qs, Change PDF, Download Quiz with Glassmorphism */}
-        <div className="flex items-center justify-center gap-1.5 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner text-xs font-semibold shrink-0 mx-auto sm:mx-0 overflow-x-auto max-w-full">
+        <div className="flex w-full max-w-full items-center justify-start gap-1.5 overflow-x-auto rounded-full border border-white/10 bg-white/5 p-1 text-xs font-semibold shadow-inner scrollbar-none sm:w-auto sm:shrink-0 sm:justify-center">
           {/* 5 Qs / 10 Qs buttons with Sliding Animation */}
           {activeTool === "quiz" && onCountChange && quizCount && (
             <>
@@ -248,8 +294,10 @@ function SubPageHeader({
                   <button
                     key={num}
                     type="button"
-                    onClick={() => onCountChange(num)}
-                    className="relative h-8 rounded-full px-3 text-xs transition-all whitespace-nowrap flex items-center justify-center font-semibold focus:outline-none"
+                    onClick={() => {
+                      onCountChange(num);
+                    }}
+                    className="relative flex h-8 shrink-0 items-center justify-center rounded-full px-3 text-xs font-semibold whitespace-nowrap transition-all focus:outline-none"
                     style={{ WebkitTapHighlightColor: "transparent" }}
                   >
                     {isActive && (
@@ -261,7 +309,7 @@ function SubPageHeader({
                     )}
                     <span
                       className={cn(
-                        "z-10 transition-colors",
+                        "z-10 flex items-center gap-1 transition-colors",
                         isActive
                           ? "text-white font-bold"
                           : "text-slate-400 hover:text-slate-200"
@@ -276,12 +324,12 @@ function SubPageHeader({
           )}
 
           {/* Change PDF button */}
-          {onUpload && (
+          {onUpload && activeTool !== "resume" && (
             <button
               type="button"
               disabled={uploading}
               onClick={() => headerFileInputRef.current?.click()}
-              className="h-8 rounded-full px-3 text-xs font-semibold transition-all whitespace-nowrap bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 flex items-center justify-center disabled:opacity-50"
+              className="flex h-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 text-xs font-semibold whitespace-nowrap text-slate-200 transition-all hover:bg-white/10 disabled:opacity-50"
             >
               {uploading ? "Indexing..." : "Change PDF"}
             </button>
@@ -602,11 +650,26 @@ function FullTestModeModal({
   const total = questions.length;
   const answeredCount = Object.keys(selectedAnswers).length;
   const score = questions.reduce(
-    (acc, q, i) => acc + (selectedAnswers[i] === q.answer ? 1 : 0),
+    (acc, q, i) => acc + (isQuizAnswerCorrect(q, selectedAnswers[i]) ? 1 : 0),
     0
   );
   const accuracy = Math.round((score / total) * 100);
   const timeSpentSec = total * 60 - secondsLeft;
+  const typeStats = questions.reduce(
+    (stats, question, index) => {
+      const type = question.type || "single";
+      stats[type] ??= { total: 0, correct: 0 };
+      stats[type].total += 1;
+      if (isQuizAnswerCorrect(question, selectedAnswers[index])) {
+        stats[type].correct += 1;
+      }
+      return stats;
+    },
+    {} as Record<string, { total: number; correct: number }>
+  );
+  const weakTypes = Object.entries(typeStats)
+    .filter(([, stat]) => stat.total > 0 && stat.correct / stat.total < 0.7)
+    .map(([type]) => getQuestionTypeLabel(type as QuizQuestion["type"]));
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -723,7 +786,7 @@ function FullTestModeModal({
               <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-4 sm:p-8 shadow-2xl backdrop-blur-xl space-y-4 sm:space-y-6">
                 <div className="flex items-start justify-between gap-3">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3 py-0.5 text-xs font-bold text-indigo-300 ring-1 ring-indigo-500/40">
-                    Question {currentIndex + 1}
+                    {getQuestionTypeLabel(currentItem?.type)}
                   </span>
 
                   <button
@@ -756,14 +819,29 @@ function FullTestModeModal({
                 <div className="grid gap-2.5 sm:grid-cols-2 pt-1 sm:pt-2">
                   {currentItem?.options.map((option, optionIdx) => {
                     const letter = String.fromCharCode(65 + optionIdx);
-                    const isSelected = selectedAnswers[currentIndex] === option;
+                    const isMultiple = currentItem.type === "multiple";
+                    const selectedForQuestion = getSelectedAnswers(selectedAnswers[currentIndex]);
+                    const isSelected = selectedForQuestion.includes(option);
 
                     return (
                       <button
-                        key={option}
+                        key={`${currentIndex}-${optionIdx}-${option}`}
                         type="button"
                         onClick={() =>
                           setSelectedAnswers((prev) => {
+                            if (isMultiple) {
+                              const nextSelected = isSelected
+                                ? selectedForQuestion.filter((selected) => selected !== option)
+                                : [...selectedForQuestion, option];
+                              const updated = { ...prev };
+                              if (nextSelected.length === 0) {
+                                delete updated[currentIndex];
+                              } else {
+                                updated[currentIndex] = nextSelected.join(ANSWER_SEPARATOR);
+                              }
+                              return updated;
+                            }
+
                             if (prev[currentIndex] === option) {
                               const updated = { ...prev };
                               delete updated[currentIndex];
@@ -898,6 +976,33 @@ function FullTestModeModal({
               </div>
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+                <h3 className="mb-3 text-sm font-extrabold uppercase tracking-wider text-slate-200">
+                  Type-wise Score
+                </h3>
+                <div className="space-y-2">
+                  {Object.entries(typeStats).map(([type, stat]) => (
+                    <div key={type} className="flex items-center justify-between rounded-2xl bg-slate-800/70 px-3 py-2 text-xs">
+                      <span className="font-semibold text-slate-300">{getQuestionTypeLabel(type as QuizQuestion["type"])}</span>
+                      <span className="font-extrabold text-cyan-300">{stat.correct}/{stat.total}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+                <h3 className="mb-3 text-sm font-extrabold uppercase tracking-wider text-slate-200">
+                  Suggested Revision Plan
+                </h3>
+                <p className="text-xs leading-relaxed text-slate-400">
+                  {weakTypes.length
+                    ? `Revise ${weakTypes.join(", ")} first, then re-attempt wrong questions and read each explanation carefully.`
+                    : "Strong performance across all question types. Re-attempt flagged questions once for retention."}
+                </p>
+              </div>
+            </div>
+
             {/* Question-by-Question Review List */}
             <div className="space-y-4">
               <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
@@ -907,7 +1012,7 @@ function FullTestModeModal({
 
               {questions.map((item, idx) => {
                 const userAns = selectedAnswers[idx];
-                const isCorrect = userAns === item.answer;
+                const isCorrect = isQuizAnswerCorrect(item, userAns);
 
                 return (
                   <div
@@ -943,12 +1048,12 @@ function FullTestModeModal({
                       <div className="rounded-xl bg-slate-900/80 p-3 border border-slate-800">
                         <span className="text-slate-400 block mb-1">Your Answer:</span>
                         <span className={cn("font-bold", isCorrect ? "text-emerald-400" : "text-rose-400")}>
-                          {userAns ? userAns : "Not Answered"}
+                          {userAns ? getSelectedAnswers(userAns).join(", ") : "Not Answered"}
                         </span>
                       </div>
                       <div className="rounded-xl bg-slate-900/80 p-3 border border-slate-800">
                         <span className="text-slate-400 block mb-1">Correct Answer:</span>
-                        <span className="font-bold text-emerald-400">{item.answer}</span>
+                        <span className="font-bold text-emerald-400">{getCorrectAnswers(item).join(", ")}</span>
                       </div>
                     </div>
 
@@ -1211,8 +1316,8 @@ function QuizPanel({
   document: StudyDocument | null;
   questions: QuizQuestion[];
   busy: boolean;
-  quizCount: 5 | 10;
-  onCountChange: (count: 5 | 10) => void;
+  quizCount: QuizCount;
+  onCountChange: (count: QuizCount) => void;
   onGenerate: () => Promise<void>;
   onUpload?: (file: File) => Promise<void>;
 }) {
@@ -1239,7 +1344,7 @@ function QuizPanel({
 
   const answeredCount = Object.keys(selectedAnswers).length;
   const score = questions.reduce(
-    (total, item, index) => total + (selectedAnswers[index] === item.answer ? 1 : 0),
+    (total, item, index) => total + (isQuizAnswerCorrect(item, selectedAnswers[index]) ? 1 : 0),
     0
   );
 
@@ -1325,7 +1430,7 @@ function QuizPanel({
               <BrainCircuit className="h-7 w-7 sm:h-8 sm:w-8 text-cyan-400 shrink-0" />
             </h3>
             <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
-              Generate {quizCount} interactive multiple-choice questions grounded in your course PDF.
+              Generate {quizCount} interactive questions grounded in your course PDF.
             </p>
           </div>
         </div>
@@ -1349,7 +1454,7 @@ function QuizPanel({
           <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 max-w-full overflow-x-auto scrollbar-none pt-0.5 whitespace-nowrap">
             <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-[15px] bg-cyan-500/10 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-cyan-400 border border-cyan-500/30 shrink-0">
               <BrainCircuit className="h-3.5 w-3.5" />
-              {questions.length === quizCount ? questions.length : quizCount} MCQs
+              {questions.length === quizCount ? questions.length : quizCount} Questions
             </span>
             <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-[15px] bg-cyan-500/10 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-cyan-400 border border-cyan-500/30 shrink-0">
               <Clock className="h-3.5 w-3.5" />
@@ -1420,7 +1525,7 @@ function QuizPanel({
                 {document
                   ? busy
                     ? "Generating interactive quiz..."
-                    : `Generate ${quizCount} Q MCQ Quiz`
+                    : `Generate ${quizCount} Q Quiz`
                   : "Upload a PDF first to generate quiz"}
               </span>
             </div>
@@ -1810,7 +1915,9 @@ function TextToPdfPanel({
     { id: "code", label: "Code or Technical", icon: FileCode },
   ] as const;
 
-  const canGenerate = text.trim().length >= 10 && text.trim().length <= 15000 && !busy;
+  const trimmedTextLength = text.trim().length;
+  const textLength = text.length;
+  const canGenerate = trimmedTextLength >= TEXT_TO_PDF_MIN_CHARS && trimmedTextLength <= TEXT_TO_PDF_MAX_CHARS && !busy;
   const isMultiLine = text.includes("\n") || text.length > 70;
 
   const submit = (event: React.FormEvent) => {
@@ -1904,6 +2011,7 @@ function TextToPdfPanel({
               rows={1}
               value={text}
               onChange={(event) => setText(event.target.value)}
+              maxLength={TEXT_TO_PDF_MAX_CHARS}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -1918,7 +2026,19 @@ function TextToPdfPanel({
                 target.style.height = `${Math.min(target.scrollHeight, 220)}px`;
               }}
             />
-            <div className="ml-2 sm:ml-3 flex items-center shrink-0 self-end pb-0.5">
+            <div className="ml-2 sm:ml-3 flex shrink-0 items-end gap-2 self-end pb-0.5">
+              <span
+                className={cn(
+                  "mb-2 min-w-[64px] text-right text-[10px] font-semibold tabular-nums sm:min-w-[76px] sm:text-[11px]",
+                  textLength >= TEXT_TO_PDF_MAX_CHARS
+                    ? "text-amber-300"
+                    : trimmedTextLength > 0 && trimmedTextLength < TEXT_TO_PDF_MIN_CHARS
+                      ? "text-slate-500"
+                      : "text-slate-400"
+                )}
+              >
+                {textLength}/{TEXT_TO_PDF_MAX_CHARS}
+              </span>
               <Button
                 type="submit"
                 disabled={!canGenerate}
@@ -1931,6 +2051,691 @@ function TextToPdfPanel({
           </div>
         </div>
       </form>
+    </div>
+  );
+}
+
+const RESUME_SAMPLE: ResumeMakerInput = {
+  fullName: "Asha Sharma",
+  email: "asha@example.com",
+  phone: "+91 98765 43210",
+  location: "Indore, India",
+  links: "github.com/asha-dev | linkedin.com/in/asha-sharma",
+  targetRole: "Frontend Developer Intern",
+  tone: "internship",
+  education: [
+    {
+      school: "Amrita ahead",
+      degree: "BCA",
+      dates: "2023 - 2027",
+      details: "Relevant coursework: Data Structures, Web Development, DBMS",
+    },
+  ],
+  experience: [],
+  projects: [
+    {
+      name: "Study Planner Dashboard",
+      tech: "React, Next.js, TypeScript, Tailwind CSS",
+      link: "github.com/asha-dev/study-planner",
+      details:
+        "Built a responsive dashboard for task management, calendar planning, focus sessions, and weekly study analytics.",
+    },
+    {
+      name: "Typing Speed Practice Tool",
+      tech: "JavaScript, React, CSS",
+      link: "asha-dev.github.io/typing-practice",
+      details:
+        "Created an interactive typing practice interface with accuracy tracking, timer state, and result feedback.",
+    },
+  ],
+  skills: "React, Next.js, TypeScript, JavaScript, Tailwind CSS, Git, REST APIs",
+  certifications: "",
+  achievements: "",
+};
+
+const emptyProject = () => ({ name: "", tech: "", link: "", details: "" });
+const emptyExperience = () => ({ role: "", organization: "", dates: "", details: "" });
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function resumeLinkHref(link: string) {
+  const trimmed = link.trim();
+  if (!trimmed) return "";
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return `mailto:${trimmed}`;
+  if (/^https?:\/\//i.test(trimmed) || /^mailto:/i.test(trimmed) || /^tel:/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function splitLinks(links?: string) {
+  return (links || "")
+    .split(/\s*\|\s*|\s*,\s*/)
+    .map((link) => link.trim())
+    .filter(Boolean);
+}
+
+const RESUME_DOCUMENT_CSS = `
+  @page { size: A4; margin: 16mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #ffffff; color: #1e293b; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 9.8pt; line-height: 1.45; }
+  .editable-resume { width: 100%; max-width: 794px; min-height: 920px; margin: 0 auto; background: #ffffff; color: #1e293b; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 32px; }
+  .editable-resume h1 { margin: 0 0 4px; color: #0f172a; font-size: 30px; line-height: 1.05; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
+  .editable-resume .headline { margin: 4px 0 0; color: #2563eb; font-size: 15px; font-weight: 700; }
+  .editable-resume .contact { margin: 8px 0 0; color: #475569; font-size: 12px; border-bottom: 2px solid #ef4444; padding-bottom: 8px; }
+  .editable-resume a { color: #2563eb; text-decoration: none; }
+  .editable-resume section { margin: 16px 0 0; page-break-inside: avoid; }
+  .editable-resume h2 { margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px solid #e5e7eb; color: #0f172a; font-size: 17px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; page-break-after: avoid; }
+  .editable-resume p { margin: 0; }
+  .editable-resume .summary { margin-top: 8px; font-size: 14px; line-height: 1.55; }
+  .editable-resume .skills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .editable-resume .skill { display: inline-block; background-color: #f3f4f6; padding: 6px 10px; border-radius: 4px; border: 1px solid #e5e7eb; font-weight: 700; font-size: 12px; }
+  .editable-resume .item { margin-top: 8px; }
+  .editable-resume .row { display: table; width: 100%; font-size: 14px; font-weight: 700; color: #0f172a; }
+  .editable-resume .row-left, .editable-resume .row-right { display: table-cell; vertical-align: top; }
+  .editable-resume .row-left { width: 70%; }
+  .editable-resume .row-right { width: 30%; text-align: right; color: #64748b; font-weight: 400; }
+  .editable-resume .accent { color: #2563eb; font-size: 13px; font-weight: 700; }
+  .editable-resume .project-tech { margin-top: 1px; margin-bottom: 1px; line-height: 1.25; }
+  .editable-resume .education-section h2 { font-size: 15px; margin-bottom: 8px; }
+  .editable-resume .education-title { color: #0f172a; font-size: 14px; font-weight: 700; line-height: 1.25; }
+  .editable-resume .education-detail { color: #1e293b; font-size: 12px; line-height: 1.35; margin-top: 3px; }
+  .editable-resume .education-label { color: rgba(15, 23, 42, 0.7); font-weight: 700; }
+  .editable-resume ul { margin: 4px 0 0 20px; padding: 0; color: #1e293b; font-size: 13px; line-height: 1.5; }
+  .editable-resume li { margin: 0 0 2px; }
+  @media print { .editable-resume { max-width: none; min-height: auto; padding: 0; } }
+`;
+
+function buildEditedResumeHtml(markup: string) {
+  const printableMarkup = markup
+    .replace(/\scontenteditable="[^"]*"/gi, "")
+    .replace(/\sspellcheck="[^"]*"/gi, "");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>${RESUME_DOCUMENT_CSS}</style>
+</head>
+<body>
+  ${printableMarkup}
+</body>
+</html>`;
+}
+
+function buildResumeText(resume: GeneratedResume) {
+  const lines = [
+    resume.contact.fullName.toUpperCase(),
+    resume.headline,
+    [resume.contact.email, resume.contact.phone, resume.contact.location, resume.contact.links].filter(Boolean).join(" | "),
+    "",
+    "PROFESSIONAL SUMMARY",
+    resume.summary,
+    "",
+    "TECHNICAL SKILLS",
+    resume.skills.join(", "),
+  ];
+
+  if (resume.experience.length) {
+    lines.push("", "PROFESSIONAL EXPERIENCE");
+    resume.experience.forEach((exp) => {
+      lines.push(`${exp.title}${exp.organization ? ` - ${exp.organization}` : ""}${exp.dates ? ` | ${exp.dates}` : ""}`);
+      exp.bullets.forEach((bullet) => lines.push(`- ${bullet}`));
+    });
+  }
+
+  if (resume.projects.length) {
+    lines.push("", "KEY PROJECTS");
+    resume.projects.forEach((project) => {
+      lines.push(`${project.name}${project.link ? ` | ${project.link}` : ""}`);
+      if (project.tech) lines.push(project.tech);
+      project.bullets.forEach((bullet) => lines.push(`- ${bullet}`));
+    });
+  }
+
+  lines.push("", "EDUCATION & CERTIFICATIONS");
+  resume.education.forEach((edu) => {
+    lines.push(`${edu.degree}, ${edu.school}${edu.dates ? ` | ${edu.dates}` : ""}`);
+    if (edu.details) lines.push(edu.details);
+  });
+  resume.certifications.forEach((cert) => lines.push(`Certification: ${cert}`));
+  resume.achievements.forEach((achievement) => lines.push(`Achievement: ${achievement}`));
+
+  return lines.join("\n");
+}
+
+function buildResumeHtml(resume: GeneratedResume) {
+  const contactItems = [
+    resume.contact.email,
+    resume.contact.phone,
+    resume.contact.location,
+    ...splitLinks(resume.contact.links),
+  ].filter(Boolean) as string[];
+
+  const contactHtml = contactItems
+    .map((item) => {
+      const href = resumeLinkHref(item);
+      const isLinked = href && !item.includes(" ") && (item.includes(".") || item.includes("@"));
+      return isLinked
+        ? `<a href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(item)}</a>`
+        : escapeHtml(item);
+    })
+    .join(" <span>|</span> ");
+
+  const section = (title: string, body: string, className = "") =>
+    body ? `<section${className ? ` class="${className}"` : ""}><h2>${title}</h2>${body}</section>` : "";
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @page { size: A4; margin: 16mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #ffffff; color: #1e293b; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 9.8pt; line-height: 1.45; }
+    h1 { margin: 0 0 4px; color: #0f172a; font-size: 21pt; line-height: 1.05; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
+    .headline { color: #2563eb; font-size: 11pt; font-weight: 700; margin: 0 0 7px; }
+    .contact { color: #475569; font-size: 8.8pt; border-bottom: 2px solid #ef4444; padding-bottom: 8px; margin-bottom: 12px; }
+    a { color: #2563eb; text-decoration: none; }
+    section { margin: 0 0 10px; page-break-inside: avoid; }
+    h2 { margin: 0 0 7px; padding-bottom: 4px; border-bottom: 1px solid #e5e7eb; color: #0f172a; font-size: 10.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; page-break-after: avoid; }
+    p { margin: 0; }
+    ul { margin: 3px 0 0 15px; padding: 0; }
+    li { margin: 0 0 2px; }
+    .title-row { display: table; width: 100%; margin-top: 2px; }
+    .title-left, .title-right { display: table-cell; vertical-align: top; }
+    .title-left { width: 70%; font-weight: 700; color: #0f172a; }
+    .title-right { width: 30%; text-align: right; color: #64748b; font-size: 8.9pt; }
+    .accent { color: #2563eb; font-weight: 700; }
+    .project-tech { margin-top: 1px; margin-bottom: 1px; line-height: 1.25; }
+    .education-section h2 { font-size: 10.2pt; margin-bottom: 7px; }
+    .education-title { color: #0f172a; font-size: 9.8pt; font-weight: 700; line-height: 1.25; }
+    .education-detail { color: #1e293b; font-size: 9pt; line-height: 1.35; margin-top: 2px; }
+    .education-label { color: rgba(15, 23, 42, 0.7); font-weight: 700; }
+    .skill { display: inline-block; background-color: #f3f4f6; padding: 3px 8px; border-radius: 4px; border: 1px solid #e5e7eb; margin-right: 5px; margin-bottom: 5px; font-weight: 700; font-size: 8.5pt; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>${escapeHtml(resume.contact.fullName)}</h1>
+    <p class="headline">${escapeHtml(resume.headline)}</p>
+    <p class="contact">${contactHtml}</p>
+  </header>
+  ${section("Professional Summary", `<p>${escapeHtml(resume.summary)}</p>`)}
+  ${section("Technical Skills", resume.skills.map((skill) => `<span class="skill">${escapeHtml(skill)}</span>`).join(""))}
+  ${section(
+    "Professional Experience",
+    resume.experience
+      .map(
+        (exp) => `<div class="item">
+          <div class="title-row"><div class="title-left">${escapeHtml(exp.title)}${exp.organization ? ` - ${escapeHtml(exp.organization)}` : ""}</div><div class="title-right">${escapeHtml(exp.dates || "")}</div></div>
+          <ul>${exp.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>
+        </div>`
+      )
+      .join("")
+  )}
+  ${section(
+    "Key Projects",
+    resume.projects
+      .map((project) => {
+        const link = project.link ? `<a href="${escapeHtml(resumeLinkHref(project.link))}" target="_blank" rel="noreferrer">${escapeHtml(project.link)}</a>` : "";
+        return `<div class="item">
+          <div class="title-row"><div class="title-left">${escapeHtml(project.name)}</div><div class="title-right">${link}</div></div>
+          ${project.tech ? `<p class="accent project-tech">${escapeHtml(project.tech)}</p>` : ""}
+          <ul>${project.bullets.map((bullet) => `<li>${escapeHtml(bullet)}</li>`).join("")}</ul>
+        </div>`;
+      })
+      .join("")
+  )}
+  ${section(
+    "Education & Certifications",
+    resume.education
+      .map(
+        (edu) => `<div class="item">
+          <div class="title-row"><div class="title-left education-title">${escapeHtml(edu.degree)}, ${escapeHtml(edu.school)}</div><div class="title-right">${escapeHtml(edu.dates || "")}</div></div>
+          ${edu.details ? `<p class="education-detail"><strong class="education-label">Relevant coursework:</strong> ${escapeHtml(edu.details.replace(/^Relevant coursework:\s*/i, ""))}</p>` : ""}
+        </div>`
+      )
+      .join("") +
+    resume.certifications.map((cert) => `<p><strong>Certification:</strong> ${escapeHtml(cert)}</p>`).join("") +
+    resume.achievements.map((achievement) => `<p><strong>Achievement:</strong> ${escapeHtml(achievement)}</p>`).join(""),
+    "education-section"
+  )}
+</body>
+</html>`;
+}
+
+function ResumePreview({
+  resume,
+  editable,
+  previewRef,
+}: {
+  resume: GeneratedResume;
+  editable: boolean;
+  previewRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div
+      ref={previewRef}
+      className={cn(
+        "editable-resume mx-auto min-h-[920px] w-full max-w-[794px] rounded-xl bg-white p-8 font-sans text-[#1e293b] shadow-2xl outline-none",
+        editable && "ring-2 ring-amber-400 ring-offset-4 ring-offset-slate-950"
+      )}
+      contentEditable={editable}
+      suppressContentEditableWarning
+      spellCheck={false}
+    >
+      <header>
+        <h1 className="m-0 text-[30px] font-extrabold uppercase leading-none tracking-normal text-[#0f172a]">{resume.contact.fullName}</h1>
+        <p className="headline mt-1 text-[15px] font-bold text-blue-600">{resume.headline}</p>
+        <p className="contact mt-2 border-b-2 border-red-500 pb-2 text-[12px] text-[#475569]">
+          {[resume.contact.email, resume.contact.phone, resume.contact.location].filter(Boolean).join(" | ")}
+          {splitLinks(resume.contact.links).map((link) => (
+            <span key={link}>
+              {" | "}
+              <a href={resumeLinkHref(link)} target="_blank" rel="noreferrer" className="text-blue-600">
+                {link}
+              </a>
+            </span>
+          ))}
+        </p>
+      </header>
+
+      <section className="mt-4">
+        <h2 className="border-b border-slate-200 pb-1 text-[17px] font-bold uppercase tracking-normal text-[#0f172a]">Professional Summary</h2>
+        <p className="summary mt-2 text-[14px] leading-relaxed">{resume.summary}</p>
+      </section>
+
+      <section className="mt-4">
+        <h2 className="border-b border-slate-200 pb-1 text-[17px] font-bold uppercase tracking-normal text-[#0f172a]">Technical Skills</h2>
+        <div className="skills mt-2 flex flex-wrap gap-2">
+          {resume.skills.map((skill) => (
+            <span key={skill} className="skill rounded border border-slate-200 bg-slate-100 px-2 py-1 text-[12px] font-bold">
+              {skill}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {resume.experience.length > 0 && (
+        <section className="mt-4">
+          <h2 className="border-b border-slate-200 pb-1 text-[17px] font-bold uppercase tracking-normal text-[#0f172a]">Professional Experience</h2>
+          {resume.experience.map((exp, index) => (
+            <div key={`${exp.title}-${index}`} className="item mt-2">
+              <div className="row flex justify-between gap-3 text-[14px] font-bold text-[#0f172a]">
+                <span className="row-left">{exp.title}{exp.organization ? ` - ${exp.organization}` : ""}</span>
+                <span className="row-right shrink-0 font-normal text-[#64748b]">{exp.dates}</span>
+              </div>
+              <ul className="mt-1 list-disc pl-5 text-[13px] leading-relaxed text-[#1e293b]">
+                {exp.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {resume.projects.length > 0 && (
+        <section className="mt-4">
+          <h2 className="border-b border-slate-200 pb-1 text-[17px] font-bold uppercase tracking-normal text-[#0f172a]">Key Projects</h2>
+          {resume.projects.map((project, index) => (
+            <div key={`${project.name}-${index}`} className="item mt-2">
+              <div className="row flex justify-between gap-3 text-[14px] font-bold text-[#0f172a]">
+                <span className="row-left">{project.name}</span>
+                {project.link && (
+                  <a href={resumeLinkHref(project.link)} target="_blank" rel="noreferrer" className="row-right shrink-0 font-normal text-blue-600">
+                    {project.link}
+                  </a>
+                )}
+              </div>
+              {project.tech && <p className="accent project-tech mt-0.5 mb-0.5 text-[13px] font-bold leading-tight text-blue-600">{project.tech}</p>}
+              <ul className="mt-0.5 list-disc pl-5 text-[13px] leading-relaxed text-[#1e293b]">
+                {project.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+
+      <section className="education-section mt-4">
+        <h2 className="border-b border-slate-200 pb-1 text-[15px] font-bold uppercase tracking-normal text-[#0f172a]">Education & Certifications</h2>
+        {resume.education.map((edu, index) => (
+          <div key={`${edu.school}-${index}`} className="item mt-2">
+            <div className="row flex justify-between gap-3 text-[14px] font-bold text-[#0f172a]">
+              <span className="row-left education-title text-[14px] leading-tight text-[#0f172a]">{edu.degree}, {edu.school}</span>
+              <span className="row-right shrink-0 font-normal text-[#64748b]">{edu.dates}</span>
+            </div>
+            {edu.details && <p className="education-detail mt-0.5 text-[12px] leading-snug text-[#1e293b]"><strong className="education-label font-bold text-[#0f172a]/70">Relevant coursework:</strong> {edu.details.replace(/^Relevant coursework:\s*/i, "")}</p>}
+          </div>
+        ))}
+        {resume.certifications.map((cert) => <p key={cert} className="mt-1 text-[13px]"><strong>Certification:</strong> {cert}</p>)}
+        {resume.achievements.map((achievement) => <p key={achievement} className="mt-1 text-[13px]"><strong>Achievement:</strong> {achievement}</p>)}
+      </section>
+    </div>
+  );
+}
+
+function ResumeMakerPanel() {
+  const [formData, setFormData] = useState<ResumeMakerInput>(RESUME_SAMPLE);
+  const [resume, setResume] = useState<GeneratedResume | null>(null);
+  const [editedResumeHtml, setEditedResumeHtml] = useState<string | null>(null);
+  const [isEditingPreview, setIsEditingPreview] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [includeExperience, setIncludeExperience] = useState(false);
+  const resumePreviewRef = useRef<HTMLDivElement | null>(null);
+
+  const canSubmit = formData.fullName.trim() && formData.targetRole.trim() && formData.skills.trim();
+
+  const updateProject = (index: number, patch: Partial<ResumeMakerInput["projects"][number]>) => {
+    const projects = [...formData.projects];
+    projects[index] = { ...projects[index], ...patch };
+    setFormData({ ...formData, projects });
+  };
+
+  const updateExperience = (index: number, patch: Partial<ResumeMakerInput["experience"][number]>) => {
+    const experience = [...formData.experience];
+    experience[index] = { ...experience[index], ...patch };
+    setFormData({ ...formData, experience });
+  };
+
+  const handleGenerate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setIsGenerating(true);
+    try {
+      const payload: ResumeMakerInput = {
+        ...formData,
+        experience: includeExperience ? formData.experience.filter((item) => item.role.trim() && item.details.trim()) : [],
+        projects: formData.projects.filter((item) => item.name.trim() && item.details.trim()),
+      };
+      const data = await apiFetch<{ resume: GeneratedResume }>("/api/ai/resume-maker", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      setResume(data.resume);
+      setEditedResumeHtml(null);
+      setIsEditingPreview(false);
+      toast.success("AI resume generated");
+    } catch (error) {
+      handleError(error, "Could not generate resume");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const downloadTxt = () => {
+    if (!resume) return;
+    const text = resumePreviewRef.current?.innerText?.trim() || buildResumeText(resume);
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = `${resume.contact.fullName.replace(/[^a-z0-9]+/gi, "_")}_Resume.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPdf = async () => {
+    if (!resume) return;
+    setIsDownloading(true);
+    try {
+      const currentPreviewHtml = resumePreviewRef.current?.outerHTML;
+      const printableHtml = currentPreviewHtml
+        ? buildEditedResumeHtml(currentPreviewHtml)
+        : editedResumeHtml || buildResumeHtml(resume);
+      const response = await fetch("/api/ai/resume-maker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "pdf",
+          html: printableHtml,
+          fileName: `${resume.contact.fullName.replace(/[^a-z0-9]+/gi, "_")}_Resume`,
+        }),
+      });
+      if (!response.ok) throw new Error("Could not render PDF");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = window.document.createElement("a");
+      link.href = url;
+      link.download = `${resume.contact.fullName.replace(/[^a-z0-9]+/gi, "_")}_Resume.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Resume PDF downloaded");
+    } catch (error) {
+      handleError(error, "Could not download PDF");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const startEditingPreview = () => {
+    if (!resume) return;
+    setIsEditingPreview(true);
+    requestAnimationFrame(() => resumePreviewRef.current?.focus());
+  };
+
+  const finishEditingPreview = () => {
+    if (!resumePreviewRef.current) return;
+    setEditedResumeHtml(buildEditedResumeHtml(resumePreviewRef.current.outerHTML));
+    setIsEditingPreview(false);
+    toast.success("Resume edits saved for download");
+  };
+
+  const copyResume = async () => {
+    if (!resume) return;
+    const text = resumePreviewRef.current?.innerText?.trim() || buildResumeText(resume);
+    await navigator.clipboard.writeText(text);
+    toast.success("Resume copied");
+  };
+
+  return (
+    <div className="grid h-auto min-h-full w-full grid-cols-1 gap-4 overflow-visible lg:h-full lg:min-h-0 lg:grid-cols-[1.05fr_.95fr] lg:overflow-hidden">
+      <form
+        onSubmit={handleGenerate}
+        className="overflow-visible rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-2xl scrollbar-thin scrollbar-thumb-indigo-500/70 scrollbar-track-transparent sm:p-5 lg:min-h-0 lg:overflow-y-auto"
+      >
+        <div className="mb-5 space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-[11px] font-extrabold uppercase text-amber-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            Sparks AI Resume Builder
+          </div>
+          <h2 className="text-2xl font-extrabold leading-tight text-white sm:text-3xl">Build an honest ATS resume</h2>
+          <p className="text-sm leading-relaxed text-slate-400">Add real facts in the fields. AI turns them into clean, recruiter-ready bullets.</p>
+          <Button type="button" variant="outline" onClick={() => setFormData(RESUME_SAMPLE)} className="mt-2 rounded-xl border-white/15 bg-white/5 text-slate-100">
+            <RotateCcw className="mr-2 h-4 w-4 text-amber-300" />
+            Load Sample
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            ["Full Name", "fullName"],
+            ["Target Role", "targetRole"],
+            ["Email", "email"],
+            ["Phone", "phone"],
+            ["Location", "location"],
+            ["Links", "links"],
+          ].map(([label, key]) => (
+            <label key={key} className="space-y-1 text-xs font-bold text-slate-400">
+              <span>{label}</span>
+              <input
+                value={String(formData[key as keyof ResumeMakerInput] || "")}
+                onChange={(event) => setFormData({ ...formData, [key]: event.target.value })}
+                className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 outline-none focus:border-amber-400/70"
+              />
+            </label>
+          ))}
+          <label className="space-y-1 text-xs font-bold text-slate-400 sm:col-span-2">
+            <span>Resume Style</span>
+            <select
+              value={formData.tone}
+              onChange={(event) => setFormData({ ...formData, tone: event.target.value as ResumeMakerInput["tone"] })}
+              className="h-11 w-full rounded-xl border border-white/10 bg-slate-900 px-3 text-sm font-semibold text-slate-100 outline-none focus:border-amber-400/70"
+            >
+              <option value="ats">ATS-friendly</option>
+              <option value="fresher">Fresher</option>
+              <option value="internship">Internship</option>
+              <option value="professional">Professional</option>
+            </select>
+          </label>
+        </div>
+
+        <h3 className="mt-5 text-sm font-extrabold uppercase text-amber-300">Education</h3>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            ["College / School", "school"],
+            ["Degree / Course", "degree"],
+            ["Dates", "dates"],
+            ["Details", "details"],
+          ].map(([label, key]) => (
+            <label key={key} className="space-y-1 text-xs font-bold text-slate-400">
+              <span>{label}</span>
+              <input
+                value={String(formData.education[0]?.[key as keyof ResumeMakerInput["education"][number]] || "")}
+                onChange={(event) => {
+                  const education = [...formData.education];
+                  education[0] = { ...education[0], [key]: event.target.value };
+                  setFormData({ ...formData, education });
+                }}
+                className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 outline-none focus:border-amber-400/70"
+              />
+            </label>
+          ))}
+        </div>
+
+        <h3 className="mt-5 text-sm font-extrabold uppercase text-amber-300">Projects</h3>
+        <div className="mt-3 space-y-3">
+          {formData.projects.map((project, index) => (
+            <div key={index} className="rounded-xl border border-white/10 bg-black/15 p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300">Project #{index + 1}</span>
+                {formData.projects.length > 1 && (
+                  <button type="button" onClick={() => setFormData({ ...formData, projects: formData.projects.filter((_, i) => i !== index) })} className="text-slate-400 hover:text-red-300">
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input value={project.name} onChange={(e) => updateProject(index, { name: e.target.value })} placeholder="Project Name" className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-100 outline-none" />
+                <input value={project.tech || ""} onChange={(e) => updateProject(index, { tech: e.target.value })} placeholder="Tech Stack" className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-100 outline-none" />
+                <input value={project.link || ""} onChange={(e) => updateProject(index, { link: e.target.value })} placeholder="Project Link / GitHub URL" className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-100 outline-none sm:col-span-2" />
+                <textarea value={project.details} onChange={(e) => updateProject(index, { details: e.target.value })} placeholder="Project details and impact" className="min-h-20 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none sm:col-span-2" />
+              </div>
+            </div>
+          ))}
+          <Button type="button" variant="outline" onClick={() => setFormData({ ...formData, projects: [...formData.projects, emptyProject()] })} className="rounded-xl border-white/15 bg-white/5 text-slate-100">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Another Project
+          </Button>
+        </div>
+
+        <div className="mt-5 flex items-center justify-between">
+          <h3 className="text-sm font-extrabold uppercase text-amber-300">Work Experience</h3>
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-300">
+            <input type="checkbox" checked={includeExperience} onChange={(e) => setIncludeExperience(e.target.checked)} />
+            Include experience
+          </label>
+        </div>
+        {includeExperience && (
+          <div className="mt-3 space-y-3">
+            {(formData.experience.length ? formData.experience : [emptyExperience()]).map((exp, index) => (
+              <div key={index} className="rounded-xl border border-white/10 bg-black/15 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-300">Experience #{index + 1}</span>
+                  {formData.experience.length > 1 && (
+                    <button type="button" onClick={() => setFormData({ ...formData, experience: formData.experience.filter((_, i) => i !== index) })} className="text-slate-400 hover:text-red-300">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <input value={exp.role} onChange={(e) => updateExperience(index, { role: e.target.value })} placeholder="Role" className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-100 outline-none" />
+                  <input value={exp.organization || ""} onChange={(e) => updateExperience(index, { organization: e.target.value })} placeholder="Organization" className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-100 outline-none" />
+                  <input value={exp.dates || ""} onChange={(e) => updateExperience(index, { dates: e.target.value })} placeholder="Dates" className="h-10 rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-slate-100 outline-none sm:col-span-2" />
+                  <textarea value={exp.details} onChange={(e) => updateExperience(index, { details: e.target.value })} placeholder="Responsibility, impact, tools used" className="min-h-20 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none sm:col-span-2" />
+                </div>
+              </div>
+            ))}
+            <Button type="button" variant="outline" onClick={() => setFormData({ ...formData, experience: [...formData.experience, emptyExperience()] })} className="rounded-xl border-white/15 bg-white/5 text-slate-100">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Experience
+            </Button>
+          </div>
+        )}
+
+        <div className="mt-5 space-y-3">
+          <label className="block space-y-1 text-xs font-bold text-slate-400">
+            <span>Skills</span>
+            <textarea value={formData.skills} onChange={(e) => setFormData({ ...formData, skills: e.target.value })} className="min-h-20 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none" />
+          </label>
+          <label className="block space-y-1 text-xs font-bold text-slate-400">
+            <span>Certifications</span>
+            <textarea value={formData.certifications || ""} onChange={(e) => setFormData({ ...formData, certifications: e.target.value })} placeholder="Google Cloud Digital Leader, freeCodeCamp Responsive Web Design" className="min-h-16 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none" />
+          </label>
+          <label className="block space-y-1 text-xs font-bold text-slate-400">
+            <span>Achievements</span>
+            <textarea value={formData.achievements || ""} onChange={(e) => setFormData({ ...formData, achievements: e.target.value })} placeholder="Hackathon wins, open source, awards" className="min-h-16 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 outline-none" />
+          </label>
+        </div>
+
+        <Button type="submit" disabled={!canSubmit || isGenerating} className="mt-5 w-full rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 font-bold text-white">
+          {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+          Generate AI Resume
+        </Button>
+      </form>
+
+      <div className="flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-2xl sm:p-5 lg:min-h-0">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-2xl font-extrabold leading-tight text-white sm:text-3xl">Resume Preview</h2>
+            <p className="text-sm leading-relaxed text-slate-400">Copy, download, or edit directly after checking the output.</p>
+          </div>
+          <div className="flex w-full gap-2 overflow-x-auto scrollbar-none sm:w-auto">
+            {resume && (
+              isEditingPreview ? (
+                <Button type="button" onClick={finishEditingPreview} className="shrink-0 rounded-xl bg-amber-600 text-white hover:bg-amber-500">
+                  <Check className="mr-2 h-4 w-4" />
+                  Done
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" onClick={startEditingPreview} className="shrink-0 rounded-xl border-amber-400/40 bg-amber-400/10 text-amber-200 hover:bg-amber-400/20">
+                  Edit
+                </Button>
+              )
+            )}
+            <Button type="button" variant="outline" disabled={!resume || isEditingPreview} onClick={copyResume} className="shrink-0 rounded-xl border-white/15 bg-white/5 text-slate-100">
+              Copy
+            </Button>
+            <Button type="button" variant="outline" disabled={!resume || isEditingPreview} onClick={downloadTxt} className="shrink-0 rounded-xl border-white/15 bg-white/5 text-slate-100">
+              <Download className="mr-2 h-4 w-4" />
+              TXT
+            </Button>
+            <Button type="button" variant="outline" disabled={!resume || isDownloading || isEditingPreview} onClick={downloadPdf} className="shrink-0 rounded-xl border-white/15 bg-white/5 text-slate-100">
+              {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              PDF
+            </Button>
+          </div>
+        </div>
+
+        <div className="min-h-[300px] flex-1 overflow-y-auto rounded-2xl border border-amber-500/25 bg-black/15 p-3 scrollbar-thin scrollbar-thumb-indigo-500/70 scrollbar-track-transparent sm:min-h-[420px] sm:p-4 lg:min-h-0">
+          {resume ? (
+            <ResumePreview resume={resume} editable={isEditingPreview} previewRef={resumePreviewRef} />
+          ) : (
+            <div className="flex h-full min-h-[270px] flex-col items-center justify-center px-4 text-center sm:min-h-[420px]">
+              <FileText className="mb-4 h-12 w-12 text-amber-300 sm:h-14 sm:w-14" />
+              <h3 className="text-lg font-extrabold text-white sm:text-xl">Resume preview appears here</h3>
+              <p className="mt-2 max-w-md text-sm text-slate-400">
+                Generate an honest, ATS-friendly resume from your real education, skills, experience, and projects.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -2139,7 +2944,7 @@ export function StudySearchPage() {
     }
   };
 
-  const [quizCount, setQuizCount] = useState<5 | 10>(5);
+  const [quizCount, setQuizCount] = useState<QuizCount>(5);
 
   const generateQuiz = async () => {
     if (!document) return;
@@ -2296,10 +3101,9 @@ export function StudySearchPage() {
                       <span>Sparks AI Workspace Hub</span>
                     </div>
                     <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl">
-                      Launch any of the 3 dedicated AI tools below to generate quizzes, ask grounded doubts, or format notes into PDFs.
+                      Launch AI tools to generate quizzes, ask grounded doubts, format notes into PDFs, or build an ATS resume.
                     </p>
                   </div>
-
                 </div>
 
                 {/* Stat Widgets */}
@@ -2351,6 +3155,7 @@ export function StudySearchPage() {
                       </p>
                     </div>
                   </div>
+
                 </div>
               </div>
             </StaggerItem>
@@ -2363,7 +3168,7 @@ export function StudySearchPage() {
                   Select AI Feature to Launch
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   {/* Card 1: Exam Mode */}
                   <div
                     onClick={() => handleOpenTool("quiz")}
@@ -2474,6 +3279,43 @@ export function StudySearchPage() {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Card 4: AI Resume Maker */}
+                  <div
+                    onClick={() => handleOpenTool("resume")}
+                    className="group relative cursor-pointer overflow-hidden rounded-3xl border border-amber-500/30 bg-background/80 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-amber-400 hover:shadow-2xl hover:shadow-amber-500/20 flex flex-col justify-between"
+                  >
+                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-amber-500/10 blur-2xl group-hover:bg-amber-500/20 transition-all" />
+
+                    <div className="space-y-4 relative z-10">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-500/25">
+                        <FileText className="h-6 w-6" />
+                      </div>
+
+                      <div>
+                        <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">Feature #4</span>
+                        <h3 className="text-lg font-bold text-foreground group-hover:text-amber-400 transition-colors">
+                          AI Resume Maker
+                        </h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                          Generate honest ATS resumes with editable previews, project links, work experience, and PDF downloads.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 relative z-10">
+                      <Button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenTool("resume");
+                        }}
+                        className="w-full rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 text-xs font-bold text-white shadow-md transition-all group-hover:brightness-110"
+                      >
+                        Launch Resume Maker →
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </StaggerItem>
@@ -2498,7 +3340,12 @@ export function StudySearchPage() {
                   </div>
                 )}
 
-                <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col space-y-4 h-full items-center">
+                <div
+                  className={cn(
+                    "mx-auto flex w-full max-w-7xl flex-1 flex-col items-center space-y-4",
+                    activeTool === "resume" ? "h-auto min-h-full" : "h-full"
+                  )}
+                >
                   <SubPageHeader
                     activeTool={activeTool}
                     document={document}
@@ -2551,7 +3398,12 @@ export function StudySearchPage() {
                     }}
                   />
 
-                  <div className="flex-1 flex flex-col items-center justify-between min-h-0 h-full w-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "flex flex-1 flex-col items-center justify-between min-h-0 w-full",
+                      activeTool === "resume" ? "h-auto overflow-visible" : "h-full overflow-hidden"
+                    )}
+                  >
                     {activeTool === "quiz" ? (
                       <QuizPanel
                         document={document}
@@ -2571,7 +3423,7 @@ export function StudySearchPage() {
                         onAsk={askDoubt}
                         onUpload={uploadPdf}
                       />
-                    ) : (
+                    ) : activeTool === "textToPdf" ? (
                       <TextToPdfPanel
                         busy={generatingPdf}
                         pdfReady={Boolean(pdfBlobUrl)}
@@ -2579,6 +3431,8 @@ export function StudySearchPage() {
                         onSaveAsPdf={saveAsPdf}
                         onDownload={downloadPdf}
                       />
+                    ) : (
+                      <ResumeMakerPanel />
                     )}
                   </div>
                 </div>

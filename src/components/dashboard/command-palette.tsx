@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAppStore, type AppView } from "@/lib/store";
+import { getRouteForView, navigateToView } from "@/lib/routes";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
@@ -109,10 +110,10 @@ function PaletteInner({ onOpenChange }: { onOpenChange: (open: boolean) => void 
 
   const navigate = useCallback(
     (view: AppView) => {
-      setView(view);
+      navigateToView(view);
       onOpenChange(false);
     },
-    [setView, onOpenChange]
+    [onOpenChange]
   );
 
   const actions = useMemo<CommandAction[]>(
