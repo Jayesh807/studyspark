@@ -23,7 +23,10 @@ const DashboardShell = dynamic(
  * This preserves the existing SPA dashboard architecture while
  * ensuring the public homepage is fully server-rendered.
  */
+import { useRouter } from "next/navigation";
+
 export function DashboardRedirect() {
+  const router = useRouter();
   const { user, handleSessionExpired } = useAuth();
   const authLoading = useAppStore((s) => s.authLoading);
   const setView = useAppStore((s) => s.setView);
@@ -32,9 +35,9 @@ export function DashboardRedirect() {
   useEffect(() => {
     if (!authLoading && user) {
       setView("dashboard");
-      setShowDashboard(true);
+      router.replace("/dashboard");
     }
-  }, [authLoading, user, setView]);
+  }, [authLoading, user, setView, router]);
 
   useEffect(() => {
     if (!showDashboard) return;

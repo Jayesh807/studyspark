@@ -1,3 +1,4 @@
+
 import { buildResumePrompt, extractJsonObject } from "./prompt";
 import {
   generatedResumeSchema,
@@ -113,11 +114,11 @@ async function generateWithGemini(prompt: string) {
       const errorJson = await response.json().catch(() => ({}));
       lastError =
         typeof errorJson === "object" &&
-        errorJson &&
-        "error" in errorJson &&
-        typeof errorJson.error === "object" &&
-        errorJson.error &&
-        "message" in errorJson.error
+          errorJson &&
+          "error" in errorJson &&
+          typeof errorJson.error === "object" &&
+          errorJson.error &&
+          "message" in errorJson.error
           ? String(errorJson.error.message)
           : `HTTP ${response.status}`;
     } catch (error) {
@@ -140,9 +141,9 @@ function normalizeResume(input: ResumeMakerInput, value: GeneratedResume): Gener
   const inputExperienceCount = input.experience.length;
   const inputCertifications = input.certifications
     ? input.certifications
-        .split(/[,\n;]+/)
-        .map((item) => item.trim())
-        .filter(Boolean)
+      .split(/[,\n;]+/)
+      .map((item) => item.trim())
+      .filter(Boolean)
     : [];
 
   return {
@@ -159,9 +160,9 @@ function normalizeResume(input: ResumeMakerInput, value: GeneratedResume): Gener
     experience: inputExperienceCount ? value.experience.slice(0, inputExperienceCount) : [],
     projects: inputProjectCount
       ? value.projects.slice(0, inputProjectCount).map((project, index) => ({
-          ...project,
-          link: project.link || input.projects[index]?.link,
-        }))
+        ...project,
+        link: project.link || input.projects[index]?.link,
+      }))
       : [],
   };
 }

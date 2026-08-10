@@ -7,6 +7,8 @@ const quizItemSchema = z.object({
   options: z.array(z.string().min(1)).length(4),
   answer: z.string().min(1),
   explanation: z.string().min(5),
+  type: z.enum(["single", "numerical", "multiple", "fill_blank", "true_false"]).optional(),
+  answers: z.array(z.string().min(1)).optional(),
 });
 
 const quizResponseSchema = z.object({
@@ -14,6 +16,24 @@ const quizResponseSchema = z.object({
 });
 
 const AI_REQUEST_TIMEOUT_MS = 20_000;
+const SUBJECT_QUESTION_QUALITY_RULES = [
+  "- First understand the chapter/concepts, then create questions.",
+  "- Generate questions about the subject, not about the PDF/document or whether the student read it.",
+  "- Never ask questions like \"Which option best matches the uploaded material?\", \"What does this sentence mean?\", or \"According to the PDF...\".",
+  "- Ignore page numbers, headers, footers, chapter-list text, reprint/copyright lines, standalone figure labels, and broken PDF/OCR text.",
+  "- Do not copy random source sentences directly into questions or options.",
+  "- Every question must test a meaningful concept, fact, formula, experiment, process, relationship, or application from the study material.",
+  "- Use exactly 4 options: A, B, C, D.",
+  "- Wrong options must be realistic and related to the same concept as the correct answer.",
+  "- Use numerical/application questions when the material contains formulas or numerical relationships.",
+  "- Keep questions clear, natural, grammatical, and exam-style.",
+  "- Think: UNDERSTAND MATERIAL -> SELECT IMPORTANT CONCEPT -> CREATE QUESTION -> CREATE PLAUSIBLE OPTIONS -> VERIFY ANSWER.",
+  "- The final quiz should read like it was manually written by an experienced teacher.",
+];
+
+interface GenerateTextOptions {
+  jsonMode?: boolean;
+}
 
 export type StudyQuizErrorCode =
   | "UNREADABLE_CONTEXT"
@@ -73,7 +93,11 @@ async function postOllama<T>(path: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function generateText(prompt: string, maxTokens: number = 2048): Promise<string> {
+async function generateText(
+  prompt: string,
+  maxTokens: number = 2048,
+  options: GenerateTextOptions = {}
+): Promise<string> {
   // 1. Try Groq Cloud API if GROQ_API_KEY is configured
   if (process.env.GROQ_API_KEY) {
     const groqModels = process.env.GROQ_MODEL
@@ -97,6 +121,7 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
             messages: [{ role: "user", content: prompt }],
             temperature: 0.15,
             max_tokens: groqMaxTokens,
+            ...(options.jsonMode ? { response_format: { type: "json_object" } } : {}),
           }),
           signal: aiTimeoutSignal(),
         });
@@ -149,6 +174,7 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
                 generationConfig: {
                   temperature: 0.15,
                   maxOutputTokens: maxTokens,
+                  ...(options.jsonMode ? { responseMimeType: "application/json" } : {}),
                 },
               }),
               signal: aiTimeoutSignal(),
@@ -208,6 +234,7 @@ async function generateText(prompt: string, maxTokens: number = 2048): Promise<s
   const result = await postOllama<{ response: string }>("/api/generate", {
     model: chatModel(),
     stream: false,
+    ...(options.jsonMode ? { format: "json" } : {}),
     options: {
       temperature: 0.15,
       top_p: 0.8,
@@ -266,7 +293,7 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
 
   for (const line of lines) {
     const questionMatch = line.match(
-      /^(?:[-*]\s*)?(?:\*\*)?(?:question\s*)?(\d+)[\).:-]?\s*(?:\*\*)?\s*(.+)/i
+      /^(?:[-*]\s*)?(?:\*\*)?(?:(?:question|q)\s*)?(\d+)[\).:-]?\s*(?:\*\*)?\s*(.+)/i
     );
     if (questionMatch) {
       if (current && (current.options.length === 4 || current.options.length === 2) && current.answer) {
@@ -274,7 +301,7 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
           question: current.question,
           options: current.options,
           answer: current.answer,
-          explanation: "This answer is based on the uploaded PDF.",
+          explanation: "This answer is supported by the study material.",
         });
       }
       current = {
@@ -310,8 +337,11 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
     );
     if (answerLineMatch && current) {
       const answerValue = answerLineMatch[1].trim();
+      const answerLetters = answerValue.match(/[A-D]/gi) ?? [];
       const letterMatch = answerValue.match(/^([A-D])\b/i);
-      if (letterMatch && (current.options.length === 4 || current.options.length === 2)) {
+      if (answerLetters.length > 1) {
+        current.answer = answerValue;
+      } else if (letterMatch && (current.options.length === 4 || current.options.length === 2)) {
         const idx = letterMatch[1].toUpperCase().charCodeAt(0) - 65;
         if (current.options[idx]) current.answer = current.options[idx];
       } else {
@@ -325,7 +355,7 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
       question: current.question,
       options: current.options,
       answer: current.answer,
-      explanation: "This answer is based on the uploaded PDF.",
+      explanation: "This answer is supported by the study material.",
     });
   }
 
@@ -334,13 +364,13 @@ function parseMarkdownQuiz(text: string, questionCount: number): StudyQuizItem[]
 
 function parseAnswerLineQuiz(text: string, questionCount: number): StudyQuizItem[] {
   const blocks = text
-    .split(/(?=^\s*(?:[-*]\s*)?(?:\*\*)?(?:question\s*)?\d+[\).:-]?\s*)/im)
+    .split(/(?=^\s*(?:[-*]\s*)?(?:\*\*)?(?:(?:question|q)\s*)?\d+[\).:-]?\s*)/im)
     .map((block) => block.trim())
     .filter(Boolean);
 
   return blocks.flatMap((block) => {
     const question = block
-      .match(/^\s*(?:[-*]\s*)?(?:\*\*)?(?:question\s*)?\d+[\).:-]?\s*(?:\*\*)?\s*(.+)/im)?.[1]
+      .match(/^\s*(?:[-*]\s*)?(?:\*\*)?(?:(?:question|q)\s*)?\d+[\).:-]?\s*(?:\*\*)?\s*(.+)/im)?.[1]
       ?.trim();
     const options = [...block.matchAll(/^\s*(?:[-*]\s*)?(?:\*\*)?([A-D])[\).:-](?:\*\*)?\s*(.+)$/gim)].map(
       (match) => cleanOption(match[2])
@@ -350,7 +380,7 @@ function parseAnswerLineQuiz(text: string, questionCount: number): StudyQuizItem
       ?.trim();
     const explanation =
       block.match(/^\s*explanation\s*:\s*(.+)$/im)?.[1]?.trim() ??
-      "This answer is based on the uploaded PDF.";
+      "This answer is supported by the study material.";
 
     if (!question || (options.length !== 4 && options.length !== 2) || !answerText) return [];
 
@@ -369,34 +399,93 @@ function isUsableQuizItem(item: StudyQuizItem) {
   const placeholderQuestion =
     /\b(?:standard concept|multiple-choice question|fill-in-the-blank formula|subject concept question|statement with ___ blank|option 1|option 2)\b/i;
   const metaQuestion =
-    /\b(?:primary purpose of the pdf|document about|author of the pdf|formatting is used|pdf document|font descriptor|mediabox|xobject|flatedecode|cidtogidmap)\b/i;
+    /\b(?:primary purpose of the pdf|document about|author of the pdf|formatting is used|pdf document|uploaded material|uploaded pdf|according to (?:the )?pdf|according to (?:the )?document|which option best matches|what does this sentence mean|this sentence|page number|header|footer|chapter-list|chapter list|reprint|figure label|broken pdf|broken ocr|font descriptor|mediabox|xobject|flatedecode|cidtogidmap)\b/i;
 
   if (placeholderQuestion.test(item.question) || metaQuestion.test(item.question)) {
     return false;
   }
 
-  const answerLower = item.answer.toLowerCase();
-  const optionsLower = item.options.map((option) => option.toLowerCase());
+  const options = item.options.map((option) => option.trim()).filter(Boolean);
+  const answerKey = quizTextKey(item.answer);
+  const optionKeys = options.map(quizTextKey);
+  const hasDuplicateOptions =
+    new Set(optionKeys).size !== optionKeys.length ||
+    options.some((option, index) =>
+      options.some(
+        (otherOption, otherIndex) =>
+          otherIndex > index && areOptionTextsEquivalent(option, otherOption)
+      )
+    );
+
+  if (hasDuplicateOptions || options.some(isWeakQuizOption)) {
+    return false;
+  }
 
   const isTrueFalse =
     /true or false|state whether true or false/i.test(item.question) ||
-    (item.options.length === 2 &&
-      optionsLower.includes("true") &&
-      optionsLower.includes("false"));
+    (options.length === 2 &&
+      optionKeys.includes("true") &&
+      optionKeys.includes("false"));
 
   if (isTrueFalse) {
     return (
       item.question.length >= 8 &&
-      (item.options.length === 2 || item.options.length === 4) &&
-      optionsLower.some((opt) => opt === answerLower || answerLower.startsWith(opt))
+      options.length === 2 &&
+      optionKeys.some((optionKey) => optionKey === answerKey || answerKey.startsWith(optionKey))
+    );
+  }
+
+  const answerMatchesOption = optionKeys.some((optionKey) => optionKey === answerKey);
+  const answerKeys = item.answers?.map(quizTextKey).filter(Boolean) ?? [];
+  const uniqueAnswerKeys = Array.from(new Set(answerKeys));
+  const allAnswersMatchOptions = uniqueAnswerKeys.every((answer) =>
+    optionKeys.some((optionKey) => optionKey === answer)
+  );
+
+  if (item.type === "multiple") {
+    return (
+      item.question.length >= 10 &&
+      options.length === 4 &&
+      uniqueAnswerKeys.length >= 2 &&
+      allAnswersMatchOptions
     );
   }
 
   return (
     item.question.length >= 10 &&
-    (item.options.length === 4 || item.options.length === 2) &&
-    new Set(optionsLower).size >= 2 &&
-    optionsLower.some((option) => option === answerLower)
+    options.length === 4 &&
+    answerMatchesOption &&
+    allAnswersMatchOptions
+  );
+}
+
+function isUsableStandardMcqItem(item: StudyQuizItem) {
+  return isUsableQuizItem(item) && item.type === "single" && !item.question.includes("___");
+}
+
+function quizTextKey(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\b(?:a|an|the)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function areOptionTextsEquivalent(first: string, second: string) {
+  const firstKey = quizTextKey(first);
+  const secondKey = quizTextKey(second);
+  if (!firstKey || !secondKey) return false;
+  if (firstKey === secondKey) return true;
+
+  const shorter = firstKey.length <= secondKey.length ? firstKey : secondKey;
+  const longer = firstKey.length > secondKey.length ? firstKey : secondKey;
+  return shorter.length >= 12 && longer.includes(shorter);
+}
+
+function isWeakQuizOption(option: string) {
+  return /\b(?:all of the above|none of the above|both a and b|both b and c|option [1-4]|choice [a-d]|not mentioned in the pdf|cannot be determined from the pdf)\b/i.test(
+    option
   );
 }
 
@@ -408,6 +497,58 @@ function cleanOption(value: string) {
     .replace(/\*\*/g, "")
     .replace(/\s*\(correct\)\s*/i, "")
     .trim();
+}
+
+function optionTextFromUnknown(option: unknown) {
+  if (typeof option === "string") return option;
+  if (!option || typeof option !== "object") return "";
+
+  const optionObject = option as Record<string, unknown>;
+  const text =
+    optionObject.text ??
+    optionObject.label ??
+    optionObject.value ??
+    optionObject.answer ??
+    optionObject.name;
+
+  return typeof text === "string" ? text : "";
+}
+
+function normalizeQuestionType(type: unknown): StudyQuizItem["type"] | undefined {
+  if (typeof type !== "string") return undefined;
+
+  const normalized = type.toLowerCase().replace(/[\s-]+/g, "_");
+  if (normalized === "single" || normalized === "single_correct" || normalized === "mcq") {
+    return "single";
+  }
+  if (normalized === "numerical" || normalized === "application" || normalized === "numerical_mcq") {
+    return "numerical";
+  }
+  if (normalized === "multiple" || normalized === "multiple_correct") {
+    return "multiple";
+  }
+  if (normalized === "fill_blank" || normalized === "fill_in_the_blank" || normalized === "completion") {
+    return "fill_blank";
+  }
+  if (normalized === "true_false" || normalized === "truefalse") {
+    return "true_false";
+  }
+
+  return undefined;
+}
+
+function extractAnswerLetters(value: string) {
+  const cleaned = value
+    .trim()
+    .replace(/\band\b/gi, ",")
+    .replace(/\s+/g, " ");
+
+  if (/^[A-D](?:\s*[,/]\s*[A-D])*\s*$/i.test(cleaned)) {
+    return cleaned.match(/[A-D]/gi)?.map((letter) => letter.toUpperCase()) ?? [];
+  }
+
+  const leadingLetter = cleaned.match(/^([A-D])(?:[\).:-]|\s*$)/i)?.[1];
+  return leadingLetter ? [leadingLetter.toUpperCase()] : [];
 }
 
 function quizItemsFromUnknown(value: unknown): StudyQuizItem[] {
@@ -429,20 +570,29 @@ function quizItemsFromUnknown(value: unknown): StudyQuizItem[] {
   return rawItems.flatMap((rawItem) => {
     const item = rawItem as Record<string, unknown>;
     const question = item.question ?? item.prompt ?? item.q;
+    const rawAnswers =
+      item.answers ??
+      item.correctAnswers ??
+      item.correct_answers ??
+      item.correctOptions ??
+      item.correct_options;
     const answer =
       item.answer ??
       item.correctAnswer ??
       item.correct_answer ??
       item.correctOption ??
       item.correct_option ??
-      item.correct;
+      item.correct ??
+      (Array.isArray(rawAnswers) ? rawAnswers[0] : undefined);
     const explanation = item.explanation ?? item.reason ?? item.why;
     const rawOptions = item.options ?? item.choices;
+    const type = item.type ?? item.questionType ?? item.question_type;
     const options = Array.isArray(rawOptions)
       ? rawOptions
       : rawOptions && typeof rawOptions === "object"
         ? Object.values(rawOptions)
         : [];
+    const normalizedType = normalizeQuestionType(type);
 
     if (typeof question !== "string" || typeof answer !== "string") {
       return [];
@@ -451,12 +601,16 @@ function quizItemsFromUnknown(value: unknown): StudyQuizItem[] {
     return [
       {
         question,
-        options: options.map((option) => String(option)),
+        options: options.map(optionTextFromUnknown),
         answer,
+        type: normalizedType,
+        answers: Array.isArray(rawAnswers)
+          ? rawAnswers.map((answer) => String(answer))
+          : undefined,
         explanation:
           typeof explanation === "string" && explanation.trim()
             ? explanation
-            : "This answer is based on the uploaded PDF.",
+            : "This answer is supported by the study material.",
       },
     ];
   });
@@ -465,10 +619,23 @@ function quizItemsFromUnknown(value: unknown): StudyQuizItem[] {
 function normalizeQuizItem(item: StudyQuizItem): StudyQuizItem {
   const options = item.options.map(cleanOption).filter(Boolean);
   const rawAnswer = cleanOption(item.answer);
-  const answerLetter = item.answer.trim().match(/^[A-D]\b/i)?.[0].toUpperCase();
-  const answerByLetter = answerLetter
-    ? options[answerLetter.charCodeAt(0) - 65]
-    : undefined;
+  const answerLetters = extractAnswerLetters(item.answer);
+  const answerLetter = answerLetters[0];
+  const answerByLetter = answerLetter ? options[answerLetter.charCodeAt(0) - 65] : undefined;
+  const rawAnswers = item.answers?.length ? item.answers : answerLetters.length > 1 ? answerLetters : [item.answer];
+  const answers = rawAnswers
+    .map((value) => {
+      const cleaned = cleanOption(value);
+      const letter = extractAnswerLetters(cleaned)[0];
+      const byLetter = letter ? options[letter.charCodeAt(0) - 65] : undefined;
+      return (
+        byLetter ??
+        options.find((option) => option.toLowerCase() === cleaned.toLowerCase()) ??
+        options.find((option) => cleaned.toLowerCase().includes(option.toLowerCase())) ??
+        cleaned
+      );
+    })
+    .filter(Boolean);
   const answer =
     answerByLetter ??
     options.find((option) => option.toLowerCase() === rawAnswer.toLowerCase()) ??
@@ -484,12 +651,37 @@ function normalizeQuizItem(item: StudyQuizItem): StudyQuizItem {
     .replace(/\s+/g, " ")
     .trim();
 
-  return {
-    question: question.endsWith("?") ? question : `${question}?`,
+  const normalizedItem: StudyQuizItem = {
+    question: /[?.!]$/.test(question) ? question : `${question}?`,
     options,
     answer,
     explanation: item.explanation.trim(),
   };
+
+  // Auto-detect question type if not explicitly set by LLM
+  let questionType = item.type;
+  if (!questionType) {
+    if (
+      /^true or false[:\s]/i.test(question) ||
+      (options.length === 2 &&
+        options.some((o) => /^true$/i.test(o)) &&
+        options.some((o) => /^false$/i.test(o)))
+    ) {
+      questionType = "true_false";
+    } else if (question.includes("___")) {
+      questionType = "fill_blank";
+    } else {
+      questionType = "single";
+    }
+  }
+
+  normalizedItem.type = questionType;
+
+  if ((questionType === "multiple" || answerLetters.length > 1) && answers.length > 0) {
+    normalizedItem.answers = Array.from(new Set(answers));
+  }
+
+  return normalizedItem;
 }
 
 function parseQuizItems(text: string, questionCount: number) {
@@ -513,11 +705,11 @@ function parseQuizItems(text: string, questionCount: number) {
 }
 
 function dedupeQuizItems(items: StudyQuizItem[]) {
-  const seen = new Set<string>();
+  const seenQuestions = new Set<string>();
   return items.filter((item) => {
-    const key = item.question.toLowerCase().replace(/\W+/g, " ").trim();
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
+    const questionKey = quizTextKey(item.question);
+    if (!questionKey || seenQuestions.has(questionKey)) return false;
+    seenQuestions.add(questionKey);
     return true;
   });
 }
@@ -527,7 +719,7 @@ function mergeUniqueQuizItems(
   newItems: StudyQuizItem[],
   limit: number
 ) {
-  return dedupeQuizItems(existingItems.concat(newItems)).slice(0, limit);
+  return dedupeQuizItems(existingItems.concat(newItems).filter(isUsableQuizItem)).slice(0, limit);
 }
 
 function cleanSentence(value: string) {
@@ -585,32 +777,360 @@ function extractFallbackSentences(context: string) {
 function buildFallbackQuiz(context: string, questionCount: number): StudyQuizItem[] {
   const sentences = extractFallbackSentences(context);
   if (sentences.length === 0) return [];
+  const concepts = sentences.map(extractFallbackConcept);
 
-  return sentences.slice(0, questionCount).map((answer) => {
-    return {
-      question: `True or False: ${answer}`,
-      options: ["True", "False"],
-      answer: "True",
-      explanation: `This statement is directly supported by the PDF: ${answer}`,
-    };
-  });
+  return sentences
+    .map((statement, index) => typedFallbackQuestion(statement, "single", index, concepts))
+    .filter(isUsableQuizItem)
+    .slice(0, questionCount);
 }
 
 function questionTypeMix(questionCount: number) {
-  if (questionCount <= 2) {
-    return { mcqCount: questionCount, tfCount: 0, fibCount: 0 };
-  }
-  if (questionCount <= 4) {
-    return { mcqCount: questionCount - 1, tfCount: 1, fibCount: 0 };
-  }
-  if (questionCount === 5) {
-    return { mcqCount: 3, tfCount: 1, fibCount: 1 };
-  }
-  return {
-    mcqCount: Math.max(1, questionCount - 4),
-    tfCount: 2,
-    fibCount: 2,
+  return { mcqCount: questionCount, tfCount: 0, fibCount: 0 };
+}
+
+function premiumQuestionTypeMix(questionCount: 25 | 30) {
+  return questionCount === 25
+    ? { single: 5, numerical: 5, multiple: 5, fill_blank: 5, true_false: 5 }
+    : { single: 5, numerical: 10, multiple: 5, fill_blank: 5, true_false: 5 };
+}
+
+type PremiumBatchType = NonNullable<StudyQuizItem["type"]>;
+
+interface PremiumQuestionBatch {
+  type: PremiumBatchType;
+  jsonType: "single_correct" | "numerical" | "multiple_correct" | "fill_blank" | "true_false";
+  count: number;
+  startId: number;
+}
+
+function premiumQuestionBatches(questionCount: 25 | 30): PremiumQuestionBatch[] {
+  const mix = premiumQuestionTypeMix(questionCount);
+  const batches: PremiumQuestionBatch[] = [];
+  let startId = 1;
+
+  const addBatch = (
+    type: PremiumBatchType,
+    jsonType: PremiumQuestionBatch["jsonType"],
+    count: number
+  ) => {
+    batches.push({ type, jsonType, count, startId });
+    startId += count;
   };
+
+  addBatch("single", "single_correct", mix.single);
+
+  for (let remaining = mix.numerical; remaining > 0; remaining -= 5) {
+    addBatch("numerical", "numerical", Math.min(5, remaining));
+  }
+
+  addBatch("multiple", "multiple_correct", mix.multiple);
+  addBatch("fill_blank", "fill_blank", mix.fill_blank);
+  addBatch("true_false", "true_false", mix.true_false);
+
+  return batches;
+}
+
+function premiumBatchInstructions(batch: PremiumQuestionBatch) {
+  if (batch.type === "single") {
+    return "Create single-correct conceptual MCQs. Prefer application, comparison, cause-effect, reasoning, interpretation, and misconception-based stems. Avoid trivial sentence-copy questions.";
+  }
+  if (batch.type === "numerical") {
+    return "Create JEE Main / NEET style numerical or advanced application MCQs. Use calculations only when the material contains enough mathematical information. If formulas are insufficient, create advanced application-based MCQs from taught concepts. Never invent formulas merely to force a numerical question.";
+  }
+  if (batch.type === "multiple") {
+    return "Create multiple-correct questions. Each question must have 2 or more correct options. Each option must independently test understanding, and correctness must not depend on vague interpretation.";
+  }
+  if (batch.type === "fill_blank") {
+    return "Create fill-in-the-blank completion questions. Each stem must contain one ___ blank and test terminology, formula components, relationships, process steps, important values, or conceptual completion.";
+  }
+  return "Create true/false style concept questions. Each statement must test subject knowledge, not PDF-reading or document metadata.";
+}
+
+function buildPremiumBatchPrompt(
+  context: string,
+  questionCount: 25 | 30,
+  batch: PremiumQuestionBatch,
+  existingQuestions: string[]
+) {
+  const endId = batch.startId + batch.count - 1;
+  const avoidText = existingQuestions.length
+    ? `\nDo not repeat or lightly reword these existing questions:\n${existingQuestions
+      .map((question, index) => `${index + 1}. ${question}`)
+      .join("\n")}`
+    : "";
+
+  return [
+    "ROLE:",
+    "You are an expert JEE Main / NEET / competitive-exam question paper setter.",
+    "",
+    `Generate exactly ${batch.count} questions for one section of a ${questionCount}-question premium exam.`,
+    `Question IDs must run from ${batch.startId} to ${endId}.`,
+    `Every question in this response must use type "${batch.jsonType}".`,
+    "",
+    "ABSOLUTE SOURCE RULE:",
+    "- Read and use the complete available study material below before writing questions.",
+    "- Every question must be directly derived from concepts, facts, formulas, definitions, diagrams, examples, relationships, applications, or reasoning contained in the material.",
+    "- Do not use unrelated external knowledge unless needed to apply a concept explicitly taught in the material.",
+    "- Questions must test the subject itself, not whether the student read the PDF.",
+    "- Never create generic filler stems or meaningless options.",
+    ...SUBJECT_QUESTION_QUALITY_RULES,
+    "",
+    "SECTION REQUIREMENT:",
+    premiumBatchInstructions(batch),
+    "",
+    "QUALITY REQUIREMENTS:",
+    "- Each question must test a meaningful concept and have a clear, non-leading stem.",
+    "- Give every question a different concept focus; do not reuse the same fact with different wording.",
+    "- Distractors must be plausible and tied to the same concept.",
+    "- All options inside a question must be unique after ignoring case, punctuation, and articles like a/an/the.",
+    "- No duplicate option text, empty option text, corrupted symbols, unsupported answers, all-of-the-above, none-of-the-above, or option-label filler.",
+    "- No option may simply be '0' unless zero is a legitimate calculated answer.",
+    "- The correct answer must match the explanation.",
+    "- Do not repeat the same fact across questions.",
+    "- Use a difficulty mix across the whole paper: easy, medium, and hard. Prefer medium unless the concept deserves easy or hard.",
+    "",
+    "STRICT OPTION RULES:",
+    batch.type === "true_false"
+      ? "- Each question must have exactly 2 options: A = True, B = False. correctAnswers must contain exactly one of A or B."
+      : "- Each question must have exactly 4 options with IDs A, B, C, D.",
+    batch.type === "multiple"
+      ? "- correctAnswers must contain at least 2 valid option IDs."
+      : batch.type !== "true_false"
+        ? "- correctAnswers must contain exactly 1 valid option ID."
+        : "",
+    "",
+    "OUTPUT FORMAT:",
+    "Return ONLY valid JSON. No markdown. No commentary. No text before or after JSON.",
+    "{ \"examTitle\": \"string\", \"subject\": \"string\", \"chapter\": \"string\", \"questions\": [ { \"id\": 1, \"type\": \"single_correct|numerical|multiple_correct|fill_blank|true_false\", \"difficulty\": \"easy|medium|hard\", \"topic\": \"string\", \"question\": \"Question text\", \"options\": [ { \"id\": \"A\", \"text\": \"Option A\" }, { \"id\": \"B\", \"text\": \"Option B\" }, { \"id\": \"C\", \"text\": \"Option C\" }, { \"id\": \"D\", \"text\": \"Option D\" } ], \"correctAnswers\": [\"A\"], \"explanation\": \"Clear explanation based on the study material.\" } ] }",
+    avoidText,
+    "",
+    "UPLOADED STUDY MATERIAL:",
+    context,
+  ].join("\n");
+}
+
+async function generatePremiumQuizBatch(
+  context: string,
+  questionCount: 25 | 30,
+  batch: PremiumQuestionBatch,
+  existingQuestions: string[]
+) {
+  const prompt = buildPremiumBatchPrompt(context, questionCount, batch, existingQuestions);
+  const responseText = await generateText(
+    prompt,
+    batch.type === "numerical" ? 4000 : 3200,
+    { jsonMode: true }
+  );
+  const parsedItems = parseQuizItems(responseText, batch.count);
+  const usableItems = dedupeQuizItems(parsedItems)
+    .map((item) => normalizeQuizItem({ ...item, type: batch.type }))
+    .filter(isUsableQuizItem)
+    .filter((item) => item.type === batch.type)
+    .slice(0, batch.count);
+
+  if (usableItems.length < batch.count) {
+    console.warn("[Study Premium Quiz]: AI batch returned too few usable questions", {
+      requested: batch.count,
+      usable: usableItems.length,
+      parsed: parsedItems.length,
+      type: batch.type,
+      responseChars: responseText.length,
+    });
+  }
+
+  return usableItems;
+}
+
+interface FallbackConcept {
+  subject: string;
+  detail: string;
+  statement: string;
+}
+
+function titleCaseTerm(value: string) {
+  return value
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/(^|\s)([a-z])/g, (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
+}
+
+function conciseDetail(value: string) {
+  return cleanSentence(value)
+    .replace(/[?.!]+$/, "")
+    .replace(/\s+/g, " ")
+    .slice(0, 180);
+}
+
+function extractFallbackConcept(statement: string, index: number): FallbackConcept {
+  const cleaned = conciseDetail(statement);
+  const unitMatch = cleaned.match(/(?:si\s+unit|unit)\s+of\s+(.+?)\s+(?:is|=)\s+(.+)/i);
+  if (unitMatch) {
+    return {
+      subject: titleCaseTerm(unitMatch[1]),
+      detail: conciseDetail(unitMatch[2]),
+      statement: cleaned,
+    };
+  }
+
+  const statesMatch = cleaned.match(/^(.{3,80}?)\s+states\s+that\s+(.+)/i);
+  if (statesMatch) {
+    return {
+      subject: titleCaseTerm(statesMatch[1]),
+      detail: conciseDetail(statesMatch[2]),
+      statement: cleaned,
+    };
+  }
+
+  const definitionMatch = cleaned.match(/^(.{3,80}?)\s+(?:is|are|means|refers to|is called|are called)\s+(.+)/i);
+  if (definitionMatch) {
+    return {
+      subject: titleCaseTerm(definitionMatch[1]),
+      detail: conciseDetail(definitionMatch[2]),
+      statement: cleaned,
+    };
+  }
+
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  return {
+    subject: words.slice(0, Math.min(5, words.length)).join(" ") || `Concept ${index + 1}`,
+    detail: cleaned,
+    statement: cleaned,
+  };
+}
+
+function fallbackDistractors(
+  concepts: FallbackConcept[],
+  current: FallbackConcept,
+  index: number
+) {
+  const otherConcepts = concepts.filter(
+    (concept) => concept !== current && concept.detail && concept.detail.length >= 15
+  );
+
+  const poolSize = otherConcepts.length;
+  if (poolSize === 0) return [];
+
+  const offset = (index * 3) % poolSize;
+  const picked: string[] = [];
+
+  for (let i = 0; i < poolSize && picked.length < 3; i++) {
+    const candidate = otherConcepts[(offset + i) % poolSize];
+    if (
+      candidate.detail &&
+      !picked.includes(candidate.detail) &&
+      candidate.detail.toLowerCase() !== current.detail.toLowerCase()
+    ) {
+      picked.push(candidate.detail);
+    }
+  }
+
+  return picked;
+}
+
+function makeOptions(answer: string, distractors: string[], index: number) {
+  const uniqueDistractors = Array.from(
+    new Set(distractors.filter((option) => option && option.toLowerCase() !== answer.toLowerCase()))
+  );
+  const options = [answer, ...uniqueDistractors].slice(0, 4);
+
+  const answerIndex = index % 4;
+  const reordered = options.slice(0, 4);
+  const [correct] = reordered.splice(0, 1);
+  reordered.splice(answerIndex, 0, correct);
+  return reordered;
+}
+
+function fallbackQuestionStem(type: NonNullable<StudyQuizItem["type"]>, subject: string, index: number) {
+  const variants: Record<NonNullable<StudyQuizItem["type"]>, string[]> = {
+    single: [
+      `Which statement correctly describes ${subject}?`,
+      `Which explanation is most accurate for ${subject}?`,
+      `Which statement shows the correct understanding of ${subject}?`,
+    ],
+    numerical: [
+      `Which option correctly applies or interprets ${subject}?`,
+      `Which conclusion follows from ${subject}?`,
+      `Which option is consistent with the relationship in ${subject}?`,
+    ],
+    multiple: [
+      `Which statements correctly describe ${subject}?`,
+      `Which options are consistent with ${subject}?`,
+      `Which statements follow from ${subject}?`,
+    ],
+    fill_blank: [
+      `${subject} is/means ___.`,
+      `The correct completion for ${subject} is ___.`,
+      `In this chapter, ${subject} is completed by ___.`,
+    ],
+    true_false: [
+      `True or False: `,
+      `State whether true or false: `,
+      `Decide whether the statement is true or false: `,
+    ],
+  };
+
+  const choices = variants[type];
+  return choices[index % choices.length];
+}
+
+function typedFallbackQuestion(
+  statement: string,
+  type: NonNullable<StudyQuizItem["type"]> = "single",
+  index = 0,
+  concepts: FallbackConcept[] = []
+): StudyQuizItem {
+  const concept = extractFallbackConcept(statement, index);
+  const distractors = fallbackDistractors(concepts, concept, index);
+  const options = makeOptions(concept.detail, distractors, index);
+  const subject = concept.subject || `concept ${index + 1}`;
+
+  return {
+    type: "single",
+    question: fallbackQuestionStem("single", subject, index),
+    options,
+    answer: concept.detail,
+    explanation: `The answer follows from the source concept: ${concept.statement}.`,
+  };
+}
+
+function buildPremiumFallbackQuiz(
+  context: string,
+  questionCount: 25 | 30
+): StudyQuizItem[] {
+  const sentences = extractFallbackSentences(context);
+  const fallbackStatement =
+    cleanSentence(context).slice(0, 220) ||
+    "The uploaded chapter contains readable study material for practice";
+  const sourceStatements = sentences.length ? sentences : [fallbackStatement];
+  const concepts = sourceStatements.map(extractFallbackConcept);
+  const mix = premiumQuestionTypeMix(questionCount);
+  const questions: StudyQuizItem[] = [];
+
+  const quotas: Array<[NonNullable<StudyQuizItem["type"]>, number]> = [
+    ["single", mix.single],
+    ["numerical", mix.numerical],
+    ["multiple", mix.multiple],
+    ["fill_blank", mix.fill_blank],
+    ["true_false", mix.true_false],
+  ];
+
+  for (const [type, quota] of quotas) {
+    let typeQuestions: StudyQuizItem[] = [];
+    let variantOffset = 0;
+
+    while (typeQuestions.length < quota && variantOffset < questionCount * 6) {
+      const index = questions.length + typeQuestions.length + variantOffset;
+      const statement = sourceStatements[(index + variantOffset) % sourceStatements.length];
+      const nextQuestion = typedFallbackQuestion(statement, type, index, concepts);
+      typeQuestions = mergeUniqueQuizItems(typeQuestions, [nextQuestion], quota);
+      variantOffset += 1;
+    }
+
+    questions.push(...typeQuestions);
+  }
+
+  return questions.slice(0, questionCount);
 }
 
 function buildSimpleVector(text: string, dimensions = 128): number[] {
@@ -707,39 +1227,54 @@ async function generateQuizBatch(
     ? `\nDo not repeat: ${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join("; ")}`
     : "";
 
-  const { mcqCount, tfCount, fibCount } = questionTypeMix(questionCount);
-
-  const markdownPrompt = [
+  const jsonPrompt = [
     `You are an expert exam question generator for high school and university students.`,
-    `Create exactly ${questionCount} high-quality, subject-specific practice questions based ONLY on the core concepts, laws, definitions, and equations in the material below.`,
+    `Create exactly ${questionCount} high-quality Single-Correct Multiple-Choice Questions (MCQs) based ONLY on the core concepts, laws, definitions, and equations in the material below.`,
     `STRICT RULES:`,
+    `- EVERY SINGLE question MUST be a Single-Correct MCQ with EXACTLY 4 distinct, complete, unique options (A, B, C, D).`,
+    `- DO NOT generate True/False questions. DO NOT generate fill-in-the-blank questions.`,
     `- DO NOT ask meta-questions like "What is the primary purpose of the PDF document?", "What is the document about?", "Who is the author?", or "What formatting is used?".`,
     `- Ask ONLY deep, subject-matter questions testing actual scientific/academic concepts in the text (e.g. "What is centripetal acceleration?", "What is the formula for maximum height in projectile motion?").`,
-    `- Never use the category names below as question text. They describe the mix only.`,
-    `- Ensure all options (A, B, C, D) are realistic, relevant, and test real knowledge.`,
-    ``,
-    `QUESTION TYPES REQUIRED (Mix of 3 types):`,
-    `- ${mcqCount} Standard Concept Multiple-Choice Questions (4 options: A, B, C, D).`,
-    `- ${tfCount} True/False Conceptual Questions (Prefix question with "True or False:", 2 options: A. True, B. False).`,
-    `- ${fibCount} Fill-in-the-Blank Formula/Definition Questions (Statement containing "___" with 4 options for the missing term).`,
-    "",
-    "Format each question exactly like this, replacing the bracketed text with a real question from the material:",
-    "",
-    "1. [Subject Concept Question]?",
-    "A. Option 1",
-    "B. Option 2",
-    "C. Option 3",
-    "D. Option 4",
-    "Answer: A",
-    "Explanation: short explanation derived from course material",
+    ...SUBJECT_QUESTION_QUALITY_RULES,
+    `- Each question must cover a different concept, formula, definition, relationship, or application from the material.`,
+    `- Avoid shallow sentence-copy questions; prefer application, comparison, cause-effect, misconception, formula-meaning, and reasoning questions.`,
+    `- Ensure all 4 options (A, B, C, D) are completely unique after ignoring case, punctuation, and articles like a/an/the.`,
+    `- Distractors must be realistic, relevant to the same concept, and must not use all-of-the-above, none-of-the-above, option labels, or unsupported filler.`,
+    `- The answer must exactly match one option string, and the explanation must justify why that option is correct from the material.`,
+    `- Before final JSON, silently verify that there are no repeated questions, no duplicate options, and no vague PDF/document metadata questions.`,
     avoidText,
+    "",
+    "OUTPUT FORMAT (STRICT JSON ONLY):",
+    `{`,
+    `  "questions": [`,
+    `    {`,
+    `      "question": "What is the primary function of...?",`,
+    `      "options": ["First concept option text", "Second concept option text", "Third concept option text", "Fourth concept option text"],`,
+    `      "answer": "First concept option text",`,
+    `      "explanation": "Clear, detailed academic explanation derived from course material.",`,
+    `      "type": "single",`,
+    `      "category": "Concept Name"`,
+    `    }`,
+    `  ]`,
+    `}`,
     "",
     "Course Material:",
     context,
   ].join("\n");
 
-  const responseText = await generateText(markdownPrompt, 2500);
-  return dedupeQuizItems(parseQuizItems(responseText, questionCount)).slice(0, questionCount);
+  const responseText = await generateText(jsonPrompt, 4000, { jsonMode: true });
+  try {
+    const jsonParsed = JSON.parse(responseText);
+    const parsedItems = quizItemsFromUnknown(jsonParsed);
+    const normalized = parsedItems.map(normalizeQuizItem).filter(isUsableStandardMcqItem);
+    if (normalized.length > 0) {
+      return mergeUniqueQuizItems([], normalized, questionCount);
+    }
+  } catch {
+    // fallback to markdown parser if JSON fails
+  }
+
+  return dedupeQuizItems(parseQuizItems(responseText, questionCount).filter(isUsableStandardMcqItem)).slice(0, questionCount);
 }
 
 export async function generateGroundedQuiz(
@@ -798,6 +1333,80 @@ export async function generateGroundedQuiz(
     questionCount === 10
       ? `Sparks AI generated ${questions.length || "no"} usable PDF-grounded questions, but 10 were requested. Please try 5 questions or upload a PDF with clearer study text.`
       : `Sparks AI generated ${questions.length || "no"} usable PDF-grounded questions. Please upload a PDF with clearer study text or try again.`
+  );
+}
+
+export async function generatePremiumGroundedQuiz(
+  context: string,
+  questionCount: 25 | 30
+): Promise<StudyQuizItem[]> {
+  const contextQuality = getStudyTextQuality(context);
+  if (!contextQuality.looksUseful) {
+    throw new StudyQuizGenerationError(
+      "UNREADABLE_CONTEXT",
+      "The uploaded PDF did not contain enough readable study text for premium quiz generation."
+    );
+  }
+
+  const questions: StudyQuizItem[] = [];
+  let lastError: unknown;
+  try {
+    for (const batch of premiumQuestionBatches(questionCount)) {
+      let batchQuestions: StudyQuizItem[] = [];
+
+      for (let attempt = 0; attempt < 2 && batchQuestions.length < batch.count; attempt += 1) {
+        const remainingBatch = {
+          ...batch,
+          count: batch.count - batchQuestions.length,
+          startId: batch.startId + batchQuestions.length,
+        };
+        const generated = await generatePremiumQuizBatch(
+          context,
+          questionCount,
+          remainingBatch,
+          questions.concat(batchQuestions).map((item) => item.question)
+        );
+        batchQuestions = mergeUniqueQuizItems(batchQuestions, generated, batch.count);
+      }
+
+      if (batchQuestions.length < batch.count) {
+        lastError = new Error(
+          `Only ${batchQuestions.length} usable ${batch.type} questions were generated.`
+        );
+        break;
+      }
+
+      questions.push(...batchQuestions);
+    }
+  } catch (error) {
+    if (
+      error instanceof StudyQuizGenerationError &&
+      error.code === "UNREADABLE_CONTEXT"
+    ) {
+      throw error;
+    }
+    lastError = error;
+    console.warn("[Study Premium Quiz]: AI failed batched premium generation", {
+      requested: questionCount,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  const uniqueQuestions = dedupeQuizItems(questions).slice(0, questionCount);
+
+  if (uniqueQuestions.length >= questionCount) {
+    return uniqueQuestions;
+  }
+
+  console.warn("[Study Premium Quiz]: Batched generation did not produce a complete exam", {
+    requested: questionCount,
+    generated: uniqueQuestions.length,
+    error: lastError instanceof Error ? lastError.message : String(lastError),
+  });
+
+  throw new StudyQuizGenerationError(
+    "AI_OUTPUT_NOT_USABLE",
+    `Sparks AI generated ${uniqueQuestions.length || "no"} usable premium questions, but ${questionCount} were requested. Please try again.`
   );
 }
 
@@ -861,15 +1470,88 @@ export async function formatStudyTextForPdf(
 
     case "summary":
       modeInstructions = [
-        "MODE REQUIREMENT: HIGH-YIELD EXAM REVISION SUMMARY.",
-        "- Read the entire content and generate a structured 4-part High-Yield Chapter Summary & Revision Guide.",
-        "- SECTION 1: # [CHAPTER NAME] — HIGH-YIELD REVISION GUIDE",
-        "- SECTION 2: ## 1. EXECUTIVE SUMMARY & OVERVIEW (Concise 3-4 sentence core plot/concept summary).",
-        "- SECTION 3: ## 2. KEY CONCEPTS & CORE EVENTS (High-yield bullet points of main events, laws, or topics).",
-        "- SECTION 4: ## 3. IMPORTANT TERMS, FORMULAS & CHARACTERS (Use a markdown table | Term/Character | Definition/Role | Significance |).",
-        "- SECTION 5: ## 4. CRITICAL EXAM TAKEAWAYS (Use callout blockquote boxes '> Note: ...' for key takeaways or formulas to memorize)."
+        "MODE REQUIREMENT: HIGH-YIELD PDF SUMMARY & EXAM REVISION GUIDE.",
+        "PRIMARY GOAL:",
+        "- Read and understand the COMPLETE uploaded PDF before generating the summary.",
+        "- Extract only information that is actually present in the PDF.",
+        "- Do NOT invent facts, formulas, examples, characters, dates, definitions, or conclusions.",
+        "- Prioritize important, exam-relevant information over minor details.",
+        "- Keep the language clear, concise, structured, and easy to revise quickly.",
+
+        "CONTENT ADAPTATION:",
+        "- Automatically identify the type of PDF: literature/chapter, science, mathematics, computer science, history, business, theory notes, research material, or another academic subject.",
+        "- Adapt the summary structure intelligently according to the PDF content.",
+        "- If a requested section is not relevant to the PDF, replace it with a more appropriate equivalent instead of forcing irrelevant information.",
+        "- Preserve important terminology, names, formulas, laws, dates, processes, examples, and technical keywords from the source.",
+
+        "OUTPUT STRUCTURE:",
+
+        "# [PDF / CHAPTER / TOPIC NAME] — HIGH-YIELD REVISION GUIDE",
+
+        "## 1. EXECUTIVE SUMMARY & OVERVIEW",
+        "- Write a concise 4-6 sentence overview explaining the central topic, chapter, argument, story, or concept.",
+        "- Mention the most important idea first.",
+        "- Make this section understandable even if the student has not recently read the PDF.",
+
+        "## 2. KEY CONCEPTS, EVENTS & IDEAS",
+        "- Present the most important information as structured bullet points.",
+        "- Use short subheadings when the PDF contains multiple topics.",
+        "- Include important events, concepts, theories, laws, processes, causes, effects, arguments, steps, or developments.",
+        "- Arrange information in logical or chronological order whenever appropriate.",
+        "- Highlight relationships such as cause → effect, problem → solution, and concept → application.",
+
+        "## 3. IMPORTANT TERMS, FORMULAS, CHARACTERS & FACTS",
+        "- Use a markdown table.",
+        "- Use the most suitable first-column label depending on the subject.",
+        "",
+        "| Term / Character / Formula / Concept | Definition / Role | Significance |",
+        "|---|---|---|",
+        "| ... | ... | ... |",
+        "",
+        "- Include only genuinely important entries.",
+        "- For mathematics/science, preserve formulas accurately using readable mathematical notation.",
+        "- For literature, include major characters, themes, places, and important events.",
+        "- For technical subjects, include commands, algorithms, definitions, protocols, components, or terminology when relevant.",
+
+        "## 4. CRITICAL EXAM TAKEAWAYS",
+        "- Extract the points most likely to help in exams, tests, viva, or quick revision.",
+        "- Focus on definitions, differences, formulas, important facts, sequences, reasons, consequences, and frequently testable concepts.",
+        "- Use callout blockquotes for especially important points.",
+        "",
+        "> Note: [Important fact, formula, rule, definition, or concept to remember]",
+        "",
+        "- Add multiple Note callouts when necessary, but avoid repeating earlier content.",
+
+        "QUALITY RULES:",
+        "- Do not copy large paragraphs directly from the PDF; summarize them.",
+        "- Do not omit major topics simply to make the response shorter.",
+        "- Do not repeat the same information across sections unless repetition is necessary for exam emphasis.",
+        "- Prefer precise bullet points over long paragraphs.",
+        "- Preserve numerical values, dates, formulas, names, and technical terminology accurately.",
+        "- Clearly distinguish similar concepts where students may get confused.",
+        "- When the PDF describes a process, present it step-by-step.",
+        "- When comparisons are present, use a compact comparison table.",
+        "- When causes/effects or advantages/disadvantages are important, present them separately.",
+        "- Do not add citations, page numbers, external knowledge, or web information unless specifically requested.",
+
+        "FORMATTING RULES:",
+        "- Use clean Markdown.",
+        "- Use # for the main title and ## for main sections.",
+        "- Use ### only when useful for subtopics.",
+        "- Use **bold** for critical keywords, formulas, dates, names, and concepts.",
+        "- Keep paragraphs short.",
+        "- Maintain proper spacing between headings, bullets, tables, and callouts.",
+        "- Make the final output visually suitable for conversion into a well-formatted PDF.",
+
+        "FINAL CHECK BEFORE RESPONDING:",
+        "- Confirm internally that all major PDF topics were covered.",
+        "- Remove irrelevant or duplicate points.",
+        "- Ensure the summary can be used as a standalone revision guide.",
+        "- Ensure every important fact comes from the uploaded PDF."
+
       ].join("\n");
       break;
+
 
     case "code":
       modeInstructions = [

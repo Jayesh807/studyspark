@@ -63,6 +63,8 @@ interface QuizQuestion {
   options: string[];
   answer: string;
   explanation: string;
+  type?: "single" | "numerical" | "multiple" | "fill_blank" | "true_false";
+  answers?: string[];
 }
 
 interface ChatMessage {
@@ -75,6 +77,37 @@ interface ChatMessage {
 
 type StudyTool = "quiz" | "doubt" | "textToPdf" | "resume";
 type ViewMode = "hub" | "quiz" | "doubt" | "textToPdf" | "resume";
+type QuizCount = 5 | 10;
+
+const ANSWER_SEPARATOR = " || ";
+
+function getQuestionTypeLabel(type?: QuizQuestion["type"]) {
+  if (type === "numerical") return "Numerical MCQ";
+  if (type === "multiple") return "Multiple Correct";
+  if (type === "fill_blank") return "Fill in the Blank";
+  if (type === "true_false") return "True / False";
+  return "Single Correct";
+}
+
+function getCorrectAnswers(question: QuizQuestion) {
+  const answers =
+    question.type === "multiple" && question.answers?.length
+      ? question.answers
+      : question.type === "multiple"
+        ? question.answer.split(/\s*,\s*/)
+        : [question.answer];
+  return answers.map((answer) => answer.trim()).filter(Boolean);
+}
+
+function getSelectedAnswers(value?: string) {
+  return value ? value.split(ANSWER_SEPARATOR).map((answer) => answer.trim()).filter(Boolean) : [];
+}
+
+function isQuizAnswerCorrect(question: QuizQuestion, selected?: string) {
+  const expected = getCorrectAnswers(question).map((answer) => answer.toLowerCase()).sort();
+  const actual = getSelectedAnswers(selected).map((answer) => answer.toLowerCase()).sort();
+  return expected.length === actual.length && expected.every((answer, index) => answer === actual[index]);
+}
 
 function SubPageHeader({
   activeTool,
@@ -90,8 +123,8 @@ function SubPageHeader({
 }: {
   activeTool: StudyTool;
   document: StudyDocument | null;
-  quizCount?: 5 | 10;
-  onCountChange?: (count: 5 | 10) => void;
+  quizCount?: QuizCount;
+  onCountChange?: (count: QuizCount) => void;
   onBack: () => void;
   onSelectTool: (tool: StudyTool) => void;
   uploading?: boolean;
@@ -182,9 +215,9 @@ function SubPageHeader({
       </div>
 
       {/* Bottom row: Mode pills & Right Action Group (5 Qs, 10 Qs, Change PDF, Download Quiz) */}
-      <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2 pt-2 border-t border-white/5 w-full">
+      <div className="flex w-full flex-col items-stretch justify-center gap-2 border-t border-white/5 pt-2 sm:flex-row sm:items-center sm:justify-between">
         {/* Tool selector tabs with Glassmorphism and Sliding Animation */}
-        <div className="flex items-center justify-center gap-1 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner overflow-x-auto scrollbar-none max-w-full mx-auto sm:mx-0">
+        <div className="flex w-full max-w-full items-center justify-start gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 p-1 shadow-inner scrollbar-none sm:w-auto sm:justify-center">
           {(["quiz", "doubt", "textToPdf", "resume"] as const).map((tool) => {
             const isActive = activeTool === tool;
             let label = "";
@@ -214,7 +247,7 @@ function SubPageHeader({
                 key={tool}
                 type="button"
                 onClick={() => onSelectTool(tool)}
-                className="relative flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap focus:outline-none"
+                className="relative flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap focus:outline-none"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 {isActive && (
@@ -249,7 +282,7 @@ function SubPageHeader({
         </div>
 
         {/* Action Group: 5 Qs, 10 Qs, Change PDF, Download Quiz with Glassmorphism */}
-        <div className="flex items-center justify-center gap-1.5 rounded-full bg-white/5 p-1 border border-white/10 shadow-inner text-xs font-semibold shrink-0 mx-auto sm:mx-0 overflow-x-auto max-w-full">
+        <div className="flex w-full max-w-full items-center justify-start gap-1.5 overflow-x-auto rounded-full border border-white/10 bg-white/5 p-1 text-xs font-semibold shadow-inner scrollbar-none sm:w-auto sm:shrink-0 sm:justify-center">
           {/* 5 Qs / 10 Qs buttons with Sliding Animation */}
           {activeTool === "quiz" && onCountChange && quizCount && (
             <>
@@ -259,8 +292,10 @@ function SubPageHeader({
                   <button
                     key={num}
                     type="button"
-                    onClick={() => onCountChange(num)}
-                    className="relative h-8 rounded-full px-3 text-xs transition-all whitespace-nowrap flex items-center justify-center font-semibold focus:outline-none"
+                    onClick={() => {
+                      onCountChange(num);
+                    }}
+                    className="relative flex h-8 shrink-0 items-center justify-center rounded-full px-3 text-xs font-semibold whitespace-nowrap transition-all focus:outline-none"
                     style={{ WebkitTapHighlightColor: "transparent" }}
                   >
                     {isActive && (
@@ -272,7 +307,7 @@ function SubPageHeader({
                     )}
                     <span
                       className={cn(
-                        "z-10 transition-colors",
+                        "z-10 flex items-center gap-1 transition-colors",
                         isActive
                           ? "text-white font-bold"
                           : "text-slate-400 hover:text-slate-200"
@@ -292,7 +327,7 @@ function SubPageHeader({
               type="button"
               disabled={uploading}
               onClick={() => headerFileInputRef.current?.click()}
-              className="h-8 rounded-full px-3 text-xs font-semibold transition-all whitespace-nowrap bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 flex items-center justify-center disabled:opacity-50"
+              className="flex h-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 text-xs font-semibold whitespace-nowrap text-slate-200 transition-all hover:bg-white/10 disabled:opacity-50"
             >
               {uploading ? "Indexing..." : "Change PDF"}
             </button>
@@ -613,11 +648,26 @@ function FullTestModeModal({
   const total = questions.length;
   const answeredCount = Object.keys(selectedAnswers).length;
   const score = questions.reduce(
-    (acc, q, i) => acc + (selectedAnswers[i] === q.answer ? 1 : 0),
+    (acc, q, i) => acc + (isQuizAnswerCorrect(q, selectedAnswers[i]) ? 1 : 0),
     0
   );
   const accuracy = Math.round((score / total) * 100);
   const timeSpentSec = total * 60 - secondsLeft;
+  const typeStats = questions.reduce(
+    (stats, question, index) => {
+      const type = question.type || "single";
+      stats[type] ??= { total: 0, correct: 0 };
+      stats[type].total += 1;
+      if (isQuizAnswerCorrect(question, selectedAnswers[index])) {
+        stats[type].correct += 1;
+      }
+      return stats;
+    },
+    {} as Record<string, { total: number; correct: number }>
+  );
+  const weakTypes = Object.entries(typeStats)
+    .filter(([, stat]) => stat.total > 0 && stat.correct / stat.total < 0.7)
+    .map(([type]) => getQuestionTypeLabel(type as QuizQuestion["type"]));
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -734,7 +784,7 @@ function FullTestModeModal({
               <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-4 sm:p-8 shadow-2xl backdrop-blur-xl space-y-4 sm:space-y-6">
                 <div className="flex items-start justify-between gap-3">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/20 px-3 py-0.5 text-xs font-bold text-indigo-300 ring-1 ring-indigo-500/40">
-                    Question {currentIndex + 1}
+                    {getQuestionTypeLabel(currentItem?.type)}
                   </span>
 
                   <button
@@ -767,14 +817,29 @@ function FullTestModeModal({
                 <div className="grid gap-2.5 sm:grid-cols-2 pt-1 sm:pt-2">
                   {currentItem?.options.map((option, optionIdx) => {
                     const letter = String.fromCharCode(65 + optionIdx);
-                    const isSelected = selectedAnswers[currentIndex] === option;
+                    const isMultiple = currentItem.type === "multiple";
+                    const selectedForQuestion = getSelectedAnswers(selectedAnswers[currentIndex]);
+                    const isSelected = selectedForQuestion.includes(option);
 
                     return (
                       <button
-                        key={option}
+                        key={`${currentIndex}-${optionIdx}-${option}`}
                         type="button"
                         onClick={() =>
                           setSelectedAnswers((prev) => {
+                            if (isMultiple) {
+                              const nextSelected = isSelected
+                                ? selectedForQuestion.filter((selected) => selected !== option)
+                                : [...selectedForQuestion, option];
+                              const updated = { ...prev };
+                              if (nextSelected.length === 0) {
+                                delete updated[currentIndex];
+                              } else {
+                                updated[currentIndex] = nextSelected.join(ANSWER_SEPARATOR);
+                              }
+                              return updated;
+                            }
+
                             if (prev[currentIndex] === option) {
                               const updated = { ...prev };
                               delete updated[currentIndex];
@@ -909,6 +974,33 @@ function FullTestModeModal({
               </div>
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+                <h3 className="mb-3 text-sm font-extrabold uppercase tracking-wider text-slate-200">
+                  Type-wise Score
+                </h3>
+                <div className="space-y-2">
+                  {Object.entries(typeStats).map(([type, stat]) => (
+                    <div key={type} className="flex items-center justify-between rounded-2xl bg-slate-800/70 px-3 py-2 text-xs">
+                      <span className="font-semibold text-slate-300">{getQuestionTypeLabel(type as QuizQuestion["type"])}</span>
+                      <span className="font-extrabold text-cyan-300">{stat.correct}/{stat.total}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+                <h3 className="mb-3 text-sm font-extrabold uppercase tracking-wider text-slate-200">
+                  Suggested Revision Plan
+                </h3>
+                <p className="text-xs leading-relaxed text-slate-400">
+                  {weakTypes.length
+                    ? `Revise ${weakTypes.join(", ")} first, then re-attempt wrong questions and read each explanation carefully.`
+                    : "Strong performance across all question types. Re-attempt flagged questions once for retention."}
+                </p>
+              </div>
+            </div>
+
             {/* Question-by-Question Review List */}
             <div className="space-y-4">
               <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
@@ -918,7 +1010,7 @@ function FullTestModeModal({
 
               {questions.map((item, idx) => {
                 const userAns = selectedAnswers[idx];
-                const isCorrect = userAns === item.answer;
+                const isCorrect = isQuizAnswerCorrect(item, userAns);
 
                 return (
                   <div
@@ -954,12 +1046,12 @@ function FullTestModeModal({
                       <div className="rounded-xl bg-slate-900/80 p-3 border border-slate-800">
                         <span className="text-slate-400 block mb-1">Your Answer:</span>
                         <span className={cn("font-bold", isCorrect ? "text-emerald-400" : "text-rose-400")}>
-                          {userAns ? userAns : "Not Answered"}
+                          {userAns ? getSelectedAnswers(userAns).join(", ") : "Not Answered"}
                         </span>
                       </div>
                       <div className="rounded-xl bg-slate-900/80 p-3 border border-slate-800">
                         <span className="text-slate-400 block mb-1">Correct Answer:</span>
-                        <span className="font-bold text-emerald-400">{item.answer}</span>
+                        <span className="font-bold text-emerald-400">{getCorrectAnswers(item).join(", ")}</span>
                       </div>
                     </div>
 
@@ -1222,8 +1314,8 @@ function QuizPanel({
   document: StudyDocument | null;
   questions: QuizQuestion[];
   busy: boolean;
-  quizCount: 5 | 10;
-  onCountChange: (count: 5 | 10) => void;
+  quizCount: QuizCount;
+  onCountChange: (count: QuizCount) => void;
   onGenerate: () => Promise<void>;
   onUpload?: (file: File) => Promise<void>;
 }) {
@@ -1250,7 +1342,7 @@ function QuizPanel({
 
   const answeredCount = Object.keys(selectedAnswers).length;
   const score = questions.reduce(
-    (total, item, index) => total + (selectedAnswers[index] === item.answer ? 1 : 0),
+    (total, item, index) => total + (isQuizAnswerCorrect(item, selectedAnswers[index]) ? 1 : 0),
     0
   );
 
@@ -1336,7 +1428,7 @@ function QuizPanel({
               <BrainCircuit className="h-7 w-7 sm:h-8 sm:w-8 text-cyan-400 shrink-0" />
             </h3>
             <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
-              Generate {quizCount} interactive multiple-choice questions grounded in your course PDF.
+              Generate {quizCount} interactive questions grounded in your course PDF.
             </p>
           </div>
         </div>
@@ -1360,7 +1452,7 @@ function QuizPanel({
           <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 max-w-full overflow-x-auto scrollbar-none pt-0.5 whitespace-nowrap">
             <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-[15px] bg-cyan-500/10 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-cyan-400 border border-cyan-500/30 shrink-0">
               <BrainCircuit className="h-3.5 w-3.5" />
-              {questions.length === quizCount ? questions.length : quizCount} MCQs
+              {questions.length === quizCount ? questions.length : quizCount} Questions
             </span>
             <span className="inline-flex items-center gap-1 sm:gap-1.5 rounded-[15px] bg-cyan-500/10 px-2.5 sm:px-3.5 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-cyan-400 border border-cyan-500/30 shrink-0">
               <Clock className="h-3.5 w-3.5" />
@@ -1431,7 +1523,7 @@ function QuizPanel({
                 {document
                   ? busy
                     ? "Generating interactive quiz..."
-                    : `Generate ${quizCount} Q MCQ Quiz`
+                    : `Generate ${quizCount} Q Quiz`
                   : "Upload a PDF first to generate quiz"}
               </span>
             </div>
@@ -2193,8 +2285,8 @@ function buildResumeHtml(resume: GeneratedResume) {
         </div>`
       )
       .join("") +
-      resume.certifications.map((cert) => `<p><strong>Certification:</strong> ${escapeHtml(cert)}</p>`).join("") +
-      resume.achievements.map((achievement) => `<p><strong>Achievement:</strong> ${escapeHtml(achievement)}</p>`).join(""),
+    resume.certifications.map((cert) => `<p><strong>Certification:</strong> ${escapeHtml(cert)}</p>`).join("") +
+    resume.achievements.map((achievement) => `<p><strong>Achievement:</strong> ${escapeHtml(achievement)}</p>`).join(""),
     "education-section"
   )}
 </body>
@@ -2425,18 +2517,18 @@ function ResumeMakerPanel() {
   };
 
   return (
-    <div className="grid h-full min-h-0 w-full grid-cols-1 gap-4 overflow-hidden lg:grid-cols-[1.05fr_.95fr]">
+    <div className="grid h-auto min-h-full w-full grid-cols-1 gap-4 overflow-visible lg:h-full lg:min-h-0 lg:grid-cols-[1.05fr_.95fr] lg:overflow-hidden">
       <form
         onSubmit={handleGenerate}
-        className="min-h-0 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-2xl scrollbar-thin scrollbar-thumb-indigo-500/70 scrollbar-track-transparent"
+        className="overflow-visible rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-2xl scrollbar-thin scrollbar-thumb-indigo-500/70 scrollbar-track-transparent sm:p-5 lg:min-h-0 lg:overflow-y-auto"
       >
         <div className="mb-5 space-y-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-[11px] font-extrabold uppercase text-amber-300">
             <Sparkles className="h-3.5 w-3.5" />
             Sparks AI Resume Builder
           </div>
-          <h2 className="text-2xl font-extrabold text-white">Build an honest ATS resume</h2>
-          <p className="text-sm text-slate-400">Add real facts in the fields. AI turns them into clean, recruiter-ready bullets.</p>
+          <h2 className="text-2xl font-extrabold leading-tight text-white sm:text-3xl">Build an honest ATS resume</h2>
+          <p className="text-sm leading-relaxed text-slate-400">Add real facts in the fields. AI turns them into clean, recruiter-ready bullets.</p>
           <Button type="button" variant="outline" onClick={() => setFormData(RESUME_SAMPLE)} className="mt-2 rounded-xl border-white/15 bg-white/5 text-slate-100">
             <RotateCcw className="mr-2 h-4 w-4 text-amber-300" />
             Load Sample
@@ -2580,46 +2672,46 @@ function ResumeMakerPanel() {
         </Button>
       </form>
 
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 shadow-2xl">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-2xl font-extrabold text-white">Resume Preview</h2>
-            <p className="text-sm text-slate-400">Copy, download, or edit directly after checking the output.</p>
+      <div className="flex min-h-[420px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-2xl sm:p-5 lg:min-h-0">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-2xl font-extrabold leading-tight text-white sm:text-3xl">Resume Preview</h2>
+            <p className="text-sm leading-relaxed text-slate-400">Copy, download, or edit directly after checking the output.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex w-full gap-2 overflow-x-auto scrollbar-none sm:w-auto">
             {resume && (
               isEditingPreview ? (
-                <Button type="button" onClick={finishEditingPreview} className="rounded-xl bg-amber-600 text-white hover:bg-amber-500">
+                <Button type="button" onClick={finishEditingPreview} className="shrink-0 rounded-xl bg-amber-600 text-white hover:bg-amber-500">
                   <Check className="mr-2 h-4 w-4" />
                   Done
                 </Button>
               ) : (
-                <Button type="button" variant="outline" onClick={startEditingPreview} className="rounded-xl border-amber-400/40 bg-amber-400/10 text-amber-200 hover:bg-amber-400/20">
+                <Button type="button" variant="outline" onClick={startEditingPreview} className="shrink-0 rounded-xl border-amber-400/40 bg-amber-400/10 text-amber-200 hover:bg-amber-400/20">
                   Edit
                 </Button>
               )
             )}
-            <Button type="button" variant="outline" disabled={!resume || isEditingPreview} onClick={copyResume} className="rounded-xl border-white/15 bg-white/5 text-slate-100">
+            <Button type="button" variant="outline" disabled={!resume || isEditingPreview} onClick={copyResume} className="shrink-0 rounded-xl border-white/15 bg-white/5 text-slate-100">
               Copy
             </Button>
-            <Button type="button" variant="outline" disabled={!resume || isEditingPreview} onClick={downloadTxt} className="rounded-xl border-white/15 bg-white/5 text-slate-100">
+            <Button type="button" variant="outline" disabled={!resume || isEditingPreview} onClick={downloadTxt} className="shrink-0 rounded-xl border-white/15 bg-white/5 text-slate-100">
               <Download className="mr-2 h-4 w-4" />
               TXT
             </Button>
-            <Button type="button" variant="outline" disabled={!resume || isDownloading || isEditingPreview} onClick={downloadPdf} className="rounded-xl border-white/15 bg-white/5 text-slate-100">
+            <Button type="button" variant="outline" disabled={!resume || isDownloading || isEditingPreview} onClick={downloadPdf} className="shrink-0 rounded-xl border-white/15 bg-white/5 text-slate-100">
               {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               PDF
             </Button>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-amber-500/25 bg-black/15 p-4 scrollbar-thin scrollbar-thumb-indigo-500/70 scrollbar-track-transparent">
+        <div className="min-h-[300px] flex-1 overflow-y-auto rounded-2xl border border-amber-500/25 bg-black/15 p-3 scrollbar-thin scrollbar-thumb-indigo-500/70 scrollbar-track-transparent sm:min-h-[420px] sm:p-4 lg:min-h-0">
           {resume ? (
             <ResumePreview resume={resume} editable={isEditingPreview} previewRef={resumePreviewRef} />
           ) : (
-            <div className="flex h-full min-h-[420px] flex-col items-center justify-center text-center">
-              <FileText className="mb-4 h-14 w-14 text-amber-300" />
-              <h3 className="text-xl font-extrabold text-white">Resume preview appears here</h3>
+            <div className="flex h-full min-h-[270px] flex-col items-center justify-center px-4 text-center sm:min-h-[420px]">
+              <FileText className="mb-4 h-12 w-12 text-amber-300 sm:h-14 sm:w-14" />
+              <h3 className="text-lg font-extrabold text-white sm:text-xl">Resume preview appears here</h3>
               <p className="mt-2 max-w-md text-sm text-slate-400">
                 Generate an honest, ATS-friendly resume from your real education, skills, experience, and projects.
               </p>
@@ -2835,7 +2927,7 @@ export function StudySearchPage() {
     }
   };
 
-  const [quizCount, setQuizCount] = useState<5 | 10>(5);
+  const [quizCount, setQuizCount] = useState<QuizCount>(5);
 
   const generateQuiz = async () => {
     if (!document) return;
@@ -3231,7 +3323,12 @@ export function StudySearchPage() {
                   </div>
                 )}
 
-                <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col space-y-4 h-full items-center">
+                <div
+                  className={cn(
+                    "mx-auto flex w-full max-w-7xl flex-1 flex-col items-center space-y-4",
+                    activeTool === "resume" ? "h-auto min-h-full" : "h-full"
+                  )}
+                >
                   <SubPageHeader
                     activeTool={activeTool}
                     document={document}
@@ -3284,7 +3381,12 @@ export function StudySearchPage() {
                     }}
                   />
 
-                  <div className="flex-1 flex flex-col items-center justify-between min-h-0 h-full w-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "flex flex-1 flex-col items-center justify-between min-h-0 w-full",
+                      activeTool === "resume" ? "h-auto overflow-visible" : "h-full overflow-hidden"
+                    )}
+                  >
                     {activeTool === "quiz" ? (
                       <QuizPanel
                         document={document}

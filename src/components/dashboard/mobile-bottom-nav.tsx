@@ -9,6 +9,7 @@ import {
   User,
 } from "lucide-react";
 import { useAppStore, type AppView } from "@/lib/store";
+import { getRouteForView, navigateToView } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 interface MobileDockItem {
@@ -28,7 +29,6 @@ const DOCK_ITEMS: MobileDockItem[] = [
 
 export function MobileBottomNav() {
   const currentView = useAppStore((s) => s.currentView);
-  const setView = useAppStore((s) => s.setView);
 
   const handleTabClick = (view: AppView) => {
     if (typeof window !== "undefined" && "vibrate" in navigator) {
@@ -38,7 +38,7 @@ export function MobileBottomNav() {
         // ignore
       }
     }
-    setView(view);
+    navigateToView(view);
   };
 
   return (

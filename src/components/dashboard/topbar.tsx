@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAppStore, type AppView } from "@/lib/store";
+import { getRouteForView, navigateToView } from "@/lib/routes";
 import { apiFetch } from "@/lib/api";
 import type { Analytics, Todo, Exam, FocusSession } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -779,7 +780,7 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => useAppStore.getState().setView("profile")}
+                onClick={() => navigateToView("profile")}
                 className="group flex items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-accent/60"
               >
                 <div className="relative h-8 w-8 shrink-0">
