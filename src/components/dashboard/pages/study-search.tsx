@@ -80,6 +80,8 @@ type ViewMode = "hub" | "quiz" | "doubt" | "textToPdf" | "resume";
 type QuizCount = 5 | 10;
 
 const ANSWER_SEPARATOR = " || ";
+const TEXT_TO_PDF_MIN_CHARS = 10;
+const TEXT_TO_PDF_MAX_CHARS = 15000;
 
 function getQuestionTypeLabel(type?: QuizQuestion["type"]) {
   if (type === "numerical") return "Numerical MCQ";
@@ -1913,7 +1915,9 @@ function TextToPdfPanel({
     { id: "code", label: "Code or Technical", icon: FileCode },
   ] as const;
 
-  const canGenerate = text.trim().length >= 10 && text.trim().length <= 15000 && !busy;
+  const trimmedTextLength = text.trim().length;
+  const textLength = text.length;
+  const canGenerate = trimmedTextLength >= TEXT_TO_PDF_MIN_CHARS && trimmedTextLength <= TEXT_TO_PDF_MAX_CHARS && !busy;
   const isMultiLine = text.includes("\n") || text.length > 70;
 
   const submit = (event: React.FormEvent) => {
@@ -2007,6 +2011,7 @@ function TextToPdfPanel({
               rows={1}
               value={text}
               onChange={(event) => setText(event.target.value)}
+              maxLength={TEXT_TO_PDF_MAX_CHARS}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -2021,7 +2026,19 @@ function TextToPdfPanel({
                 target.style.height = `${Math.min(target.scrollHeight, 220)}px`;
               }}
             />
-            <div className="ml-2 sm:ml-3 flex items-center shrink-0 self-end pb-0.5">
+            <div className="ml-2 sm:ml-3 flex shrink-0 items-end gap-2 self-end pb-0.5">
+              <span
+                className={cn(
+                  "mb-2 min-w-[64px] text-right text-[10px] font-semibold tabular-nums sm:min-w-[76px] sm:text-[11px]",
+                  textLength >= TEXT_TO_PDF_MAX_CHARS
+                    ? "text-amber-300"
+                    : trimmedTextLength > 0 && trimmedTextLength < TEXT_TO_PDF_MIN_CHARS
+                      ? "text-slate-500"
+                      : "text-slate-400"
+                )}
+              >
+                {textLength}/{TEXT_TO_PDF_MAX_CHARS}
+              </span>
               <Button
                 type="submit"
                 disabled={!canGenerate}
