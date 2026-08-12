@@ -17,8 +17,11 @@ import {
   ChevronRight,
   Clock,
   Compass,
+  Crown,
   Download,
+  Eye,
   FileCode,
+  FileDown,
   FileText,
   Flag,
   HelpCircle,
@@ -28,6 +31,7 @@ import {
   PartyPopper,
   Play,
   Plus,
+  Printer,
   Rocket,
   RotateCcw,
   Send,
@@ -47,6 +51,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { RazorpayModal, type PlanId } from "@/components/dashboard/razorpay-modal";
 import type { GeneratedResume, ResumeMakerInput } from "@/lib/resume/schema";
 
 interface StudyDocument {
@@ -122,6 +127,8 @@ function SubPageHeader({
   onUpload,
   onDownloadQuiz,
   hasQuestions,
+  premiumStatus,
+  onOpenUpgrade,
 }: {
   activeTool: StudyTool;
   document: StudyDocument | null;
@@ -133,6 +140,13 @@ function SubPageHeader({
   onUpload?: (file: File) => Promise<void>;
   onDownloadQuiz?: () => void;
   hasQuestions?: boolean;
+  premiumStatus?: {
+    tenQuestionTrialsUsed: number;
+    resumeGenerationsUsed: number;
+    hasUnlockedTenQuestions: boolean;
+    hasUnlockedResume: boolean;
+  };
+  onOpenUpgrade?: (plan?: PlanId) => void;
 }) {
   const headerFileInputRef = useRef<HTMLInputElement>(null);
   return (
@@ -158,15 +172,15 @@ function SubPageHeader({
           variant="outline"
           size="sm"
           onClick={onBack}
-          className="rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-2.5 sm:px-3 py-1.5 text-xs font-bold text-slate-200 shadow-md transition-all shrink-0"
+          className="h-9 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-3.5 text-xs font-bold text-slate-200 shadow-md transition-all shrink-0 flex items-center justify-center"
         >
           <ArrowLeft className="mr-1 sm:mr-1.5 h-3.5 w-3.5 text-cyan-400 shrink-0" />
           <span className="hidden sm:inline">Back to Hub</span>
           <span className="inline sm:hidden">Back</span>
         </Button>
 
-        <div className="flex items-center gap-1.5 shrink-0 min-w-0">
-          <Badge className="hidden md:inline-flex border-transparent bg-cyan-500/10 text-cyan-400 px-2.5 py-1 font-bold text-xs ring-1 ring-cyan-500/30 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 min-w-0">
+          <Badge className="hidden md:inline-flex h-9 items-center border-transparent bg-cyan-500/10 text-cyan-400 px-3.5 font-bold text-xs ring-1 ring-cyan-500/30 shrink-0">
             {activeTool === "quiz" && (
               <span className="flex items-center gap-1.5">
                 <BrainCircuit className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
@@ -193,11 +207,33 @@ function SubPageHeader({
             )}
           </Badge>
 
+          {/* Premium Badge / Upgrade Button matching exact reference design */}
+          {premiumStatus?.hasUnlockedTenQuestions && premiumStatus?.hasUnlockedResume ? (
+            <div className="hidden sm:inline-flex h-9 items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-400/10 px-3.5 text-xs font-extrabold text-amber-300 shadow-sm shrink-0">
+              <Crown className="h-4 w-4 text-amber-300 fill-amber-300/30" />
+              <span>Unlimited Pass</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOpenUpgrade?.("combo")}
+              className="relative inline-flex h-9 items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 p-1 pr-2.5 text-xs font-extrabold text-white shadow-[0_0_18px_rgba(249,115,22,0.55)] border border-white/40 transition-all hover:scale-105 hover:shadow-[0_0_24px_rgba(236,72,153,0.75)] active:scale-95 shrink-0 cursor-pointer"
+            >
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/25 backdrop-blur-md shadow-inner border border-white/30">
+                <Crown className="h-4 w-4 fill-white text-white drop-shadow-sm" />
+              </div>
+              <span className="text-xs sm:text-sm font-extrabold tracking-wide text-white drop-shadow-sm px-0.5">Upgrade</span>
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white/25 backdrop-blur-md">
+                <ChevronRight className="h-3.5 w-3.5 text-white stroke-[3]" />
+              </div>
+            </button>
+          )}
+
           {uploading ? (
             <motion.div
               initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/15 px-2.5 sm:px-3 py-1 text-xs font-bold text-cyan-400 border border-cyan-500/30 shadow-md shadow-cyan-500/10 shrink-0"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-cyan-500/15 px-3.5 py-1 text-xs font-bold text-cyan-400 border border-cyan-500/30 shadow-md shadow-cyan-500/10 shrink-0"
             >
               <Loader2 className="h-3.5 w-3.5 text-cyan-400 animate-spin shrink-0" />
               <span className="hidden sm:inline">Indexing PDF...</span>
@@ -207,7 +243,7 @@ function SubPageHeader({
             <motion.div
               initial={{ scale: 0.85, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 shadow-md shadow-emerald-500/10 max-w-[150px] sm:max-w-[180px] truncate shrink-0"
+              className="hidden sm:inline-flex h-9 items-center gap-1.5 rounded-full bg-emerald-500/15 px-3.5 py-1 text-xs font-bold text-emerald-400 border border-emerald-500/30 shadow-md shadow-emerald-500/10 max-w-[150px] sm:max-w-[180px] truncate shrink-0"
             >
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
               <span className="truncate">{document.fileName}</span>
@@ -219,7 +255,7 @@ function SubPageHeader({
       {/* Bottom row: Mode pills & Right Action Group (5 Qs, 10 Qs, Change PDF, Download Quiz) */}
       <div className="flex w-full flex-col items-stretch justify-center gap-2 border-t border-white/5 pt-2 sm:flex-row sm:items-center sm:justify-between">
         {/* Tool selector tabs with Glassmorphism and Sliding Animation */}
-        <div className="flex w-full max-w-full items-center justify-start gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 p-1 shadow-inner scrollbar-none sm:w-auto sm:justify-center">
+        <div className="flex h-10 w-full max-w-full items-center justify-start gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 p-1 shadow-inner scrollbar-none sm:w-auto sm:justify-center">
           {(["quiz", "doubt", "textToPdf", "resume"] as const).map((tool) => {
             const isActive = activeTool === tool;
             let label = "";
@@ -249,7 +285,7 @@ function SubPageHeader({
                 key={tool}
                 type="button"
                 onClick={() => onSelectTool(tool)}
-                className="relative flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap focus:outline-none"
+                className="relative flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold whitespace-nowrap focus:outline-none"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
                 {isActive && (
@@ -284,7 +320,7 @@ function SubPageHeader({
         </div>
 
         {/* Action Group: 5 Qs, 10 Qs, Change PDF, Download Quiz with Glassmorphism */}
-        <div className="flex w-full max-w-full items-center justify-start gap-1.5 overflow-x-auto rounded-full border border-white/10 bg-white/5 p-1 text-xs font-semibold shadow-inner scrollbar-none sm:w-auto sm:shrink-0 sm:justify-center">
+        <div className="flex h-10 w-full max-w-full items-center justify-start gap-1.5 overflow-x-auto rounded-full border border-white/10 bg-white/5 p-1 text-xs font-semibold shadow-inner scrollbar-none sm:w-auto sm:shrink-0 sm:justify-center">
           {/* 5 Qs / 10 Qs buttons with Sliding Animation */}
           {activeTool === "quiz" && onCountChange && quizCount && (
             <>
@@ -295,6 +331,15 @@ function SubPageHeader({
                     key={num}
                     type="button"
                     onClick={() => {
+                      if (
+                        num === 10 &&
+                        !premiumStatus?.hasUnlockedTenQuestions &&
+                        (premiumStatus?.tenQuestionTrialsUsed ?? 0) >= 5
+                      ) {
+                        toast.error("Free 10-Question trial limit reached (5/5). Upgrade for lifetime access!");
+                        onOpenUpgrade?.("exam_10q");
+                        return;
+                      }
                       onCountChange(num);
                     }}
                     className="relative flex h-8 shrink-0 items-center justify-center rounded-full px-3 text-xs font-semibold whitespace-nowrap transition-all focus:outline-none"
@@ -316,6 +361,11 @@ function SubPageHeader({
                       )}
                     >
                       {num} Qs
+                      {num === 10 && !premiumStatus?.hasUnlockedTenQuestions && (
+                        <span className="text-[9px] text-amber-300 font-extrabold ml-0.5">
+                          ({Math.max(0, 5 - (premiumStatus?.tenQuestionTrialsUsed ?? 0))} Left)
+                        </span>
+                      )}
                     </span>
                   </button>
                 );
@@ -340,7 +390,7 @@ function SubPageHeader({
             <button
               type="button"
               onClick={onDownloadQuiz}
-              className="h-8 rounded-full px-3 text-xs font-bold transition-all whitespace-nowrap bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shadow-sm"
+              className="flex h-8 shrink-0 items-center justify-center rounded-full px-3 text-xs font-bold transition-all whitespace-nowrap bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/25 shadow-sm"
             >
               Download Quiz
             </button>
@@ -2121,7 +2171,7 @@ function splitLinks(links?: string) {
 }
 
 const RESUME_DOCUMENT_CSS = `
-  @page { size: A4; margin: 16mm; }
+  @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
   body { margin: 0; background: #ffffff; color: #1e293b; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 9.8pt; line-height: 1.45; }
   .editable-resume { width: 100%; max-width: 794px; min-height: 920px; margin: 0 auto; background: #ffffff; color: #1e293b; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 32px; }
@@ -2148,8 +2198,178 @@ const RESUME_DOCUMENT_CSS = `
   .editable-resume .education-label { color: rgba(15, 23, 42, 0.7); font-weight: 700; }
   .editable-resume ul { margin: 4px 0 0 20px; padding: 0; color: #1e293b; font-size: 13px; line-height: 1.5; }
   .editable-resume li { margin: 0 0 2px; }
-  @media print { .editable-resume { max-width: none; min-height: auto; padding: 0; } }
+  @media print {
+    html, body { margin: 0 !important; padding: 0 !important; background: #ffffff !important; }
+    .editable-resume { max-width: none !important; min-height: auto !important; padding: 14mm 16mm !important; }
+  }
 `;
+
+function openPrintableResumeWindow(printableHtml: string, title: string) {
+  const actionBarScriptAndHtml = `
+  <style>
+    .doc-action-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #0f172a;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      z-index: 999999;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .doc-action-bar .bar-label {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fbbf24;
+      margin-right: 4px;
+      letter-spacing: 0.02em;
+    }
+    .doc-action-bar button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease-in-out;
+    }
+    .doc-action-bar .btn-download {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+    }
+    .doc-action-bar .btn-download:hover {
+      background: #1d4ed8;
+    }
+    .doc-action-bar .btn-print {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .doc-action-bar .btn-print:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+    .doc-action-bar .btn-copy {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .doc-action-bar .btn-copy:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+    .doc-action-bar .btn-copy.copied {
+      background: #166534;
+      color: #86efac;
+    }
+    body {
+      padding-bottom: 96px !important;
+    }
+    @media print {
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+      }
+      .editable-resume, body > div:not(.doc-action-bar) {
+        padding: 14mm 16mm !important;
+        max-width: none !important;
+        box-shadow: none !important;
+      }
+      .doc-action-bar {
+        display: none !important;
+      }
+    }
+  </style>
+  <div class="doc-action-bar" id="doc-action-bar">
+    <span class="bar-label">⚡ StudySpark Resume</span>
+    <button class="btn-download" onclick="window.print()" title="Save as PDF via browser print dialog">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download PDF
+    </button>
+    <button class="btn-print" onclick="window.print()" title="Print resume document">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print
+    </button>
+    <button class="btn-copy" id="copy-btn" title="Copy resume text to clipboard">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy All
+    </button>
+  </div>
+  <script>
+    document.getElementById('copy-btn').addEventListener('click', async function() {
+      var btn = this;
+      try {
+        var container = document.querySelector('.editable-resume') || document.body;
+        var text = container.innerText;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        btn.classList.add('copied');
+        btn.innerText = 'Copied!';
+        setTimeout(function() {
+          btn.classList.remove('copied');
+          btn.innerText = 'Copy All';
+        }, 2000);
+      } catch(e) {}
+    });
+  </script>
+</body>`;
+
+  let fullHtml = printableHtml;
+  if (!fullHtml.includes("<title>")) {
+    fullHtml = fullHtml.replace("<head>", `<head><title>${title}</title>`);
+  } else {
+    fullHtml = fullHtml.replace(/<title>.*?<\/title>/gi, `<title>${title}</title>`);
+  }
+
+  if (fullHtml.includes("</body>")) {
+    fullHtml = fullHtml.replace("</body>", actionBarScriptAndHtml);
+  } else {
+    fullHtml += actionBarScriptAndHtml;
+  }
+
+  const blob = new Blob([fullHtml], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
+
+  if (!win) {
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "-9999px";
+    iframe.style.bottom = "-9999px";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+    iframe.contentWindow?.document.open();
+    iframe.contentWindow?.document.write(fullHtml);
+    iframe.contentWindow?.document.close();
+    iframe.contentWindow?.focus();
+    setTimeout(() => {
+      iframe.contentWindow?.print();
+    }, 400);
+  }
+}
 
 function buildEditedResumeHtml(markup: string) {
   const printableMarkup = markup
@@ -2235,9 +2455,13 @@ function buildResumeHtml(resume: GeneratedResume) {
 <head>
   <meta charset="UTF-8" />
   <style>
-    @page { size: A4; margin: 16mm; }
+    @page { size: A4; margin: 0; }
     * { box-sizing: border-box; }
     body { margin: 0; background: #ffffff; color: #1e293b; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 9.8pt; line-height: 1.45; }
+    @media print {
+      html, body { margin: 0 !important; padding: 0 !important; background: #ffffff !important; }
+      body { padding: 14mm 16mm !important; }
+    }
     h1 { margin: 0 0 4px; color: #0f172a; font-size: 21pt; line-height: 1.05; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
     .headline { color: #2563eb; font-size: 11pt; font-weight: 700; margin: 0 0 7px; }
     .contact { color: #475569; font-size: 8.8pt; border-bottom: 2px solid #ef4444; padding-bottom: 8px; margin-bottom: 12px; }
@@ -2419,7 +2643,17 @@ function ResumePreview({
   );
 }
 
-function ResumeMakerPanel() {
+function ResumeMakerPanel({
+  hasUnlockedResume,
+  resumeGenerationsUsed,
+  onOpenUpgrade,
+  onGenerationSuccess,
+}: {
+  hasUnlockedResume?: boolean;
+  resumeGenerationsUsed?: number;
+  onOpenUpgrade?: (plan?: PlanId) => void;
+  onGenerationSuccess?: () => void;
+}) {
   const [formData, setFormData] = useState<ResumeMakerInput>(RESUME_SAMPLE);
   const [resume, setResume] = useState<GeneratedResume | null>(null);
   const [editedResumeHtml, setEditedResumeHtml] = useState<string | null>(null);
@@ -2446,6 +2680,13 @@ function ResumeMakerPanel() {
   const handleGenerate = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!canSubmit) return;
+
+    if (!hasUnlockedResume && (resumeGenerationsUsed ?? 0) >= 2) {
+      toast.error("Free resume generation limit reached (2/2). Upgrade for lifetime access!");
+      onOpenUpgrade?.("resume");
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const payload: ResumeMakerInput = {
@@ -2459,6 +2700,7 @@ function ResumeMakerPanel() {
       });
       setResume(data.resume);
       setEditedResumeHtml(null);
+      onGenerationSuccess?.();
       setIsEditingPreview(false);
       toast.success("AI resume generated");
     } catch (error) {
@@ -2480,37 +2722,55 @@ function ResumeMakerPanel() {
     URL.revokeObjectURL(url);
   };
 
+  const previewResume = () => {
+    if (!resume) return;
+    const currentPreviewHtml = resumePreviewRef.current?.outerHTML;
+    const printableHtml = currentPreviewHtml
+      ? buildEditedResumeHtml(currentPreviewHtml)
+      : editedResumeHtml || buildResumeHtml(resume);
+    openPrintableResumeWindow(printableHtml, `${resume.contact.fullName} - Resume`);
+    toast.success("Opened resume preview");
+  };
+
   const downloadPdf = async () => {
     if (!resume) return;
     setIsDownloading(true);
+    const currentPreviewHtml = resumePreviewRef.current?.outerHTML;
+    const printableHtml = currentPreviewHtml
+      ? buildEditedResumeHtml(currentPreviewHtml)
+      : editedResumeHtml || buildResumeHtml(resume);
+    const fileName = `${resume.contact.fullName.replace(/[^a-z0-9]+/gi, "_")}_Resume`;
+
     try {
-      const currentPreviewHtml = resumePreviewRef.current?.outerHTML;
-      const printableHtml = currentPreviewHtml
-        ? buildEditedResumeHtml(currentPreviewHtml)
-        : editedResumeHtml || buildResumeHtml(resume);
       const response = await fetch("/api/ai/resume-maker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode: "pdf",
           html: printableHtml,
-          fileName: `${resume.contact.fullName.replace(/[^a-z0-9]+/gi, "_")}_Resume`,
+          fileName,
         }),
       });
-      if (!response.ok) throw new Error("Could not render PDF");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = window.document.createElement("a");
-      link.href = url;
-      link.download = `${resume.contact.fullName.replace(/[^a-z0-9]+/gi, "_")}_Resume.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-      toast.success("Resume PDF downloaded");
-    } catch (error) {
-      handleError(error, "Could not download PDF");
-    } finally {
-      setIsDownloading(false);
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = window.document.createElement("a");
+        link.href = url;
+        link.download = `${fileName}.pdf`;
+        link.click();
+        URL.revokeObjectURL(url);
+        toast.success("Resume PDF downloaded");
+        setIsDownloading(false);
+        return;
+      }
+    } catch {
+      // Direct API failed or unavailable on live server
     }
+
+    setIsDownloading(false);
+    openPrintableResumeWindow(printableHtml, `${resume.contact.fullName} - Resume`);
+    toast.success("Opened PDF print window — choose 'Save as PDF'");
   };
 
   const startEditingPreview = () => {
@@ -2540,9 +2800,24 @@ function ResumeMakerPanel() {
         className="overflow-visible rounded-2xl border border-white/10 bg-white/[0.03] p-4 shadow-2xl scrollbar-thin scrollbar-thumb-indigo-500/70 scrollbar-track-transparent sm:p-5 lg:min-h-0 lg:overflow-y-auto"
       >
         <div className="mb-5 space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-[11px] font-extrabold uppercase text-amber-300">
-            <Sparkles className="h-3.5 w-3.5" />
-            Sparks AI Resume Builder
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-[11px] font-extrabold uppercase text-amber-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              Sparks AI Resume Builder
+            </div>
+            {hasUnlockedResume ? (
+              <span className="rounded-full bg-amber-400/20 border border-amber-400/40 px-2.5 py-0.5 text-[10px] font-extrabold text-amber-300">
+                ⭐ Unlimited Pass
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpenUpgrade?.("resume")}
+                className="rounded-full bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-extrabold text-amber-300 hover:bg-amber-500/20"
+              >
+                {Math.max(0, 2 - (resumeGenerationsUsed ?? 0))} Free Generations Left
+              </button>
+            )}
           </div>
           <h2 className="text-2xl font-extrabold leading-tight text-white sm:text-3xl">Build an honest ATS resume</h2>
           <p className="text-sm leading-relaxed text-slate-400">Add real facts in the fields. AI turns them into clean, recruiter-ready bullets.</p>
@@ -2715,9 +2990,9 @@ function ResumeMakerPanel() {
               <Download className="mr-2 h-4 w-4" />
               TXT
             </Button>
-            <Button type="button" variant="outline" disabled={!resume || isDownloading || isEditingPreview} onClick={downloadPdf} className="shrink-0 rounded-xl border-white/15 bg-white/5 text-slate-100">
-              {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              PDF
+            <Button type="button" variant="outline" disabled={!resume || isEditingPreview} onClick={previewResume} className="shrink-0 rounded-xl border-amber-500/40 bg-amber-500/15 font-bold text-amber-300 hover:bg-amber-500/25">
+              <Eye className="mr-2 h-4 w-4 text-amber-300" />
+              Preview
             </Button>
           </div>
         </div>
@@ -2836,6 +3111,38 @@ export function StudySearchPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [remainingDoubts, setRemainingDoubts] = useState<number>(10);
 
+  // Premium & Razorpay State
+  const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
+  const [razorpayInitialPlan, setRazorpayInitialPlan] = useState<PlanId>("combo");
+  const [premiumStatus, setPremiumStatus] = useState({
+    tenQuestionTrialsUsed: 0,
+    resumeGenerationsUsed: 0,
+    hasUnlockedTenQuestions: false,
+    hasUnlockedResume: false,
+    maxTenQuestionTrials: 5,
+    maxResumeGenerations: 2,
+  });
+
+  const fetchPremiumStatus = async () => {
+    try {
+      const data = await apiFetch<typeof premiumStatus>("/api/user/premium-status");
+      if (data) {
+        setPremiumStatus(data);
+      }
+    } catch {
+      // ignore silenlty
+    }
+  };
+
+  useEffect(() => {
+    void fetchPremiumStatus();
+  }, []);
+
+  const openUpgradeModal = (plan: PlanId = "combo") => {
+    setRazorpayInitialPlan(plan);
+    setIsRazorpayModalOpen(true);
+  };
+
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
@@ -2948,6 +3255,17 @@ export function StudySearchPage() {
 
   const generateQuiz = async () => {
     if (!document) return;
+
+    if (
+      quizCount === 10 &&
+      !premiumStatus.hasUnlockedTenQuestions &&
+      premiumStatus.tenQuestionTrialsUsed >= 5
+    ) {
+      toast.error("Free 10-Question trial limit reached (5/5). Upgrade for lifetime access!");
+      openUpgradeModal("exam_10q");
+      return;
+    }
+
     setGeneratingQuiz(true);
     try {
       const result = await apiFetch<{ quiz: { questions: QuizQuestion[] } }>(
@@ -2959,6 +3277,7 @@ export function StudySearchPage() {
       );
       setQuestions(result.quiz.questions);
       toast.success(`${result.quiz.questions.length} quiz questions generated`);
+      void fetchPremiumStatus();
     } catch (error) {
       handleError(error, "Could not generate quiz");
     } finally {
@@ -3355,6 +3674,8 @@ export function StudySearchPage() {
                     onBack={() => setViewMode("hub")}
                     onUpload={uploadPdf}
                     hasQuestions={questions.length > 0}
+                    premiumStatus={premiumStatus}
+                    onOpenUpgrade={openUpgradeModal}
                     onDownloadQuiz={async () => {
                       if (!questions || questions.length === 0) return;
                       toast.loading("Generating Quiz PDF...", { id: "quiz-pdf" });
@@ -3432,7 +3753,12 @@ export function StudySearchPage() {
                         onDownload={downloadPdf}
                       />
                     ) : (
-                      <ResumeMakerPanel />
+                      <ResumeMakerPanel
+                        hasUnlockedResume={premiumStatus.hasUnlockedResume}
+                        resumeGenerationsUsed={premiumStatus.resumeGenerationsUsed}
+                        onOpenUpgrade={openUpgradeModal}
+                        onGenerationSuccess={() => void fetchPremiumStatus()}
+                      />
                     )}
                   </div>
                 </div>
@@ -3441,6 +3767,15 @@ export function StudySearchPage() {
             )
           ) : null
         )}
+
+        <RazorpayModal
+          isOpen={isRazorpayModalOpen}
+          initialPlan={razorpayInitialPlan}
+          onClose={() => setIsRazorpayModalOpen(false)}
+          onSuccess={(planId) => {
+            void fetchPremiumStatus();
+          }}
+        />
       </PageTransition>
     </div>
   );

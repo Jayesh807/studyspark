@@ -256,9 +256,9 @@ export function FeaturesPage() {
       <div className="min-h-screen overflow-hidden bg-background selection:bg-violet-500/30">
         <Navbar />
 
-        <main>
-          {/* Hero Section */}
-          <section className="relative px-4 pt-32 sm:pt-40 pb-16 sm:pb-24">
+        <main className="pt-28 sm:pt-36 md:pt-40">
+          {/* Hero Section with explicit top padding to clear fixed navbar */}
+          <section className="relative px-4 pt-8 sm:pt-12 md:pt-16 pb-16 sm:pb-24">
             <AnimatedBlobs />
             <div className="absolute inset-x-0 top-0 -z-10 h-[34rem] bg-gradient-to-b from-violet-500/15 via-fuchsia-500/10 to-transparent" />
 
@@ -274,7 +274,7 @@ export function FeaturesPage() {
               }}
               className="mx-auto max-w-6xl text-center"
             >
-              <div className="mx-auto flex max-w-4xl flex-col items-center">
+              <div className="mx-auto flex max-w-4xl flex-col items-center pt-2 sm:pt-4">
                 <motion.span
                   variants={fadeUp}
                   className="inline-flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-300"
@@ -381,9 +381,9 @@ export function FeaturesPage() {
                         </p>
                         <Link
                           href="/signup"
-                          className="mt-6 inline-flex items-center gap-2 text-xs font-semibold text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                          className="mt-6 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline"
                         >
-                          Try this in your workspace <ArrowRight className="size-3.5" />
+                          Explore in App <ArrowRight className="size-3" />
                         </Link>
                       </GlassCard>
                     </div>

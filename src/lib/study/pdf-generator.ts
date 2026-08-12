@@ -338,9 +338,19 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
     body { padding-bottom: 72px; }
 
     @media print {
-      body {
-        background: #ffffff;
-        padding-bottom: 0;
+      @page {
+        size: A4;
+        margin: 0;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+      }
+      .doc-container {
+        padding: 14mm 16mm !important;
+        max-width: none !important;
+        box-shadow: none !important;
       }
       .doc-banner {
         border-radius: 0;

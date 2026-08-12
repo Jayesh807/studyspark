@@ -1379,6 +1379,118 @@ a:active {
   left: 125%;
 }
 
+/* Reference-style modal forms, scoped to dialog content only. */
+.form-dialog-shell.dashboard-surface {
+  background: #1b1b2e !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38) !important;
+  scrollbar-color: rgba(139, 92, 246, 0.55) transparent;
+  scrollbar-width: thin;
+}
+
+.form-dialog-shell::-webkit-scrollbar {
+  width: 6px;
+}
+
+.form-dialog-shell::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.form-dialog-shell::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.55);
+  border-radius: 999px;
+}
+
+.form-dialog-shell > div:first-child {
+  border-bottom-color: transparent !important;
+  padding: 28px 28px 8px !important;
+}
+
+.form-dialog-shell form {
+  padding: 24px 28px 28px !important;
+}
+
+.form-dialog-shell .dashboard-row {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.form-dialog-shell [data-slot="dialog-title"] {
+  color: #ffffff !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+}
+
+.form-dialog-shell [data-slot="dialog-description"] {
+  margin-top: 10px !important;
+  color: #9696a7 !important;
+  font-size: 14px !important;
+}
+
+.form-dialog-shell [data-slot="label"] {
+  margin-bottom: 8px !important;
+  color: #bebdca !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+.form-dialog-shell input,
+.form-dialog-shell [data-slot="select-trigger"] {
+  min-height: 46px !important;
+}
+
+.form-dialog-shell textarea {
+  min-height: 92px !important;
+}
+
+.form-dialog-shell [data-slot="dialog-footer"] {
+  margin-top: 4px !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 16px !important;
+  width: 100% !important;
+  border-top-color: rgba(255, 255, 255, 0.07) !important;
+  background: #1b1b2e !important;
+  padding: 22px 28px 28px !important;
+}
+
+.form-dialog-shell [data-slot="dialog-footer"] button {
+  min-height: 46px !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+}
+
+.form-dialog-shell [data-slot="dialog-footer"] button:first-child {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  background: #0d0f18 !important;
+  color: #ffffff !important;
+  padding-left: 22px !important;
+  padding-right: 22px !important;
+}
+
+.form-dialog-shell [data-slot="dialog-footer"] button:last-child {
+  min-width: 125px !important;
+  border-color: transparent !important;
+  background: linear-gradient(90deg, #8b5cf6, #6d28d9) !important;
+  box-shadow: 0 12px 30px rgba(88, 28, 135, 0.22) !important;
+  padding-left: 22px !important;
+  padding-right: 22px !important;
+}
+
+.form-dialog-shell .dashboard-icon-tile {
+  border-color: transparent !important;
+  background: rgba(139, 92, 246, 0.16) !important;
+  color: #a78bfa !important;
+  box-shadow: none !important;
+}
+
 /* ---------- Number pop on change (for animated counters) ---------- */
 .num-pop {
   display: inline-block;

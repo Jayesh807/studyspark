@@ -87,6 +87,7 @@
     "puppeteer": "^25.4.0",
     "puppeteer-core": "^25.4.0",
     "radix-ui": "^1.6.1",
+    "razorpay": "^2.9.8",
     "react": "^19.0.0",
     "react-day-picker": "^9.8.0",
     "react-dom": "^19.0.0",
