@@ -2,14 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { isRazorpayPlanId, RAZORPAY_PLANS } from "@/lib/payments/razorpay-plans";
 
 export const runtime = "nodejs";
-
-const PLAN_AMOUNTS: Record<string, { amountPaise: number; name: string }> = {
-  exam_10q: { amountPaise: 1900, name: "10-Q Exam Mode Lifetime" },
-  resume: { amountPaise: 1900, name: "AI Resume Builder Lifetime" },
-  combo: { amountPaise: 2900, name: "All-Access AI Combo Pack" },
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,7 +16,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { planId } = body || {};
 
-    if (!planId || !PLAN_AMOUNTS[planId]) {
+    if (!planId || typeof planId !== "string" || !isRazorpayPlanId(planId)) {
       return NextResponse.json(
         { error: "Invalid plan selected" },
         { status: 400 }
@@ -44,7 +39,7 @@ export async function POST(req: NextRequest) {
       key_secret: keySecret,
     });
 
-    const planInfo = PLAN_AMOUNTS[planId];
+    const planInfo = RAZORPAY_PLANS[planId];
     const receiptId = `rcpt_${user.id.slice(-8)}_${Date.now()}`;
 
     const order = await razorpay.orders.create({

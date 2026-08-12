@@ -2,8 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getRazorpayEntitlements, isRazorpayPlanId } from "@/lib/payments/razorpay-plans";
 
 export const runtime = "nodejs";
+
+function signaturesMatch(generatedSignature: string, receivedSignature: string) {
+  const generated = Buffer.from(generatedSignature, "hex");
+  const received = Buffer.from(receivedSignature, "hex");
+
+  return generated.length === received.length && crypto.timingSafeEqual(generated, received);
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,9 +21,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId } = body || {};
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body || {};
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !planId) {
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return NextResponse.json(
         { error: "Missing required payment parameters" },
         { status: 400 }
@@ -30,37 +38,51 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!(db as any).payment) {
+      return NextResponse.json(
+        { error: "Payment storage is unavailable on the server" },
+        { status: 500 }
+      );
+    }
+
+    const payment = await (db as any).payment.findFirst({
+      where: { razorpayOrderId: razorpay_order_id, userId: user.id },
+    });
+
+    if (!payment || !isRazorpayPlanId(payment.planId)) {
+      return NextResponse.json(
+        { error: "Payment order was not found for this user" },
+        { status: 404 }
+      );
+    }
+
     const generatedSignature = crypto
       .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
-    if (generatedSignature !== razorpay_signature) {
-      if ((db as any).payment) {
-        await (db as any).payment.updateMany({
-          where: { razorpayOrderId: razorpay_order_id, userId: user.id },
-          data: { status: "failed" },
-        }).catch(() => null);
-      }
+    if (!signaturesMatch(generatedSignature, razorpay_signature)) {
+      await (db as any).payment.updateMany({
+        where: { razorpayOrderId: razorpay_order_id, userId: user.id },
+        data: { status: "failed" },
+      }).catch(() => null);
+
       return NextResponse.json(
         { error: "Payment verification failed. Invalid signature." },
         { status: 400 }
       );
     }
 
-    if ((db as any).payment) {
-      await (db as any).payment.updateMany({
-        where: { razorpayOrderId: razorpay_order_id, userId: user.id },
-        data: {
-          razorpayPaymentId: razorpay_payment_id,
-          razorpaySignature: razorpay_signature,
-          status: "paid",
-        },
-      }).catch(() => null);
-    }
+    await (db as any).payment.updateMany({
+      where: { razorpayOrderId: razorpay_order_id, userId: user.id },
+      data: {
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySignature: razorpay_signature,
+        status: "paid",
+      },
+    }).catch(() => null);
 
-    const unlockTenQuestions = planId === "exam_10q" || planId === "combo";
-    const unlockResume = planId === "resume" || planId === "combo";
+    const { unlockTenQuestions, unlockResume } = getRazorpayEntitlements(payment.planId);
 
     await (db.profile as any).upsert({
       where: { userId: user.id },
@@ -78,7 +100,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Payment verified & entitlements unlocked successfully",
-      planId,
+      planId: payment.planId,
       unlockedTenQuestions: unlockTenQuestions,
       unlockedResume: unlockResume,
     });

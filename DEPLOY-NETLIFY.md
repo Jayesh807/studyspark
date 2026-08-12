@@ -95,6 +95,15 @@ You should see: `🚀 Your database is now in sync with your Prisma schema.`
    | `GEMINI_API_KEY` | Your Gemini API key for quiz generation, embeddings, and OCR fallback |
    | `GEMINI_MODEL` | `gemini-2.0-flash` |
 
+   For Razorpay live payments, also add:
+
+   | Key | Value |
+   |---|---|
+   | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Your Razorpay live key ID |
+   | `RAZORPAY_KEY_ID` | Your Razorpay live key ID |
+   | `RAZORPAY_KEY_SECRET` | Your Razorpay live key secret |
+   | `RAZORPAY_WEBHOOK_SECRET` | The secret you configure for the Razorpay payment webhook |
+
    > 💡 You can set env vars later under **Site settings → Environment variables** if you forgot one.
 
 6. Click **"Deploy site"** 🎉
@@ -177,7 +186,7 @@ StudySpark will run comfortably on the free tiers for a single user or a small g
 If you hit issues:
 1. Check the **Netlify deploy log** (Deploys → click the failed deploy → scroll)
 2. Check the **function logs** (Functions tab → click any function → view logs)
-3. Verify all 4 environment variables are set correctly
+3. Verify all required environment variables are set correctly
 4. Make sure Step 3 (creating Neon tables) was completed
 
 Good luck! 🚀
