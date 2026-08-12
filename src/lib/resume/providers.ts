@@ -68,7 +68,7 @@ async function generateWithGroq(prompt: string) {
   }
 
   if (lastError) {
-    throw new ResumeGenerationError(`Groq resume generation failed: ${lastError}`);
+    console.warn(`Groq resume generation error (${lastError}), falling back to Gemini...`);
   }
 
   return null;

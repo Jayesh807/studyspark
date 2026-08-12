@@ -12,6 +12,12 @@ import {
   Percent,
   Calendar,
   Timer,
+  Crown,
+  Home,
+  Sparkles,
+  Briefcase,
+  BookOpen,
+  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -98,41 +104,67 @@ export function Navbar() {
       >
         <nav
           className={cn(
-            "flex w-full max-w-6xl items-center justify-between gap-4 rounded-2xl px-3 py-2.5 transition-all duration-300 sm:px-4",
+            "flex w-full max-w-6xl items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 transition-all duration-300 sm:px-4",
             scrolled
-              ? "glass-strong shadow-lg shadow-violet-500/5"
-              : "glass border-transparent"
+              ? "glass-strong shadow-lg shadow-violet-500/10 border-white/10"
+              : "glass border-white/10"
           )}
           aria-label="Primary"
         >
           <Logo onClick={goHome} />
 
           {/* Desktop Navigation Links */}
-          <ul className="hidden items-center gap-1 md:flex">
+          <ul className="hidden items-center gap-2 md:flex">
+            {/* Home */}
             <li>
               <Link
-                href="/features"
+                href="/"
+                prefetch={true}
+                onClick={goHome}
                 className={cn(
-                  "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors hover:bg-violet-500/10 hover:text-foreground inline-block",
-                  pathname === "/features" ? "text-foreground font-semibold bg-violet-500/10" : "text-muted-foreground"
+                  "relative inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
+                  pathname === "/" ? "text-violet-400 font-extrabold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                Features
+                <Home className={cn("size-4", pathname === "/" ? "text-violet-400" : "text-slate-400")} />
+                <span>Home</span>
+                {pathname === "/" && (
+                  <span className="absolute -bottom-1 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                )}
               </Link>
             </li>
 
-            {/* Tools Dropdown */}
+            {/* Features */}
+            <li>
+              <Link
+                href="/features"
+                prefetch={true}
+                className={cn(
+                  "relative inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
+                  pathname === "/features" ? "text-violet-400 font-extrabold" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Sparkles className={cn("size-4", pathname === "/features" ? "text-violet-400" : "text-slate-400")} />
+                <span>Features</span>
+                {pathname === "/features" && (
+                  <span className="absolute -bottom-1 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                )}
+              </Link>
+            </li>
+
+            {/* Free Tools Dropdown */}
             <li>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors hover:bg-violet-500/10 hover:text-foreground",
-                      pathname.startsWith("/tools") ? "text-foreground font-semibold bg-violet-500/10" : "text-muted-foreground"
+                      "inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all cursor-pointer",
+                      pathname.startsWith("/tools") ? "text-violet-400 font-extrabold" : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    Free Tools
+                    <Briefcase className={cn("size-4", pathname.startsWith("/tools") ? "text-violet-400" : "text-slate-400")} />
+                    <span>Free Tools</span>
                     <ChevronDown className="size-3.5 opacity-70" />
                   </button>
                 </DropdownMenuTrigger>
@@ -145,6 +177,7 @@ export function Navbar() {
                     >
                       <Link
                         href={tool.href}
+                        prefetch={true}
                         className="flex items-start gap-3 p-2.5 w-full"
                       >
                         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300">
@@ -161,63 +194,65 @@ export function Navbar() {
               </DropdownMenu>
             </li>
 
+            {/* Study Guides */}
             <li>
               <Link
                 href="/guides"
+                prefetch={true}
                 className={cn(
-                  "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors hover:bg-violet-500/10 hover:text-foreground inline-block",
-                  pathname.startsWith("/guides") ? "text-foreground font-semibold bg-violet-500/10" : "text-muted-foreground"
+                  "relative inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-semibold transition-all",
+                  pathname.startsWith("/guides") ? "text-violet-400 font-extrabold" : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                Study Guides
+                <BookOpen className={cn("size-4", pathname.startsWith("/guides") ? "text-violet-400" : "text-slate-400")} />
+                <span>Study Guides</span>
+                {pathname.startsWith("/guides") && (
+                  <span className="absolute -bottom-1 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
+                )}
               </Link>
             </li>
 
+            {/* Premium Button */}
             <li>
               <Link
-                href="/about"
-                className={cn(
-                  "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors hover:bg-violet-500/10 hover:text-foreground inline-block",
-                  pathname === "/about" ? "text-foreground font-semibold bg-violet-500/10" : "text-muted-foreground"
-                )}
+                href="/#pricing"
+                onClick={(e) => {
+                  if (pathname === "/") {
+                    e.preventDefault();
+                    window.document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-extrabold text-amber-300 bg-amber-400/10 border border-amber-400/30 hover:bg-amber-400/20 transition-all shadow-[0_0_12px_rgba(245,158,11,0.2)] hover:scale-105"
               >
-                About
-              </Link>
-            </li>
-
-            <li>
-              <Link
-                href="/contact"
-                className={cn(
-                  "rounded-lg px-3.5 py-2 text-sm font-medium transition-colors hover:bg-violet-500/10 hover:text-foreground inline-block",
-                  pathname === "/contact" ? "text-foreground font-semibold bg-violet-500/10" : "text-muted-foreground"
-                )}
-              >
-                Contact
+                <Crown className="h-3.5 w-3.5 fill-amber-300 text-amber-300 animate-pulse" />
+                <span>Premium</span>
               </Link>
             </li>
           </ul>
 
-          {/* Desktop Auth Buttons */}
-          <div className="hidden items-center gap-2 md:flex">
+          {/* Vertical Divider & Desktop Auth Buttons */}
+          <div className="hidden items-center gap-2.5 md:flex">
+            <div className="h-5 w-[1px] bg-white/10 mx-1" />
+
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               asChild
-              className="font-medium text-xs rounded-xl"
+              className="h-8 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-3 text-xs font-bold text-slate-200 shadow-sm transition-all"
             >
               <Link href="/login" onClick={() => openAuth("login")}>
+                <User className="h-3.5 w-3.5 mr-1 text-slate-300" />
                 Login
               </Link>
             </Button>
             <Button
               size="sm"
               asChild
-              className="bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white text-xs font-semibold shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/40 hover:brightness-110 rounded-xl"
+              className="h-8 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 px-3.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:shadow-[0_0_25px_rgba(217,70,239,0.6)] hover:scale-105 transition-all"
             >
               <Link href="/signup" onClick={() => openAuth("signup")}>
                 Get Started
-                <ArrowRight className="size-3.5 ml-1" />
+                <ArrowRight className="h-3.5 w-3.5 ml-1" />
               </Link>
             </Button>
           </div>
@@ -251,6 +286,24 @@ export function Navbar() {
                     >
                       Features
                       <ArrowRight className="size-4 text-muted-foreground" />
+                    </Link>
+
+                    <Link
+                      href="/#pricing"
+                      onClick={(e) => {
+                        setOpen(false);
+                        if (pathname === "/") {
+                          e.preventDefault();
+                          window.document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+                        }
+                      }}
+                      className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-extrabold text-amber-300 bg-amber-400/10 border border-amber-400/30 transition-colors hover:bg-amber-400/20"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 fill-amber-300 text-amber-300 animate-pulse" />
+                        <span>Premium</span>
+                      </span>
+                      <ArrowRight className="size-4 text-amber-400" />
                     </Link>
 
                     <Link

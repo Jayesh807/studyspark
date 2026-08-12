@@ -45,6 +45,28 @@ export async function POST(
 
     const requestedCount = parsed.data.count;
 
+    const profile = await (db.profile as any).findUnique({
+      where: { userId: user.id },
+      select: {
+        tenQuestionTrialsUsed: true,
+        hasUnlockedTenQuestions: true,
+      },
+    }).catch(() => null);
+
+    if (
+      requestedCount === 10 &&
+      !profile?.hasUnlockedTenQuestions &&
+      (profile?.tenQuestionTrialsUsed ?? 0) >= 5
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Free 10-Question trial limit reached (5/5). Please upgrade to unlock lifetime 10-Q access.",
+        },
+        { status: 403 }
+      );
+    }
+
     const document = await db.studyDocument.findFirst({
       where: { id: documentId, userId: user.id },
       include: {
@@ -83,6 +105,19 @@ export async function POST(
         itemsJson: toPrismaJson(questions),
       },
     });
+
+    if (requestedCount === 10 && !profile?.hasUnlockedTenQuestions) {
+      await (db.profile as any).upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          tenQuestionTrialsUsed: 1,
+        },
+        update: {
+          tenQuestionTrialsUsed: { increment: 1 },
+        },
+      }).catch(() => null);
+    }
 
     return NextResponse.json({
       quiz: {

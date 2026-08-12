@@ -754,8 +754,8 @@ function WeeklyChart({ data }: { data: Analytics["weeklyData"] }) {
 
 function MonthlyChart({ data }: { data: Analytics["monthlyData"] }) {
   return (
-    <GlassCard className="dashboard-surface rounded-lg p-4 sm:p-5">
-      <div className="mb-4 flex items-start justify-between">
+    <GlassCard className="dashboard-surface flex h-full flex-col justify-between rounded-lg p-4 sm:p-5">
+      <div className="mb-4 flex items-start justify-between flex-shrink-0">
         <div>
           <h3 className="dashboard-section-title">
             <span className="dashboard-icon-tile text-fuchsia-600 dark:text-fuchsia-300">
@@ -768,7 +768,7 @@ function MonthlyChart({ data }: { data: Analytics["monthlyData"] }) {
           </p>
         </div>
       </div>
-      <div className="h-50 w-full">
+      <div className="h-52 w-full flex-1 min-h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
@@ -898,67 +898,69 @@ function SubjectProgressList({
 }: {
   data: Analytics["subjectPerformance"];
 }) {
-  const top = useMemo(() => [...data].sort((a, b) => b.progress - a.progress).slice(0, 4), [data]);
+  const subjects = useMemo(() => [...data].sort((a, b) => b.progress - a.progress), [data]);
 
   return (
-    <GlassCard className="dashboard-surface flex h-full flex-col rounded-lg p-4 sm:p-5">
-      <div className="mb-5 flex items-center justify-between">
+    <GlassCard className="dashboard-surface flex h-full flex-col justify-between rounded-lg p-4 sm:p-5">
+      <div className="mb-3 flex items-center justify-between flex-shrink-0">
         <h3 className="dashboard-section-title">
           <span className="dashboard-icon-tile text-violet-600 dark:text-violet-300">
             <GraduationCap className="h-4 w-4" />
           </span>
           Subject Progress
         </h3>
-        <span className="dashboard-chip">Top {top.length}</span>
+        <span className="dashboard-chip">{subjects.length} Subjects</span>
       </div>
-      {top.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center text-center text-sm text-muted-foreground">
+      {subjects.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center text-center text-sm text-muted-foreground min-h-[200px]">
           No subjects tracked yet.
         </div>
       ) : (
-        <ul className="flex flex-1 flex-col justify-center space-y-3">
-          {top.map((subject, i) => {
-            const c = colorOf(subject.color);
-            return (
-              <motion.li
-                key={`${subject.name}-${i}`}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: i * 0.06 }}
-              >
-                <div className="dashboard-row p-3">
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 font-medium">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
+        <div className="max-h-[220px] flex-1 overflow-y-auto scrollbar-thin pr-1 min-h-0 space-y-2.5">
+          <ul className="space-y-2.5">
+            {subjects.map((subject, i) => {
+              const c = colorOf(subject.color);
+              return (
+                <motion.li
+                  key={`${subject.name}-${i}`}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: i * 0.06 }}
+                >
+                  <div className="dashboard-row p-3">
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 font-medium">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: c.chart }}
+                        />
+                        {subject.name}
+                      </span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {subject.progress}%
+                      </span>
+                    </div>
+                    <div
+                      className="h-2 w-full overflow-hidden rounded-full bg-muted"
+                      role="progressbar"
+                      aria-valuenow={subject.progress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${subject.progress}%` }}
+                        transition={{ duration: 0.8, delay: 0.1 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
+                        className="h-full rounded-full"
                         style={{ backgroundColor: c.chart }}
                       />
-                      {subject.name}
-                    </span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {subject.progress}%
-                    </span>
+                    </div>
                   </div>
-                  <div
-                    className="h-2 w-full overflow-hidden rounded-full bg-muted"
-                    role="progressbar"
-                    aria-valuenow={subject.progress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${subject.progress}%` }}
-                      transition={{ duration: 0.8, delay: 0.1 + i * 0.06, ease: [0.22, 1, 0.36, 1] }}
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: c.chart }}
-                    />
-                  </div>
-                </div>
-              </motion.li>
-            );
-          })}
-        </ul>
+                </motion.li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </GlassCard>
   );
@@ -1795,10 +1797,10 @@ export function DashboardHome() {
             <div className="h-full">
               <QuoteCard />
             </div>
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 h-full flex flex-col">
               <MonthlyChart data={analytics.monthlyData} />
             </div>
-            <div className="h-full">
+            <div className="h-full flex flex-col">
               <SubjectProgressList data={analytics.subjectPerformance} />
             </div>
           </div>

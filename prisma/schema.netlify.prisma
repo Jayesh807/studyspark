@@ -41,6 +41,7 @@ model User {
   badges        BadgeEarned[]
   passwordResetOtps PasswordResetOtp[]
   studyDocuments StudyDocument[]
+  payments      Payment[]
 }
 
 model PasswordResetOtp {
@@ -85,6 +86,10 @@ model Profile {
   semester     Int      @default(1)
   avatar       String   @default("")
   studyStreak  Int      @default(0)
+  tenQuestionTrialsUsed   Int      @default(0)
+  resumeGenerationsUsed   Int      @default(0)
+  hasUnlockedTenQuestions Boolean  @default(false)
+  hasUnlockedResume       Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -256,4 +261,21 @@ model StudyQuiz {
   document StudyDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId])
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  userId            String
+  razorpayOrderId   String   @unique
+  razorpayPaymentId String?  @unique
+  razorpaySignature String?
+  planId            String   // "exam_10q", "resume", "combo"
+  amount            Int      // in paise
+  currency          String   @default("INR")
+  status            String   @default("created") // created, paid, failed
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
 }

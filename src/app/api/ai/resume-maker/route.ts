@@ -96,7 +96,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const { getCurrentUser } = await import("@/lib/auth");
+    const { db } = await import("@/lib/db");
+    const user = await getCurrentUser();
+
+    if (user) {
+      const profile = await (db.profile as any).findUnique({
+        where: { userId: user.id },
+        select: {
+          resumeGenerationsUsed: true,
+          hasUnlockedResume: true,
+        },
+      }).catch(() => null);
+
+      if (!profile?.hasUnlockedResume && (profile?.resumeGenerationsUsed ?? 0) >= 2) {
+        return NextResponse.json(
+          {
+            error:
+              "Free resume generation limit reached (2/2). Please upgrade to unlock lifetime access.",
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const resume = await generateResume(parsed.data);
+
+    if (user) {
+      const profile = await (db.profile as any).findUnique({
+        where: { userId: user.id },
+        select: { hasUnlockedResume: true },
+      }).catch(() => null);
+
+      if (!profile?.hasUnlockedResume) {
+        await (db.profile as any).upsert({
+          where: { userId: user.id },
+          create: {
+            userId: user.id,
+            resumeGenerationsUsed: 1,
+          },
+          update: {
+            resumeGenerationsUsed: { increment: 1 },
+          },
+        }).catch(() => null);
+      }
+    }
+
     return NextResponse.json({ resume }, { status: 200 });
   } catch (error) {
     console.error("resume-maker error:", error);
