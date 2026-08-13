@@ -132,6 +132,49 @@ self.addEventListener("notificationclick", (event) => {
 // In-session reminder timers. Closed-browser delivery comes from server Web Push.
 // ─────────────────────────────────────────────────────────────────────────────
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = self.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function refreshPushSubscription(event) {
+  const keyResponse = await fetch("/api/push/subscribe", {
+    credentials: "same-origin",
+  }).catch(() => null);
+
+  if (!keyResponse || !keyResponse.ok) return;
+
+  const { configured, publicKey } = await keyResponse.json().catch(() => ({}));
+  if (!configured || !publicKey) return;
+
+  const subscription =
+    event.newSubscription ||
+    (await self.registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    }));
+
+  await fetch("/api/push/subscribe", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      subscription,
+      previousEndpoint: event.oldSubscription?.endpoint,
+    }),
+  }).catch(() => undefined);
+}
+
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(refreshPushSubscription(event));
+});
+
 const activeReminderTimers = new Map();
 
 self.addEventListener("message", (event) => {

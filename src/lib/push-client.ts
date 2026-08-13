@@ -1,5 +1,7 @@
 "use client";
 
+const LAST_PUSH_ENDPOINT_KEY = "studyspark:lastPushEndpoint";
+
 export function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -9,6 +11,33 @@ export function urlBase64ToUint8Array(base64String: string) {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+}
+
+function readLastPushEndpoint() {
+  try {
+    return window.localStorage.getItem(LAST_PUSH_ENDPOINT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function rememberLastPushEndpoint(endpoint: string) {
+  try {
+    window.localStorage.setItem(LAST_PUSH_ENDPOINT_KEY, endpoint);
+  } catch {
+    // Push still works without localStorage; reminder migration just cannot use the old endpoint.
+  }
+}
+
+async function getReadyServiceWorkerRegistration() {
+  if (!("serviceWorker" in navigator)) return null;
+
+  const existing = await navigator.serviceWorker.getRegistration("/");
+  if (!existing) {
+    await navigator.serviceWorker.register("/sw.js");
+  }
+
+  return navigator.serviceWorker.ready;
 }
 
 export async function getOrRegisterPushSubscription(): Promise<PushSubscription | null> {
@@ -28,7 +57,9 @@ export async function getOrRegisterPushSubscription(): Promise<PushSubscription 
   if (permission !== "granted") return null;
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await getReadyServiceWorkerRegistration();
+    if (!registration) return null;
+
     let subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
@@ -54,11 +85,20 @@ export async function saveBrowserPushSubscription() {
   const subscription = await getOrRegisterPushSubscription();
   if (!subscription) return null;
 
+  const previousEndpoint = readLastPushEndpoint();
+  const replacementEndpoint =
+    previousEndpoint && previousEndpoint !== subscription.endpoint
+      ? previousEndpoint
+      : undefined;
+
   const response = await fetch("/api/push/subscribe", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ subscription }),
+    body: JSON.stringify({ subscription, previousEndpoint: replacementEndpoint }),
   });
 
-  return response.ok ? subscription : null;
+  if (!response.ok) return null;
+
+  rememberLastPushEndpoint(subscription.endpoint);
+  return subscription;
 }

@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { playBell } from "./pages/focus-timer";
 
@@ -50,7 +49,7 @@ const FIELD_CLASS =
   "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
 const LABEL_CLASS = "text-sm font-semibold text-foreground/90";
 const DIALOG_CLASS =
-  "w-[calc(100vw-1.5rem)] max-w-[560px] rounded-[14px] max-h-[calc(100dvh-1.5rem)] overflow-hidden border-white/60 bg-background/92 p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+  "flex max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden w-[calc(100vw-1.5rem)] max-w-[560px] rounded-[14px] border-white/60 bg-background/92 p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
 const REMINDER_SOUND_REPEATS = 4;
 const REMINDER_SOUND_GAP_MS = 900;
 
@@ -164,6 +163,7 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
     () => reminders.filter((r) => !r.fired && new Date(r.remindAt).getTime() > Date.now()).length,
     [reminders]
   );
+  const totalCount = reminders.length;
 
   const sortedReminders = useMemo(
     () =>
@@ -193,53 +193,6 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
     return () => window.clearTimeout(loadTimer);
   }, [storageKey]);
 
-  const sendTestNotification = async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      toast.error("Your browser does not support desktop notifications.");
-      return;
-    }
-
-    let perm = Notification.permission;
-    if (perm === "default") {
-      perm = await Notification.requestPermission();
-    }
-
-    if (perm !== "granted") {
-      toast.error("Notification permission is blocked. Please allow notifications in your browser settings.");
-      return;
-    }
-
-    const subscription = await getOrRegisterPushSubscription();
-    if (!subscription) {
-      toast.error("Push subscription was not created. Re-allow notifications and try again.");
-      return;
-    }
-
-    const response = await fetch("/api/push/schedule", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "TEST_PUSH",
-        subscription,
-      }),
-    });
-
-    const result = (await response.json().catch(() => ({}))) as {
-      success?: boolean;
-      error?: string;
-    };
-
-    if (!response.ok || !result.success) {
-      toast.error(result.error || "Server push test failed.");
-      return;
-    }
-
-    playBell("focus-end");
-    toast.success("Server push test sent", {
-      description: "If this appears on mobile, closed-app reminders can work too.",
-    });
-  };
   const fireReminder = useCallback((reminder: Reminder) => {
     for (let i = 0; i < REMINDER_SOUND_REPEATS; i += 1) {
       window.setTimeout(() => playBell("focus-end"), i * REMINDER_SOUND_GAP_MS);
@@ -346,7 +299,7 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
       });
     } else {
       toast.warning("Reminder saved only in this browser", {
-        description: "Closed-website push was not saved. Try Test Notification again.",
+        description: "Closed-website push was not saved. Check notification permission and try adding it again.",
       });
     }
   };
@@ -370,108 +323,110 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <ScrollArea className="max-h-[calc(100dvh-1.5rem)]">
-        <div className="px-4 pt-5 pb-0 sm:px-7 sm:pt-7">
-          <DialogHeader className="space-y-2">
-            <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
-              <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/90 via-fuchsia-500/90 to-sky-500/80 text-white shadow-sm">
-                <AlarmClock className="h-4 w-4" />
-              </span>
-              Reminders
-            </DialogTitle>
-            <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-              Set a time and StudySpark will show a popup reminder.
-            </DialogDescription>
-          </DialogHeader>
+        <div className="flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]">
+          <div className="px-4 pt-5 pb-0 sm:px-7 sm:pt-7">
+            <DialogHeader className="space-y-2">
+              <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
+                <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-linear-to-br from-violet-500/90 via-fuchsia-500/90 to-sky-500/80 text-white shadow-sm">
+                  <AlarmClock className="h-4 w-4" />
+                </span>
+                Reminders
+              </DialogTitle>
+              <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+                Set a time and StudySpark will show a popup reminder.
+              </DialogDescription>
+            </DialogHeader>
 
-          <div className="mt-5 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="reminder-title" className={LABEL_CLASS}>
-                Title <span className="text-rose-500">*</span>
-              </Label>
-              <Input
-                id="reminder-title"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="e.g. Revise physics formulas"
-                className={FIELD_CLASS}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-5 space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="reminder-date" className={LABEL_CLASS}>
-                  Date
+                <Label htmlFor="reminder-title" className={LABEL_CLASS}>
+                  Title <span className="text-rose-500">*</span>
                 </Label>
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="reminder-date"
-                    type="date"
-                    value={date}
-                    onChange={(event) => setDate(event.target.value)}
-                    className={cn(FIELD_CLASS, "pl-9")}
-                  />
+                <Input
+                  id="reminder-title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="e.g. Revise physics formulas"
+                  className={FIELD_CLASS}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="reminder-date" className={LABEL_CLASS}>
+                    Date
+                  </Label>
+                  <div className="relative">
+                    <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="reminder-date"
+                      type="date"
+                      value={date}
+                      onChange={(event) => setDate(event.target.value)}
+                      className={cn(FIELD_CLASS, "pl-9")}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="reminder-time" className={LABEL_CLASS}>
+                    Time
+                  </Label>
+                  <div className="relative">
+                    <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="reminder-time"
+                      type="time"
+                      value={time}
+                      onChange={(event) => setTime(event.target.value)}
+                      className={cn(FIELD_CLASS, "pl-9")}
+                    />
+                  </div>
                 </div>
               </div>
+
               <div className="space-y-1.5">
-                <Label htmlFor="reminder-time" className={LABEL_CLASS}>
-                  Time
+                <Label htmlFor="reminder-note" className={LABEL_CLASS}>
+                  Note
                 </Label>
-                <div className="relative">
-                  <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="reminder-time"
-                    type="time"
-                    value={time}
-                    onChange={(event) => setTime(event.target.value)}
-                    className={cn(FIELD_CLASS, "pl-9")}
-                  />
-                </div>
+                <Textarea
+                  id="reminder-note"
+                  value={note}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="Optional details"
+                  rows={2}
+                  className={cn(FIELD_CLASS, "resize-none")}
+                />
               </div>
             </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="reminder-note" className={LABEL_CLASS}>
-                Note
-              </Label>
-              <Textarea
-                id="reminder-note"
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                placeholder="Optional details"
-                rows={2}
-                className={cn(FIELD_CLASS, "resize-none")}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="border-y border-border/40 bg-muted/15 px-4 py-4 sm:px-7">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BellRing className="h-4 w-4 text-violet-500" />
-              <span className="text-sm font-semibold">Your Reminders</span>
-              <Badge className="h-5 rounded-full bg-violet-500/15 px-2 text-xs text-violet-500">
-                {upcomingCount}
-              </Badge>
-            </div>
-            {reminders.some((reminder) => reminder.fired) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleClearDone}
-                className="h-8 rounded-[5px] px-2.5 text-xs text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Clear done
-              </Button>
-            )}
           </div>
 
-          <ScrollArea className="max-h-[180px] sm:max-h-[220px]">
-            <div className="space-y-2 pr-3">
+          <div className="mt-5 border-t border-border/40 bg-muted/15 px-4 py-4 sm:px-7">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <BellRing className="h-4 w-4 text-violet-500" />
+                <span className="text-sm font-semibold">Your Reminders</span>
+                <Badge
+                  className="h-5 rounded-full bg-violet-500/15 px-2 text-xs text-violet-500"
+                  title={`${upcomingCount} upcoming reminder${upcomingCount === 1 ? "" : "s"}`}
+                >
+                  {totalCount}
+                </Badge>
+              </div>
+              {reminders.some((reminder) => reminder.fired) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearDone}
+                  className="h-8 rounded-[5px] px-2.5 text-xs text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear done
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-2 pr-1">
               {sortedReminders.length === 0 ? (
                 <div className="rounded-[5px] border border-dashed border-border/60 bg-background/50 p-5 text-center text-sm text-muted-foreground">
                   No reminders yet.
@@ -524,42 +479,30 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
                 ))
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
 
-        <DialogFooter className="flex-col gap-2 px-4 pb-5 pt-4 sm:flex-row sm:justify-between sm:px-7 sm:pb-7">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={sendTestNotification}
-            className="h-11 justify-center gap-2 rounded-[5px] px-4 font-medium"
-          >
-            <BellRing className="h-4 w-4 text-violet-500" />
-            Test Notification
-          </Button>
-
-          <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:items-center">
+        <DialogFooter className="shrink-0 border-t border-border/40 bg-background/95 px-4 py-3 sm:px-7 sm:py-4 sm:!flex-row sm:items-center sm:justify-end">
+          <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:items-center">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="h-11 rounded-[5px] px-3 sm:px-6"
+              className="h-11 w-full min-w-0 rounded-[5px] px-3 sm:w-auto sm:min-w-[104px] sm:px-6"
             >
               Close
             </Button>
             <Button
               type="button"
               onClick={handleAddReminder}
-              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600 sm:px-6"
+              className="h-11 w-full min-w-0 rounded-[5px] bg-linear-to-r from-violet-500 to-fuchsia-500 px-3 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600 sm:w-auto sm:min-w-[140px] sm:px-6"
             >
-              <Plus className="h-4 w-4" />
-              Add Reminder
+              <Plus className="h-4 w-4 shrink-0" />
+              <span className="truncate">Add Reminder</span>
             </Button>
           </div>
         </DialogFooter>
-        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
 }
-

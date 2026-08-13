@@ -5,6 +5,7 @@ import { sendNotificationToSubscription } from "@/lib/push";
 import {
   savePushReminder,
   cancelPushReminder,
+  deletePushSubscription,
   getDueReminders,
   markReminderFired,
   toWebPushSubscription,
@@ -30,6 +31,7 @@ async function dispatchDueReminders() {
   const due = await getDueReminders();
   let sent = 0;
   let failed = 0;
+  let staleSubscriptions = 0;
 
   for (const reminder of due) {
     const result = await sendNotificationToSubscription(
@@ -46,10 +48,22 @@ async function dispatchDueReminders() {
       await markReminderFired(reminder.id);
     } else {
       failed += 1;
+
+      console.warn("[Push Schedule]: Reminder dispatch failed", {
+        reminderId: reminder.id,
+        subscriptionId: reminder.subscriptionId,
+        statusCode: result.statusCode,
+        staleSubscription: Boolean(result.gone),
+      });
+
+      if (result.gone) {
+        staleSubscriptions += 1;
+        await deletePushSubscription(reminder.subscriptionId);
+      }
     }
   }
 
-  return { due: due.length, sent, failed };
+  return { due: due.length, sent, failed, staleSubscriptions };
 }
 
 function isCronRequest(req: NextRequest) {
