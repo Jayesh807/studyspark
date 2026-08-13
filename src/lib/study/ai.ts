@@ -1449,10 +1449,14 @@ export async function formatStudyTextForPdf(
   switch (tag) {
     case "hindi":
       modeInstructions = [
-        "MODE REQUIREMENT: HINDI TEXT / TRANSLATION & DEVANAGARI ENCODING.",
-        "- If the input is in English, translate it into fluent, clear Devanagari Hindi study notes.",
+        "MODE REQUIREMENT: COMPLETE HINDI TEXT / TRANSLATION & DEVANAGARI ENCODING.",
+        "- Translate the COMPLETE input into fluent, clear Devanagari Hindi study notes.",
+        "- Do not leave English paragraphs, English headings, or English explanations untranslated.",
+        "- Preserve meaning, order, examples, questions, answers, numbers, formulas, and named entities.",
+        "- Technical names may stay in English only when there is no natural Hindi equivalent.",
         "- If the input is already in Hindi, preserve 100% of all Hindi words, Devanagari characters, matras, and grammar exactly as written.",
-        "- Format headings, questions, and answers in clean Devanagari Hindi."
+        "- Format headings, questions, and answers in clean Devanagari Hindi.",
+        "- The first line must be a Hindi title starting with #."
       ].join("\n");
       break;
 
@@ -1592,7 +1596,32 @@ export async function formatStudyTextForPdf(
   ].join("\n");
 
   try {
-    const formatted = await generateText(prompt, 16384);
+    let formatted = await generateText(prompt, 16384);
+
+    if (tag === "hindi" && !looksLikeCompleteHindiOutput(input, formatted)) {
+      formatted = await generateText(
+        [
+          "Translate and format the COMPLETE raw text below into Devanagari Hindi markdown.",
+          "This is a strict repair pass because the previous output kept too much English.",
+          "Rules:",
+          "- Every heading and paragraph must be Hindi unless it is code, a formula, a unit, or a proper noun.",
+          "- Keep the same meaning, order, examples, questions, answers, numbers, and formulas.",
+          "- Start with one Hindi # title.",
+          "- Return only the final markdown.",
+          "",
+          "Raw text:",
+          input,
+        ].join("\n"),
+        16384
+      );
+    }
+
+    if (tag === "hindi") {
+      if (looksLikeCompleteHindiOutput(input, formatted)) {
+        return formatted;
+      }
+      throw new Error("Hindi conversion did not produce complete Devanagari output.");
+    }
 
     // For summary mode, allow shorter summarized text. For verbatim modes (english/code/hindi), check length safety.
     if (tag === "summary" && formatted && formatted.trim().length > 50) {
@@ -1604,10 +1633,29 @@ export async function formatStudyTextForPdf(
     }
   } catch (err) {
     console.error("[formatStudyTextForPdf Error]:", err);
+    if (tag === "hindi" && needsHindiTranslation(input)) {
+      throw new Error("Could not convert the complete text to Hindi. Please try again.");
+    }
   }
 
   // Fallback: Preserve exact raw input with title heading
   const firstLine = input.trim().split("\n")[0] || "Study Document";
   const titleHeader = /^#\s+/.test(firstLine) ? "" : `# ${firstLine.replace(/^[#\s]+/, "")}\n\n`;
   return `${titleHeader}${input}`;
+}
+
+function looksLikeCompleteHindiOutput(input: string, output: string) {
+  if (!needsHindiTranslation(input)) return true;
+
+  const devanagari = (output.match(/[\u0900-\u097F]/g) || []).length;
+  const latin = (output.match(/[A-Za-z]/g) || []).length;
+
+  return devanagari >= 40 && devanagari >= latin;
+}
+
+function needsHindiTranslation(input: string) {
+  const sourceLatin = (input.match(/[A-Za-z]/g) || []).length;
+  const sourceDevanagari = (input.match(/[\u0900-\u097F]/g) || []).length;
+
+  return sourceLatin >= 30 && sourceLatin > sourceDevanagari;
 }

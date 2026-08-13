@@ -272,8 +272,8 @@ export async function POST(req: NextRequest) {
     // Build complete HTML with embedded local Devanagari fonts & UTF-8 meta
     const html = buildCompleteHtmlDocument(bodyHtml, {
       title: docTitle,
-      subtitle: "",
-      lang: "hi",
+      lang: formatTag === "hindi" ? "hi" : "en",
+      formatTag,
     });
 
     // Generate PDF via Puppeteer (local) or HTML auto-print fallback (Netlify)

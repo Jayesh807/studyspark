@@ -8,6 +8,7 @@ export interface HtmlPdfOptions {
   subtitle?: string;
   lang?: string;
   includeMathJax?: boolean;
+  formatTag?: "english" | "hindi" | "maths" | "summary" | "code";
 }
 
 export function getLocalFontData() {
@@ -36,7 +37,15 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
   const fontData = getLocalFontData();
   const lang = options.lang || "hi";
   const title = options.title ? escapeHtml(options.title) : "";
-  const subtitle = options.subtitle ? escapeHtml(options.subtitle) : "";
+  const formatThemes = {
+    english: { label: "English Text", primary: "#1d4ed8", secondary: "#1e40af", accent: "#60a5fa", soft: "#eff6ff" },
+    hindi: { label: "Hindi Text", primary: "#047857", secondary: "#065f46", accent: "#34d399", soft: "#ecfdf5" },
+    maths: { label: "Science or Maths", primary: "#7c3aed", secondary: "#5b21b6", accent: "#a78bfa", soft: "#f5f3ff" },
+    summary: { label: "Summary & Revision", primary: "#be123c", secondary: "#9f1239", accent: "#fb7185", soft: "#fff1f2" },
+    code: { label: "Code or Technical", primary: "#0f172a", secondary: "#1e293b", accent: "#38bdf8", soft: "#f0f9ff" },
+  } as const;
+  const theme = formatThemes[options.formatTag || "english"];
+  const subtitle = options.subtitle ? escapeHtml(options.subtitle) : theme.label;
 
   const fontFaceStyle = fontData.regularFontBase64
     ? `
@@ -124,13 +133,15 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
     }
 
     .doc-banner {
-      background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+      background: linear-gradient(135deg, ${theme.primary} 0%, ${theme.secondary} 100%);
       color: #ffffff;
       padding: 32px 32px 24px;
       margin: 0 0 24px 0;
       width: 100%;
       border-radius: 0;
-      box-shadow: 0 4px 14px rgba(29, 78, 216, 0.15);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
 
     .doc-banner h1 {
@@ -146,7 +157,7 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
     .doc-banner .subtitle {
       font-size: 13.5px;
       font-weight: 600;
-      color: #bfdbfe;
+      color: #dbeafe;
       margin: 0;
     }
 
@@ -159,8 +170,8 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
     h1 {
       font-size: 20px;
       font-weight: 700;
-      color: #1e3a8a;
-      border-left: 4px solid #2563eb;
+      color: ${theme.secondary};
+      border-left: 4px solid ${theme.primary};
       padding-left: 12px;
       margin: 20px 0 10px;
       page-break-after: avoid;
@@ -169,8 +180,8 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
     h2 {
       font-size: 17px;
       font-weight: 700;
-      color: #1d4ed8;
-      border-left: 4px solid #60a5fa;
+      color: ${theme.primary};
+      border-left: 4px solid ${theme.accent};
       padding-left: 10px;
       margin: 18px 0 8px;
       page-break-after: avoid;
@@ -221,14 +232,14 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
     }
 
     .note-box {
-      background: #eff8ff;
-      border-left: 5px solid #0284c7;
+      background: ${theme.soft};
+      border-left: 5px solid ${theme.primary};
       border-radius: 0 8px 8px 0;
       padding: 12px 16px;
       margin: 16px 0;
       line-height: 1.6;
       page-break-inside: avoid;
-      color: #0369a1;
+      color: ${theme.secondary};
     }
 
     .code-block {
@@ -353,8 +364,21 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
         box-shadow: none !important;
       }
       .doc-banner {
+        background: #ffffff !important;
+        border-bottom: 2px solid ${theme.primary};
+        border-left: 6px solid ${theme.primary};
         border-radius: 0;
         box-shadow: none;
+        color: #111827 !important;
+        padding: 14mm 16mm 8mm !important;
+        margin: 0 !important;
+      }
+      .doc-banner h1 {
+        color: #111827 !important;
+        font-size: 22px !important;
+      }
+      .doc-banner .subtitle {
+        color: ${theme.primary} !important;
       }
       .doc-action-bar {
         display: none !important;

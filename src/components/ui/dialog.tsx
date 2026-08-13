@@ -61,7 +61,7 @@ function DialogContent({
         data-slot="dialog-content"
         aria-describedby={undefined}
         className={cn(
-          "form-dialog-shell !bg-[#1E1E30] !text-slate-100 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-[160] grid !max-h-[min(580px,calc(100vh-2rem))] !w-[min(620px,calc(100vw-2rem))] !max-w-[620px] translate-x-[-50%] translate-y-[-50%] gap-0 !overflow-y-auto !rounded-[24px] !border !border-white/[0.07] p-0 shadow-2xl duration-200",
+          "form-dialog-shell !bg-[#1E1E30] !text-slate-100 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-[160] grid max-h-[calc(100dvh-2rem)] w-[min(620px,calc(100vw-2rem))] max-w-[620px] -translate-x-1/2 -translate-y-1/2 gap-0 overflow-y-auto rounded-[24px] border border-white/[0.07] p-0 shadow-2xl duration-200",
           className
         )}
         {...props}

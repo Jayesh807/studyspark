@@ -51,6 +51,17 @@ export function toWebPushSubscription(subscription: {
   };
 }
 
+export function replacementReminderId(
+  reminderId: string,
+  previousSubscriptionId: string,
+  nextSubscriptionId: string
+) {
+  const previousSuffix = `:${previousSubscriptionId}`;
+  if (!reminderId.endsWith(previousSuffix)) return reminderId;
+
+  return `${reminderId.slice(0, -previousSuffix.length)}:${nextSubscriptionId}`;
+}
+
 export async function savePushReminder(reminder: StoredReminderInput) {
   const subscription = parseSubscription(reminder.subscription);
   const storedSubscription = await db.pushSubscription.upsert({
@@ -109,6 +120,96 @@ export async function saveUserPushSubscription(
       p256dh: subscription.p256dh,
     },
   });
+}
+
+export async function deletePushSubscription(subscriptionId: string) {
+  return db.pushSubscription.deleteMany({
+    where: { id: subscriptionId },
+  });
+}
+
+export async function reassignPendingRemindersToSubscription(
+  userId: string,
+  previousEndpoint: string | null | undefined,
+  nextSubscriptionId: string
+) {
+  if (!previousEndpoint) return { reassigned: 0, deletedSubscriptions: 0 };
+
+  const previousSubscription = await db.pushSubscription.findFirst({
+    where: { userId, endpoint: previousEndpoint },
+    select: { id: true },
+  });
+
+  if (!previousSubscription || previousSubscription.id === nextSubscriptionId) {
+    return { reassigned: 0, deletedSubscriptions: 0 };
+  }
+
+  const pendingReminders = await db.pushReminder.findMany({
+    where: {
+      userId,
+      subscriptionId: previousSubscription.id,
+      firedAt: null,
+      cancelledAt: null,
+    },
+    select: {
+      id: true,
+      title: true,
+      note: true,
+      remindAt: true,
+    },
+  });
+
+  const deletedSubscriptions = await db.$transaction(async (tx) => {
+    for (const reminder of pendingReminders) {
+      const nextReminderId = replacementReminderId(
+        reminder.id,
+        previousSubscription.id,
+        nextSubscriptionId
+      );
+
+      if (nextReminderId === reminder.id) {
+        await tx.pushReminder.update({
+          where: { id: reminder.id },
+          data: { subscriptionId: nextSubscriptionId },
+        });
+      } else {
+        await tx.pushReminder.upsert({
+          where: { id: nextReminderId },
+          update: {
+            userId,
+            subscriptionId: nextSubscriptionId,
+            title: reminder.title,
+            note: reminder.note,
+            remindAt: reminder.remindAt,
+            firedAt: null,
+            cancelledAt: null,
+          },
+          create: {
+            id: nextReminderId,
+            userId,
+            subscriptionId: nextSubscriptionId,
+            title: reminder.title,
+            note: reminder.note,
+            remindAt: reminder.remindAt,
+          },
+        });
+
+        await tx.pushReminder.delete({
+          where: { id: reminder.id },
+        });
+      }
+    }
+
+    const deleted = await tx.pushSubscription.deleteMany({
+      where: { id: previousSubscription.id, userId },
+    });
+    return deleted.count;
+  });
+
+  return {
+    reassigned: pendingReminders.length,
+    deletedSubscriptions,
+  };
 }
 
 export async function schedulePushForUser(input: ScheduledPushInput) {

@@ -178,7 +178,7 @@ export function CalendarPage() {
 
   useEffect(() => {
     let active = true;
-    let loadingTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let loadingTimer: ReturnType<typeof setTimeout> | number | null = null;
     const year = cursor.getFullYear();
     const years = Array.from(new Set([year - 1, year, year + 1]));
 

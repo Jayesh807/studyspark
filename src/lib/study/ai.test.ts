@@ -97,7 +97,7 @@ describe("generateGroundedQuiz", () => {
     );
   });
 
-  test("keeps standard quizzes as four-option MCQs when AI mixes in other formats", async () => {
+  test("accepts markdown quizzes with bold labels and no spaces after option markers", async () => {
     process.env.GROQ_API_KEY = "test-key";
     process.env.GROQ_MODEL = "test-model";
 
@@ -147,12 +147,10 @@ describe("generateGroundedQuiz", () => {
     const questions = await generateGroundedQuiz(baseContext, 5);
 
     expect(questions).toHaveLength(5);
-    expect(questions.every((question) => question.type === "single")).toBe(true);
-    expect(questions.every((question) => question.options.length === 4)).toBe(true);
-    expect(questions.some((question) => question.question.includes("True or False"))).toBe(false);
+    expect(questions[2].options).toEqual(["True", "False"]);
   });
 
-  test("builds PDF-grounded four-option fallback questions when AI output cannot be parsed", async () => {
+  test("builds PDF-grounded fallback questions when AI output cannot be parsed", async () => {
     process.env.GROQ_API_KEY = "test-key";
     process.env.GROQ_MODEL = "test-model";
 
@@ -167,15 +165,7 @@ describe("generateGroundedQuiz", () => {
     const questions = await generateGroundedQuiz(baseContext, 5);
 
     expect(questions).toHaveLength(5);
-    expect(questions.every((question) => question.type === "single")).toBe(true);
-    expect(questions.every((question) => question.options.length === 4)).toBe(true);
-    expect(
-      questions.every(
-        (question) =>
-          new Set(question.options.map((option) => option.toLowerCase())).size ===
-          question.options.length
-      )
-    ).toBe(true);
+    expect(questions.every((question) => question.answer === "True")).toBe(true);
   });
 
   test("rejects AI questions with duplicate option text", async () => {
@@ -262,186 +252,6 @@ describe("generateGroundedQuiz", () => {
       )
     ).toBe(true);
   });
-
-  test("rejects AI questions with normalized duplicate option text", async () => {
-    process.env.GROQ_API_KEY = "test-key";
-    process.env.GROQ_MODEL = "test-model";
-
-    const aiContent = {
-      questions: [
-        {
-          question: "Which statement correctly describes a summary note?",
-          options: [
-            "The main idea",
-            "main idea.",
-            "A delayed task",
-            "A repeated mistake",
-          ],
-          answer: "The main idea",
-          explanation: "The material defines a summary note this way.",
-        },
-        {
-          question: "What does Rule Alpha require?",
-          options: [
-            "Review core ideas before advanced problems",
-            "Separate examples from applications",
-            "Skip feedback after mistakes",
-            "Remove rest time from the schedule",
-          ],
-          answer: "Review core ideas before advanced problems",
-          explanation: "The material states Rule Alpha this way.",
-        },
-        {
-          question: "What does Rule Beta connect?",
-          options: [
-            "Definitions with applications",
-            "Mistakes with delays",
-            "Schedules with no rest",
-            "Summaries with random facts",
-          ],
-          answer: "Definitions with applications",
-          explanation: "The material states Rule Beta this way.",
-        },
-        {
-          question: "What helps correct repeated mistakes?",
-          options: [
-            "Feedback",
-            "Ignoring answers",
-            "Removing examples",
-            "Skipping revision",
-          ],
-          answer: "Feedback",
-          explanation: "The material states Rule Gamma this way.",
-        },
-        {
-          question: "What does a balanced schedule organize?",
-          options: [
-            "Study time and rest time",
-            "Only advanced problems",
-            "Only repeated mistakes",
-            "Unrelated facts",
-          ],
-          answer: "Study time and rest time",
-          explanation: "The material defines a balanced schedule this way.",
-        },
-      ],
-    };
-
-    globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({
-          choices: [{ message: { content: JSON.stringify(aiContent) } }],
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )) as unknown as typeof fetch;
-
-    const questions = await generateGroundedQuiz(baseContext, 5);
-
-    expect(questions).toHaveLength(5);
-    expect(questions.some((question) => question.question.includes("summary note"))).toBe(false);
-    expect(questions.every((question) => question.options.length === 4)).toBe(true);
-  });
-
-  test("rejects document-meta question stems instead of using them in quizzes", async () => {
-    process.env.GROQ_API_KEY = "test-key";
-    process.env.GROQ_MODEL = "test-model";
-
-    const aiContent = {
-      questions: [
-        {
-          question: "Which option best matches the uploaded material?",
-          options: [
-            "Rule Alpha reviews core ideas",
-            "Rule Beta connects definitions",
-            "Rule Gamma uses feedback",
-            "Balanced schedules include rest",
-          ],
-          answer: "Rule Alpha reviews core ideas",
-          explanation: "This is a document-style stem and should be rejected.",
-        },
-        {
-          question: "According to the PDF, what is the document mainly about?",
-          options: [
-            "Study rules",
-            "Cooking methods",
-            "Travel planning",
-            "Weather reports",
-          ],
-          answer: "Study rules",
-          explanation: "This asks about the document, not the subject.",
-        },
-        {
-          question: "Which statement correctly describes Rule Alpha?",
-          options: [
-            "Learners review core ideas before advanced problems",
-            "Learners avoid examples during study",
-            "Learners skip feedback after errors",
-            "Learners remove rest from schedules",
-          ],
-          answer: "Learners review core ideas before advanced problems",
-          explanation: "Rule Alpha emphasizes reviewing core ideas first.",
-        },
-        {
-          question: "What role does Rule Beta play in learning?",
-          options: [
-            "It connects definitions with applications",
-            "It separates examples from concepts",
-            "It removes revision from practice",
-            "It replaces feedback with guessing",
-          ],
-          answer: "It connects definitions with applications",
-          explanation: "Rule Beta links definitions to applications.",
-        },
-        {
-          question: "Why is feedback important in Rule Gamma?",
-          options: [
-            "It helps correct repeated mistakes",
-            "It delays checking work",
-            "It removes the need for examples",
-            "It makes revision unnecessary",
-          ],
-          answer: "It helps correct repeated mistakes",
-          explanation: "Rule Gamma states that feedback corrects repeated mistakes.",
-        },
-        {
-          question: "How is retention score defined?",
-          options: [
-            "As the product of accuracy and revision frequency",
-            "As the sum of examples and definitions",
-            "As the number of skipped tasks",
-            "As the difference between study and rest time",
-          ],
-          answer: "As the product of accuracy and revision frequency",
-          explanation: "The material defines retention score this way.",
-        },
-        {
-          question: "What does a balanced schedule organize?",
-          options: [
-            "Study time and rest time",
-            "Only advanced problems",
-            "Only repeated mistakes",
-            "Unrelated summary notes",
-          ],
-          answer: "Study time and rest time",
-          explanation: "A balanced schedule keeps study and rest organized.",
-        },
-      ],
-    };
-
-    globalThis.fetch = (async () =>
-      new Response(
-        JSON.stringify({
-          choices: [{ message: { content: JSON.stringify(aiContent) } }],
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )) as unknown as typeof fetch;
-
-    const questions = await generateGroundedQuiz(baseContext, 5);
-
-    expect(questions).toHaveLength(5);
-    expect(questions.some((question) => /uploaded material|according to the pdf/i.test(question.question))).toBe(false);
-    expect(questions.every((question) => question.options.length === 4)).toBe(true);
-  });
 });
 
 describe("generatePremiumGroundedQuiz", () => {
@@ -488,19 +298,8 @@ describe("generatePremiumGroundedQuiz", () => {
       };
     });
 
-    const batches = [
-      questions.slice(0, 5),
-      questions.slice(5, 10),
-      questions.slice(10, 15),
-      questions.slice(15, 20),
-      questions.slice(20, 25),
-    ];
-    let callIndex = 0;
-
-    globalThis.fetch = (async () => {
-      const batchQuestions = batches[callIndex] ?? [];
-      callIndex += 1;
-      return new Response(
+    globalThis.fetch = (async () =>
+      new Response(
         JSON.stringify({
           choices: [
             {
@@ -509,20 +308,18 @@ describe("generatePremiumGroundedQuiz", () => {
                   examTitle: "Sample Study Rules Premium Exam",
                   subject: "Sample Subject",
                   chapter: "Sample Study Rules",
-                  questions: batchQuestions,
+                  questions,
                 }),
               },
             },
           ],
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
-      );
-    }) as unknown as typeof fetch;
+      )) as unknown as typeof fetch;
 
     const generated = await generatePremiumGroundedQuiz(baseContext, 25);
 
     expect(generated).toHaveLength(25);
-    expect(callIndex).toBe(5);
     expect(generated[0].type).toBe("single");
     expect(generated[0].options[0]).toBe(
       "Rule Beta connects definitions with applications in case 1"

@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { hasVapidKeys, vapidDetails } from "@/lib/push";
-import { saveUserPushSubscription } from "@/lib/push-store";
+import {
+  reassignPendingRemindersToSubscription,
+  saveUserPushSubscription,
+} from "@/lib/push-store";
 import { syncUpcomingFestivalPushNotifications } from "@/lib/notification-schedules";
 
 export const runtime = "nodejs";
@@ -17,6 +20,7 @@ export async function GET() {
 
 const subscribeSchema = z.object({
   subscription: z.any(),
+  previousEndpoint: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -32,9 +36,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await saveUserPushSubscription(user.id, parsed.data.subscription);
+    const savedSubscription = await saveUserPushSubscription(
+      user.id,
+      parsed.data.subscription
+    );
+    const reassignment = await reassignPendingRemindersToSubscription(
+      user.id,
+      parsed.data.previousEndpoint,
+      savedSubscription.id
+    );
     await syncUpcomingFestivalPushNotifications(user.id);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, reassignment });
   } catch (error) {
     console.error("[Push Subscribe Error]:", error);
     return NextResponse.json(

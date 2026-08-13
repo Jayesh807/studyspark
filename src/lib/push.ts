@@ -24,6 +24,19 @@ if (hasVapidKeys) {
 
 export { webpush, vapidDetails, hasVapidKeys };
 
+function pushErrorStatusCode(error: unknown) {
+  if (typeof error !== "object" || error === null) return undefined;
+
+  const candidate = error as { statusCode?: unknown; status?: unknown };
+  const statusCode = candidate.statusCode ?? candidate.status;
+  return typeof statusCode === "number" ? statusCode : undefined;
+}
+
+export function isPermanentPushSubscriptionError(error: unknown) {
+  const statusCode = pushErrorStatusCode(error);
+  return statusCode === 404 || statusCode === 410;
+}
+
 export async function sendNotificationToSubscription(
   subscription: webpush.PushSubscription,
   payload: {
@@ -50,7 +63,16 @@ export async function sendNotificationToSubscription(
     );
     return { success: true, statusCode: result.statusCode };
   } catch (error) {
-    console.error("[WebPush Error]: Could not send notification:", error);
-    return { success: false, error: String(error) };
+    const statusCode = pushErrorStatusCode(error);
+    const gone = isPermanentPushSubscriptionError(error);
+    const message = error instanceof Error ? error.message : String(error);
+
+    console.error("[WebPush Error]: Could not send notification:", {
+      statusCode,
+      gone,
+      error: message,
+    });
+
+    return { success: false, statusCode, gone, error: message };
   }
 }
