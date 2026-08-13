@@ -92,7 +92,9 @@ async function syncReminderWithServiceWorker(
   action: "SCHEDULE_REMINDER" | "CANCEL_REMINDER",
   existingSubscription?: PushSubscription | null
 ) {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+    return false;
+  }
 
   // 1. Post to local Service Worker thread
   const message = {
@@ -119,24 +121,34 @@ async function syncReminderWithServiceWorker(
   try {
     const subscription =
       existingSubscription ?? (await getOrRegisterPushSubscription());
-    if (subscription) {
-      await fetch("/api/push/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: action === "SCHEDULE_REMINDER" ? "SCHEDULE" : "CANCEL",
-          reminder: {
-            id: reminder.id,
-            title: reminder.title,
-            note: reminder.note,
-            remindAt: reminder.remindAt,
-          },
-          subscription,
-        }),
-      });
+    if (!subscription) {
+      return false;
     }
+
+    const response = await fetch("/api/push/schedule", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: action === "SCHEDULE_REMINDER" ? "SCHEDULE" : "CANCEL",
+        reminder: {
+          id: reminder.id,
+          title: reminder.title,
+          note: reminder.note,
+          remindAt: reminder.remindAt,
+        },
+        subscription,
+      }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    return true;
   } catch {
-    // Graceful fallback to client-side SW
+    // Graceful fallback to client-side SW, but server push did not save.
+    return false;
   }
 }
 
@@ -197,45 +209,37 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
       return;
     }
 
-    playBell("focus-end");
-    toast.success("Test notification sent!", {
-      description: "You should see a system push notification banner now.",
+    const subscription = await getOrRegisterPushSubscription();
+    if (!subscription) {
+      toast.error("Push subscription was not created. Re-allow notifications and try again.");
+      return;
+    }
+
+    const response = await fetch("/api/push/schedule", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "TEST_PUSH",
+        subscription,
+      }),
     });
 
-    const titleText = "StudySpark Test Notification 🔔";
-    const bodyText = "Success! Notifications are working properly on your phone.";
+    const result = (await response.json().catch(() => ({}))) as {
+      success?: boolean;
+      error?: string;
+    };
 
-    if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.ready
-        .then((reg) => {
-          void reg.showNotification(titleText, {
-            body: bodyText,
-            icon: "/icon-192.png",
-            badge: "/favicon-48x48.png",
-            vibrate: [100, 50, 100],
-            tag: "studyspark-test-notification",
-            data: { url: "/" },
-          } as NotificationOptions);
-        })
-        .catch(() => {
-          const notif = new Notification(titleText, { body: bodyText, icon: "/favicon.ico" });
-          notif.onclick = () => {
-            window.focus();
-            notif.close();
-          };
-        });
-    } else {
-      const desktopNotification = new Notification(titleText, {
-        body: bodyText,
-        icon: "/favicon.ico",
-      });
-      desktopNotification.onclick = () => {
-        window.focus();
-        desktopNotification.close();
-      };
+    if (!response.ok || !result.success) {
+      toast.error(result.error || "Server push test failed.");
+      return;
     }
-  };
 
+    playBell("focus-end");
+    toast.success("Server push test sent", {
+      description: "If this appears on mobile, closed-app reminders can work too.",
+    });
+  };
   const fireReminder = useCallback((reminder: Reminder) => {
     for (let i = 0; i < REMINDER_SOUND_REPEATS; i += 1) {
       window.setTimeout(() => playBell("focus-end"), i * REMINDER_SOUND_GAP_MS);
@@ -327,7 +331,7 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
 
     const subscription = await getOrRegisterPushSubscription();
     persist([reminder, ...reminders]);
-    void syncReminderWithServiceWorker(
+    const serverSaved = await syncReminderWithServiceWorker(
       reminder,
       "SCHEDULE_REMINDER",
       subscription
@@ -336,11 +340,15 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
     setDate(todayInputValue());
     setTime(timeInputValue());
     setNote("");
-    toast.success("Reminder set", {
-      description: subscription
-        ? "Push notification will work even after the website is closed."
-        : "Browser permission is needed for closed-website push alerts.",
-    });
+    if (serverSaved) {
+      toast.success("Reminder set", {
+        description: "Server push saved. It can work after the website is closed.",
+      });
+    } else {
+      toast.warning("Reminder saved only in this browser", {
+        description: "Closed-website push was not saved. Try Test Notification again.",
+      });
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -554,3 +562,4 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
     </Dialog>
   );
 }
+
