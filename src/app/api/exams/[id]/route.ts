@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import {
+  cancelExamPushNotifications,
+  syncExamPushNotifications,
+} from "@/lib/notification-schedules";
 
 const updateSchema = z.object({
   subject: z.string().min(1).max(100).optional(),
@@ -56,6 +60,8 @@ export async function PUT(
       },
     });
 
+    await syncExamPushNotifications(exam);
+
     return NextResponse.json({ exam });
   } catch (error) {
     console.error("Exam update error:", error);
@@ -85,6 +91,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    await cancelExamPushNotifications(user.id, id);
     await db.exam.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

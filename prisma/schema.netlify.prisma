@@ -315,3 +315,20 @@ model PushReminder {
   @@index([userId])
   @@index([remindAt, firedAt, cancelledAt])
 }
+
+model FestivalHoliday {
+  id          String   @id @default(cuid())
+  countryCode String
+  year        Int
+  date        DateTime
+  name        String
+  localName   String   @default("")
+  type        String   @default("Public")
+  source      String   @default("nager")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([countryCode, date, name])
+  @@index([countryCode, year])
+  @@index([date])
+}

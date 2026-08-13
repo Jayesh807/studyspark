@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { syncTaskPushNotifications } from "@/lib/notification-schedules";
 
 const todoSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -56,6 +57,8 @@ export async function POST(req: NextRequest) {
         userId: user.id,
       },
     });
+
+    await syncTaskPushNotifications(todo);
 
     return NextResponse.json({ todo }, { status: 201 });
   } catch (error) {

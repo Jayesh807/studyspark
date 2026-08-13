@@ -22,6 +22,7 @@ import { parseISO } from "date-fns";
 import { playBell } from "./pages/focus-timer";
 import { toast } from "sonner";
 import type { Exam } from "@/lib/types";
+import { saveBrowserPushSubscription } from "@/lib/push-client";
 
 function NotFoundPage() {
   const setView = useAppStore((s) => s.setView);
@@ -198,6 +199,7 @@ function PageRouter() {
 export function DashboardShell({ children }: { children?: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteSession, setPaletteSession] = useState(0);
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated);
   useEffect(() => {
     if (typeof window !== "undefined") {
       const rawView = getViewForRoute(window.location.pathname);
@@ -218,6 +220,11 @@ export function DashboardShell({ children }: { children?: React.ReactNode }) {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    void saveBrowserPushSubscription();
+  }, [isAuthenticated]);
 
   const openPalette = useCallback(() => {
     setPaletteSession((s) => s + 1);

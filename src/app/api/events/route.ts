@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { syncEventPushNotifications } from "@/lib/notification-schedules";
 
 const eventSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -48,6 +49,8 @@ export async function POST(req: NextRequest) {
         userId: user.id,
       },
     });
+
+    await syncEventPushNotifications(event);
 
     return NextResponse.json({ event }, { status: 201 });
   } catch (error) {

@@ -31,6 +31,7 @@ import {
   AlertTriangle,
   Sparkles,
   CalendarIcon,
+  Gift,
   ListChecks,
   X,
 } from "lucide-react";
@@ -78,6 +79,15 @@ import { cn } from "@/lib/utils";
 
 type CalendarView = "month" | "week" | "day";
 
+interface FestivalHoliday {
+  id: string;
+  date: string;
+  name: string;
+  localName: string;
+  type: string;
+  source: string;
+}
+
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const COLOR_KEYS: EventColor[] = ["violet", "blue", "green", "amber", "rose", "cyan"];
 const FORM_FIELD_CLASS =
@@ -95,6 +105,10 @@ function eventOnDay(event: Event, day: Date): boolean {
   } catch {
     return false;
   }
+}
+
+function festivalOnDay(festival: FestivalHoliday, day: Date): boolean {
+  return festival.date === format(day, "yyyy-MM-dd");
 }
 
 function sortEvents(list: Event[]): Event[] {
@@ -121,7 +135,9 @@ export function CalendarPage() {
     [userId]
   );
   const [events, setEvents] = useState<Event[]>(() => initialCache?.events ?? []);
+  const [festivals, setFestivals] = useState<FestivalHoliday[]>([]);
   const [loading, setLoading] = useState(() => !initialCache);
+  const [festivalsLoading, setFestivalsLoading] = useState(false);
 
   const [view, setView] = useState<CalendarView>("month");
   const [cursor, setCursor] = useState<Date>(new Date());
@@ -154,8 +170,57 @@ export function CalendarPage() {
   }, [userId]);
 
   useEffect(() => {
-    fetchEvents();
+    const timer = window.setTimeout(() => {
+      void fetchEvents();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [fetchEvents]);
+
+  useEffect(() => {
+    let active = true;
+    let loadingTimer: ReturnType<typeof window.setTimeout> | null = null;
+    const year = cursor.getFullYear();
+    const years = Array.from(new Set([year - 1, year, year + 1]));
+
+    loadingTimer = window.setTimeout(() => {
+      if (!active) return;
+      setFestivalsLoading(true);
+      Promise.all(
+        years.map((targetYear) =>
+          apiFetch<{ festivals: FestivalHoliday[] }>(
+            `/api/festivals?country=IN&year=${targetYear}`
+          )
+        )
+      )
+        .then((results) => {
+          if (!active) return;
+          const byKey = new Map<string, FestivalHoliday>();
+          results
+            .flatMap((result) => result.festivals)
+            .forEach((festival) => {
+              byKey.set(`${festival.date}:${festival.name}`, festival);
+            });
+          setFestivals(
+            [...byKey.values()].sort((a, b) => a.date.localeCompare(b.date))
+          );
+        })
+        .catch((error) => {
+          if (!active) return;
+          setFestivals([]);
+          handleError(error, "Failed to load festivals");
+        })
+        .finally(() => {
+          if (active) {
+            setFestivalsLoading(false);
+          }
+          });
+    }, 0);
+
+    return () => {
+      active = false;
+      if (loadingTimer) window.clearTimeout(loadingTimer);
+    };
+  }, [cursor]);
 
   useEffect(() => {
     if (!loading) {
@@ -178,6 +243,14 @@ export function CalendarPage() {
       })
       .slice(0, 5);
   }, [sortedEvents]);
+
+  const upcomingFestivals = useMemo(() => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    return festivals
+      .filter((festival) => festival.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 6);
+  }, [festivals]);
 
   // ---------- Navigation ----------
   const goPrev = () => {
@@ -366,12 +439,21 @@ export function CalendarPage() {
         return false;
       }
     });
+    const monthFestivals = festivals.filter((festival) => {
+      try {
+        const date = parseISO(festival.date);
+        return isValid(date) && isSameMonth(date, cursor);
+      } catch {
+        return false;
+      }
+    });
     return {
       monthCount: monthEvents.length,
       upcomingCount: upcoming.length,
       total: events.length,
+      festivalCount: monthFestivals.length,
     };
-  }, [events, cursor, upcoming]);
+  }, [events, festivals, cursor, upcoming]);
 
   // ---------- Render ----------
   return (
@@ -399,7 +481,7 @@ export function CalendarPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MiniStat
             icon={CalendarDays}
             label="This Month"
@@ -417,6 +499,12 @@ export function CalendarPage() {
             label="All Events"
             value={stats.total}
             accent="bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300"
+          />
+          <MiniStat
+            icon={Gift}
+            label="Festivals"
+            value={stats.festivalCount}
+            accent="bg-rose-500/15 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300"
           />
         </div>
 
@@ -489,6 +577,7 @@ export function CalendarPage() {
               <MonthView
                 cursor={cursor}
                 events={sortedEvents}
+                festivals={festivals}
                 onDayClick={(d) => setDayDetail(d)}
                 onEventClick={handleEdit}
                 onEventMove={handleEventMove}
@@ -497,6 +586,7 @@ export function CalendarPage() {
               <WeekView
                 cursor={cursor}
                 events={sortedEvents}
+                festivals={festivals}
                 onDayClick={(d) => setDayDetail(d)}
                 onEventClick={handleEdit}
                 onEventMove={handleEventMove}
@@ -505,6 +595,7 @@ export function CalendarPage() {
               <DayView
                 cursor={cursor}
                 events={sortedEvents}
+                festivals={festivals}
                 onAdd={(d) => handleCreate(d)}
                 onEventClick={handleEdit}
               />
@@ -512,7 +603,7 @@ export function CalendarPage() {
           </div>
 
           {/* Upcoming events sidebar */}
-          <div className="dashboard-surface p-3 sm:p-4 lg:max-h-[calc(100vh-200px)]">
+          <div className="dashboard-surface p-3 sm:p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="dashboard-section-title">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-600 shadow-sm ring-1 ring-violet-500/15 dark:bg-violet-500/20 dark:text-violet-300">
@@ -551,7 +642,7 @@ export function CalendarPage() {
                 </Button>
               </div>
             ) : (
-              <ScrollArea className="h-[calc(100vh-260px)] min-h-[200px] pr-2">
+              <ScrollArea className="max-h-52 min-h-[180px] pr-2">
                 <div className="space-y-2.5">
                   {upcoming.map((event, i) => (
                     <UpcomingItem
@@ -564,6 +655,46 @@ export function CalendarPage() {
                 </div>
               </ScrollArea>
             )}
+
+            <div className="mt-5 border-t border-border/50 pt-4">
+              <div className="mb-3 flex shrink-0 items-center justify-between">
+                <h3 className="dashboard-section-title">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 text-rose-600 shadow-sm ring-1 ring-rose-500/15 dark:bg-rose-500/20 dark:text-rose-300">
+                    <Gift className="h-4 w-4" />
+                  </span>
+                  Upcoming Festivals
+                </h3>
+                <Badge
+                  variant="secondary"
+                  className="rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                >
+                  {upcomingFestivals.length}
+                </Badge>
+              </div>
+              {festivalsLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : upcomingFestivals.length === 0 ? (
+                <p className="rounded-lg border border-dashed border-border/60 p-4 text-center text-sm text-muted-foreground">
+                  No upcoming festivals loaded.
+                </p>
+              ) : (
+                <ScrollArea className="h-[320px] overflow-hidden rounded-lg pr-3">
+                  <div className="space-y-2 pr-1">
+                    {upcomingFestivals.map((festival, i) => (
+                      <FestivalUpcomingItem
+                        key={`${festival.date}-${festival.name}`}
+                        festival={festival}
+                        index={i}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
           </div>
         </div>
 
@@ -591,6 +722,7 @@ export function CalendarPage() {
         <DayDetailDialog
           date={dayDetail}
           events={dayDetail ? sortedEvents.filter((e) => eventOnDay(e, dayDetail)) : []}
+          festivals={dayDetail ? festivals.filter((f) => festivalOnDay(f, dayDetail)) : []}
           onOpenChange={(o) => !o && setDayDetail(null)}
           onAdd={(d) => {
             setDayDetail(null);
@@ -678,12 +810,14 @@ function MiniStat({
 function MonthView({
   cursor,
   events,
+  festivals,
   onDayClick,
   onEventClick,
   onEventMove,
 }: {
   cursor: Date;
   events: Event[];
+  festivals: FestivalHoliday[];
   onDayClick: (day: Date) => void;
   onEventClick: (event: Event) => void;
   onEventMove: (eventId: string, newDate: string) => void;
@@ -733,6 +867,7 @@ function MonthView({
             day={day}
             isCurrentMonth={isSameMonth(day, cursor)}
             events={events.filter((e) => eventOnDay(e, day))}
+            festivals={festivals.filter((f) => festivalOnDay(f, day))}
             onDayClick={onDayClick}
             onEventClick={onEventClick}
             onEventMove={onEventMove}
@@ -753,6 +888,7 @@ function DayCell({
   day,
   isCurrentMonth,
   events,
+  festivals,
   onDayClick,
   onEventClick,
   onEventMove,
@@ -766,6 +902,7 @@ function DayCell({
   day: Date;
   isCurrentMonth: boolean;
   events: Event[];
+  festivals: FestivalHoliday[];
   onDayClick: (day: Date) => void;
   onEventClick: (event: Event) => void;
   onEventMove: (eventId: string, newDate: string) => void;
@@ -777,8 +914,13 @@ function DayCell({
   onDragOverDayChange: (day: Date | null) => void;
 }) {
   const today = isToday(day);
-  const visible = events.slice(0, 3);
-  const overflow = events.length - visible.length;
+  const visibleFestivals = festivals.slice(0, 2);
+  const visible = events.slice(0, Math.max(1, 3 - visibleFestivals.length));
+  const overflow =
+    events.length -
+    visible.length +
+    festivals.length -
+    visibleFestivals.length;
 
   // Drag state — this DayCell shows drop affordance only when an active drag
   // is in progress AND the pointer is hovering over THIS day.
@@ -875,6 +1017,16 @@ function DayCell({
             aria-hidden="true"
           />
         )}
+        {visibleFestivals.map((festival) => (
+          <div
+            key={`${festival.date}-${festival.name}`}
+            className="flex w-full items-center gap-1 rounded-md bg-rose-500/10 px-1.5 py-0.5 text-left text-[10px] font-semibold leading-tight text-rose-600 dark:text-rose-300 sm:text-[11px]"
+            title={festival.name}
+          >
+            <Gift className="h-2.5 w-2.5 shrink-0" />
+            <span className="truncate">{festival.name}</span>
+          </div>
+        ))}
         {visible.map((event) => {
           const c = colorOf(event.color);
           const isThisDragging = draggingEventId === event.id;
@@ -931,12 +1083,14 @@ function DayCell({
 function WeekView({
   cursor,
   events,
+  festivals,
   onDayClick,
   onEventClick,
   onEventMove,
 }: {
   cursor: Date;
   events: Event[];
+  festivals: FestivalHoliday[];
   onDayClick: (day: Date) => void;
   onEventClick: (event: Event) => void;
   onEventMove: (eventId: string, newDate: string) => void;
@@ -953,6 +1107,7 @@ function WeekView({
     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
       {days.map((day, idx) => {
         const dayEvents = events.filter((e) => eventOnDay(e, day));
+        const dayFestivals = festivals.filter((f) => festivalOnDay(f, day));
         const today = isToday(day);
         const isDragOver =
           !!draggingEventId && !!dragOverDay && isSameDay(dragOverDay, day);
@@ -1037,7 +1192,17 @@ function WeekView({
                   aria-hidden="true"
                 />
               )}
-              {dayEvents.length === 0 ? (
+              {dayFestivals.map((festival) => (
+                <div
+                  key={`${festival.date}-${festival.name}`}
+                  className="flex w-full items-center gap-1.5 rounded-lg bg-rose-500/10 px-2 py-1.5 text-left text-xs font-semibold text-rose-600 dark:text-rose-300"
+                  title={festival.name}
+                >
+                  <Gift className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{festival.name}</span>
+                </div>
+              ))}
+              {dayEvents.length === 0 && dayFestivals.length === 0 ? (
                 <div className="text-[10px] text-muted-foreground/50 italic mt-1">
                   No events
                 </div>
@@ -1102,17 +1267,23 @@ function WeekView({
 function DayView({
   cursor,
   events,
+  festivals,
   onAdd,
   onEventClick,
 }: {
   cursor: Date;
   events: Event[];
+  festivals: FestivalHoliday[];
   onAdd: (day: Date) => void;
   onEventClick: (event: Event) => void;
 }) {
   const dayEvents = useMemo(
     () => events.filter((e) => eventOnDay(e, cursor)),
     [events, cursor]
+  );
+  const dayFestivals = useMemo(
+    () => festivals.filter((f) => festivalOnDay(f, cursor)),
+    [festivals, cursor]
   );
   const today = isToday(cursor);
 
@@ -1140,7 +1311,8 @@ function DayView({
               {format(cursor, "EEEE, MMMM d")}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {dayEvents.length} event{dayEvents.length !== 1 ? "s" : ""} scheduled
+              {dayEvents.length} event{dayEvents.length !== 1 ? "s" : ""} and{" "}
+              {dayFestivals.length} festival{dayFestivals.length !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
@@ -1155,7 +1327,7 @@ function DayView({
         </Button>
       </div>
 
-      {dayEvents.length === 0 ? (
+      {dayEvents.length === 0 && dayFestivals.length === 0 ? (
         <EmptyState
           icon={CalendarDays}
           title="Nothing scheduled"
@@ -1174,6 +1346,13 @@ function DayView({
         />
       ) : (
         <div className="space-y-2">
+          {dayFestivals.map((festival, i) => (
+            <FestivalDayRow
+              key={`${festival.date}-${festival.name}`}
+              festival={festival}
+              index={i}
+            />
+          ))}
           {dayEvents.map((event, i) => (
             <DayEventRow
               key={event.id}
@@ -1250,7 +1429,80 @@ function DayEventRow({
   );
 }
 
+function FestivalDayRow({
+  festival,
+  index,
+}: {
+  festival: FestivalHoliday;
+  index: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.25, delay: index * 0.05 }}
+      className="dashboard-row flex w-full items-start gap-3 border-rose-500/25 bg-rose-500/[0.04] p-3 text-left"
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-300">
+        <Gift className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <h4 className="truncate text-sm font-semibold">{festival.name}</h4>
+          <Badge
+            variant="secondary"
+            className="h-5 rounded-md bg-rose-500/10 px-1.5 text-[10px] text-rose-600 dark:text-rose-300"
+          >
+            Festival
+          </Badge>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {festival.localName || festival.type}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 // ---------- Upcoming item ----------
+function FestivalUpcomingItem({
+  festival,
+  index,
+}: {
+  festival: FestivalHoliday;
+  index: number;
+}) {
+  let dateStr = festival.date;
+  try {
+    dateStr = format(parseISO(festival.date), "EEE, MMM d");
+  } catch {
+    // keep raw date
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 6 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.25, delay: index * 0.05 }}
+      className="dashboard-row flex w-full items-start gap-3 border-rose-500/20 bg-rose-500/[0.035] p-3"
+    >
+      <span className="dashboard-icon-tile bg-rose-500/12 text-rose-600 dark:text-rose-300">
+        <Gift className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <h4 className="truncate text-sm font-semibold">{festival.name}</h4>
+        <div className="mt-0.5 flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground">{dateStr}</span>
+          <span className="text-[11px] text-muted-foreground/50">·</span>
+          <span className="text-[11px] font-medium text-rose-600 dark:text-rose-300">
+            {festival.type}
+          </span>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function UpcomingItem({
   event,
   index,
@@ -1328,6 +1580,7 @@ function UpcomingItem({
 function DayDetailDialog({
   date,
   events,
+  festivals,
   onOpenChange,
   onAdd,
   onEdit,
@@ -1335,6 +1588,7 @@ function DayDetailDialog({
 }: {
   date: Date | null;
   events: Event[];
+  festivals: FestivalHoliday[];
   onOpenChange: (open: boolean) => void;
   onAdd: (day: Date) => void;
   onEdit: (event: Event) => void;
@@ -1353,20 +1607,30 @@ function DayDetailDialog({
             </DialogTitle>
             <DialogDescription>
               {events.length === 0
-                ? "No events scheduled. Click below to add one."
-                : `${events.length} event${events.length !== 1 ? "s" : ""} on this day.`}
+                ? festivals.length === 0
+                  ? "No events scheduled. Click below to add one."
+                  : `${festivals.length} festival${festivals.length !== 1 ? "s" : ""} on this day.`
+                : `${events.length} event${events.length !== 1 ? "s" : ""} and ${festivals.length} festival${festivals.length !== 1 ? "s" : ""} on this day.`}
             </DialogDescription>
           </DialogHeader>
         </div>
 
         <div className="max-h-[50vh] space-y-2 overflow-y-auto p-4 pr-5 scrollbar-thin sm:p-5">
-          {events.length === 0 ? (
+          {events.length === 0 && festivals.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-6 text-center">
               <CalendarDays className="h-10 w-10 text-muted-foreground/40 mb-2" />
               <p className="text-sm text-muted-foreground">Free day!</p>
             </div>
           ) : (
-            events.map((event) => {
+            <>
+            {festivals.map((festival) => (
+              <FestivalDayRow
+                key={`${festival.date}-${festival.name}`}
+                festival={festival}
+                index={0}
+              />
+            ))}
+            {events.map((event) => {
               const c = colorOf(event.color);
               return (
                 <div
@@ -1429,7 +1693,8 @@ function DayDetailDialog({
                   </div>
                 </div>
               );
-            })
+            })}
+            </>
           )}
         </div>
 
