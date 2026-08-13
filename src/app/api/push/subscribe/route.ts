@@ -1,5 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 import { hasVapidKeys, vapidDetails } from "@/lib/push";
+import { saveUserPushSubscription } from "@/lib/push-store";
+import { syncUpcomingFestivalPushNotifications } from "@/lib/notification-schedules";
 
 export const runtime = "nodejs";
 
@@ -9,4 +13,33 @@ export async function GET() {
     publicKey: vapidDetails.publicKey,
     configured: hasVapidKeys,
   });
+}
+
+const subscribeSchema = z.object({
+  subscription: z.any(),
+});
+
+export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const parsed = subscribeSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+  }
+
+  try {
+    await saveUserPushSubscription(user.id, parsed.data.subscription);
+    await syncUpcomingFestivalPushNotifications(user.id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[Push Subscribe Error]:", error);
+    return NextResponse.json(
+      { error: "Could not save push subscription" },
+      { status: 500 }
+    );
+  }
 }

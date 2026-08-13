@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
+import { getOrRegisterPushSubscription } from "@/lib/push-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,7 +50,7 @@ const FIELD_CLASS =
   "rounded-[5px] border-border/50 bg-muted/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:bg-background/75 focus-visible:border-violet-400/70 focus-visible:ring-violet-500/20";
 const LABEL_CLASS = "text-sm font-semibold text-foreground/90";
 const DIALOG_CLASS =
-  "sm:max-w-[560px] rounded-[14px] max-h-[90vh] overflow-hidden border-white/60 bg-background/92 p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
+  "w-[calc(100vw-1.5rem)] max-w-[560px] rounded-[14px] max-h-[calc(100dvh-1.5rem)] overflow-hidden border-white/60 bg-background/92 p-0 shadow-2xl shadow-slate-950/15 backdrop-blur-2xl dark:border-white/10 dark:bg-background/90";
 const REMINDER_SOUND_REPEATS = 4;
 const REMINDER_SOUND_GAP_MS = 900;
 
@@ -84,54 +85,6 @@ function readReminders(storageKey: string): Reminder[] {
 
 function writeReminders(storageKey: string, reminders: Reminder[]) {
   window.localStorage.setItem(storageKey, JSON.stringify(reminders));
-}
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-async function getOrRegisterPushSubscription(): Promise<PushSubscription | null> {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-    return null;
-  }
-
-  try {
-    if (!("Notification" in window)) return null;
-    let permission = Notification.permission;
-    if (permission === "default") {
-      permission = await Notification.requestPermission();
-    }
-    if (permission !== "granted") return null;
-
-    const registration = await navigator.serviceWorker.ready;
-    let subscription = await registration.pushManager.getSubscription();
-
-    if (!subscription) {
-      // Get public VAPID key from server
-      const keyRes = await fetch("/api/push/subscribe").catch(() => null);
-      if (!keyRes || !keyRes.ok) return null;
-      const { configured, publicKey } = await keyRes.json();
-      if (!configured || !publicKey) return null;
-
-      const convertedKey = urlBase64ToUint8Array(publicKey);
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertedKey,
-      });
-    }
-
-    return subscription;
-  } catch (err) {
-    console.warn("[Web Push Subscription Warning]:", err);
-    return null;
-  }
 }
 
 async function syncReminderWithServiceWorker(
@@ -409,7 +362,8 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
         onPointerDownOutside={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
       >
-        <div className="p-7 pb-0">
+        <ScrollArea className="max-h-[calc(100dvh-1.5rem)]">
+        <div className="px-4 pt-5 pb-0 sm:px-7 sm:pt-7">
           <DialogHeader className="space-y-2">
             <DialogTitle className="flex items-center gap-3 text-xl tracking-tight">
               <span className="flex h-11 w-11 items-center justify-center rounded-[5px] bg-gradient-to-br from-violet-500/90 via-fuchsia-500/90 to-sky-500/80 text-white shadow-sm">
@@ -485,7 +439,7 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
           </div>
         </div>
 
-        <div className="border-y border-border/40 bg-muted/15 px-7 py-4">
+        <div className="border-y border-border/40 bg-muted/15 px-4 py-4 sm:px-7">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BellRing className="h-4 w-4 text-violet-500" />
@@ -508,7 +462,7 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
             )}
           </div>
 
-          <ScrollArea className="max-h-[220px]">
+          <ScrollArea className="max-h-[180px] sm:max-h-[220px]">
             <div className="space-y-2 pr-3">
               {sortedReminders.length === 0 ? (
                 <div className="rounded-[5px] border border-dashed border-border/60 bg-background/50 p-5 text-center text-sm text-muted-foreground">
@@ -565,7 +519,7 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
           </ScrollArea>
         </div>
 
-        <DialogFooter className="flex-col gap-2 p-7 pt-0 sm:flex-row sm:justify-between">
+        <DialogFooter className="flex-col gap-2 px-4 pb-5 pt-4 sm:flex-row sm:justify-between sm:px-7 sm:pb-7">
           <Button
             type="button"
             variant="secondary"
@@ -576,25 +530,26 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
             Test Notification
           </Button>
 
-          <div className="flex items-center gap-2 sm:ml-auto">
+          <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:items-center">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="h-11 rounded-[5px] px-6"
+              className="h-11 rounded-[5px] px-3 sm:px-6"
             >
               Close
             </Button>
             <Button
               type="button"
               onClick={handleAddReminder}
-              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-6 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600"
+              className="h-11 rounded-[5px] bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:to-fuchsia-600 sm:px-6"
             >
               <Plus className="h-4 w-4" />
               Add Reminder
             </Button>
           </div>
         </DialogFooter>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

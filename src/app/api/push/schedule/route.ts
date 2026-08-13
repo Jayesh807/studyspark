@@ -9,6 +9,7 @@ import {
   markReminderFired,
   toWebPushSubscription,
 } from "@/lib/push-store";
+import { syncDailyEngagementNotifications } from "@/lib/engagement-notifications";
 
 export const runtime = "nodejs";
 
@@ -62,8 +63,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const shouldRefreshEngagement = new Date().getMinutes() === 0;
+  const engagement = shouldRefreshEngagement
+    ? await syncDailyEngagementNotifications()
+    : { skipped: true };
   const result = await dispatchDueReminders();
-  return NextResponse.json({ success: true, ...result });
+  return NextResponse.json({ success: true, engagement, ...result });
 }
 
 export async function POST(req: NextRequest) {

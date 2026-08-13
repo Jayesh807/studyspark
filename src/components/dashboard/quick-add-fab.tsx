@@ -71,6 +71,7 @@ const ACTIONS: ActionConfig[] = [
 export function QuickAddFAB() {
   const [open, setOpen] = useState(false);
   const setView = useAppStore((s) => s.setView);
+  const currentView = useAppStore((s) => s.currentView);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -103,7 +104,10 @@ export function QuickAddFAB() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3 lg:bottom-8 lg:right-8 pb-[env(safe-area-inset-bottom)]"
+      className={cn(
+        "fixed bottom-20 right-4 z-40 flex flex-col items-end gap-3 pb-[env(safe-area-inset-bottom)] lg:bottom-8 lg:right-8",
+        currentView === "calendar" && "lg:right-[380px]"
+      )}
     >
       <AnimatePresence>
         {open && (

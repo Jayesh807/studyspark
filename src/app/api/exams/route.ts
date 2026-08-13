@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { syncExamPushNotifications } from "@/lib/notification-schedules";
 
 const examSchema = z.object({
   subject: z.string().min(1, "Subject is required").max(100),
@@ -61,6 +62,8 @@ export async function POST(req: NextRequest) {
         },
       },
     });
+
+    await syncExamPushNotifications(exam);
 
     return NextResponse.json({ exam }, { status: 201 });
   } catch (error) {
