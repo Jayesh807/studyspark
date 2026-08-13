@@ -1,44 +1,110 @@
 import type { PushSubscription } from "web-push";
+import { db } from "@/lib/db";
 
-export interface StoredReminder {
+type PushSubscriptionInput = PushSubscription & {
+  keys?: {
+    auth?: string;
+    p256dh?: string;
+  };
+};
+
+export interface StoredReminderInput {
   id: string;
-  userId?: string;
+  userId: string;
   title: string;
   note?: string;
-  remindAt: string; // ISO string
-  subscription: PushSubscription;
-  fired: boolean;
-  createdAt: string;
+  remindAt: string;
+  subscription: PushSubscriptionInput;
 }
 
-// In-memory + disk-synced reminder store for zero-latency scheduling
-const reminderStore = new Map<string, StoredReminder>();
+function parseSubscription(subscription: PushSubscriptionInput) {
+  const endpoint = subscription.endpoint;
+  const auth = subscription.keys?.auth;
+  const p256dh = subscription.keys?.p256dh;
 
-export function savePushReminder(reminder: StoredReminder) {
-  reminderStore.set(reminder.id, reminder);
-}
-
-export function cancelPushReminder(id: string) {
-  reminderStore.delete(id);
-}
-
-export function getDueReminders(): StoredReminder[] {
-  const now = new Date().toISOString();
-  const due: StoredReminder[] = [];
-
-  for (const reminder of reminderStore.values()) {
-    if (!reminder.fired && reminder.remindAt <= now) {
-      due.push(reminder);
-    }
+  if (!endpoint || !auth || !p256dh) {
+    throw new Error("Invalid push subscription");
   }
 
-  return due;
+  return { endpoint, auth, p256dh };
 }
 
-export function markReminderFired(id: string) {
-  const item = reminderStore.get(id);
-  if (item) {
-    item.fired = true;
-    reminderStore.set(id, item);
-  }
+export function toWebPushSubscription(subscription: {
+  endpoint: string;
+  auth: string;
+  p256dh: string;
+}): PushSubscription {
+  return {
+    endpoint: subscription.endpoint,
+    keys: {
+      auth: subscription.auth,
+      p256dh: subscription.p256dh,
+    },
+  };
+}
+
+export async function savePushReminder(reminder: StoredReminderInput) {
+  const subscription = parseSubscription(reminder.subscription);
+  const storedSubscription = await db.pushSubscription.upsert({
+    where: { endpoint: subscription.endpoint },
+    update: {
+      userId: reminder.userId,
+      auth: subscription.auth,
+      p256dh: subscription.p256dh,
+    },
+    create: {
+      userId: reminder.userId,
+      endpoint: subscription.endpoint,
+      auth: subscription.auth,
+      p256dh: subscription.p256dh,
+    },
+  });
+
+  return db.pushReminder.upsert({
+    where: { id: reminder.id },
+    update: {
+      userId: reminder.userId,
+      subscriptionId: storedSubscription.id,
+      title: reminder.title,
+      note: reminder.note ?? "",
+      remindAt: new Date(reminder.remindAt),
+      firedAt: null,
+      cancelledAt: null,
+    },
+    create: {
+      id: reminder.id,
+      userId: reminder.userId,
+      subscriptionId: storedSubscription.id,
+      title: reminder.title,
+      note: reminder.note ?? "",
+      remindAt: new Date(reminder.remindAt),
+    },
+  });
+}
+
+export async function cancelPushReminder(id: string, userId: string) {
+  await db.pushReminder.updateMany({
+    where: { id, userId, firedAt: null },
+    data: { cancelledAt: new Date() },
+  });
+}
+
+export async function getDueReminders(limit = 50) {
+  return db.pushReminder.findMany({
+    where: {
+      remindAt: { lte: new Date() },
+      firedAt: null,
+      cancelledAt: null,
+    },
+    include: { subscription: true },
+    orderBy: { remindAt: "asc" },
+    take: limit,
+  });
+}
+
+export async function markReminderFired(id: string) {
+  await db.pushReminder.updateMany({
+    where: { id, firedAt: null },
+    data: { firedAt: new Date() },
+  });
 }

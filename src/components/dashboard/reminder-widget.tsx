@@ -103,6 +103,13 @@ async function getOrRegisterPushSubscription(): Promise<PushSubscription | null>
   }
 
   try {
+    if (!("Notification" in window)) return null;
+    let permission = Notification.permission;
+    if (permission === "default") {
+      permission = await Notification.requestPermission();
+    }
+    if (permission !== "granted") return null;
+
     const registration = await navigator.serviceWorker.ready;
     let subscription = await registration.pushManager.getSubscription();
 
@@ -110,8 +117,8 @@ async function getOrRegisterPushSubscription(): Promise<PushSubscription | null>
       // Get public VAPID key from server
       const keyRes = await fetch("/api/push/subscribe").catch(() => null);
       if (!keyRes || !keyRes.ok) return null;
-      const { publicKey } = await keyRes.json();
-      if (!publicKey) return null;
+      const { configured, publicKey } = await keyRes.json();
+      if (!configured || !publicKey) return null;
 
       const convertedKey = urlBase64ToUint8Array(publicKey);
       subscription = await registration.pushManager.subscribe({
@@ -129,7 +136,8 @@ async function getOrRegisterPushSubscription(): Promise<PushSubscription | null>
 
 async function syncReminderWithServiceWorker(
   reminder: Reminder,
-  action: "SCHEDULE_REMINDER" | "CANCEL_REMINDER"
+  action: "SCHEDULE_REMINDER" | "CANCEL_REMINDER",
+  existingSubscription?: PushSubscription | null
 ) {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
@@ -154,9 +162,10 @@ async function syncReminderWithServiceWorker(
       .catch(() => undefined);
   }
 
-  // 2. Sync with Server Web Push API for background notifications when app is closed
+  // 2. Persist with Server Web Push API for background notifications when app is closed
   try {
-    const subscription = await getOrRegisterPushSubscription();
+    const subscription =
+      existingSubscription ?? (await getOrRegisterPushSubscription());
     if (subscription) {
       await fetch("/api/push/schedule", {
         method: "POST",
@@ -209,20 +218,15 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
 
   useEffect(() => {
     const loaded = readReminders(storageKey);
-    setReminders(loaded);
+    const loadTimer = window.setTimeout(() => setReminders(loaded), 0);
     loaded.forEach((r) => {
       if (!r.fired && new Date(r.remindAt).getTime() > Date.now()) {
-        syncReminderWithServiceWorker(r, "SCHEDULE_REMINDER");
+        void syncReminderWithServiceWorker(r, "SCHEDULE_REMINDER");
       }
     });
-  }, [storageKey]);
 
-  const requestPermission = useCallback(() => {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission === "default") {
-      void Notification.requestPermission();
-    }
-  }, []);
+    return () => window.clearTimeout(loadTimer);
+  }, [storageKey]);
 
   const sendTestNotification = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) {
@@ -346,7 +350,7 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
     return () => window.clearInterval(intervalId);
   }, [fireReminder, storageKey]);
 
-  const handleAddReminder = () => {
+  const handleAddReminder = async () => {
     const trimmedTitle = title.trim();
     const remindAt = new Date(`${date}T${time}`);
 
@@ -359,7 +363,6 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
       return;
     }
 
-    requestPermission();
     const reminder: Reminder = {
       id: crypto.randomUUID(),
       title: trimmedTitle,
@@ -369,14 +372,21 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
       fired: false,
     };
 
+    const subscription = await getOrRegisterPushSubscription();
     persist([reminder, ...reminders]);
-    syncReminderWithServiceWorker(reminder, "SCHEDULE_REMINDER");
+    void syncReminderWithServiceWorker(
+      reminder,
+      "SCHEDULE_REMINDER",
+      subscription
+    );
     setTitle("");
     setDate(todayInputValue());
     setTime(timeInputValue());
     setNote("");
     toast.success("Reminder set", {
-      description: "Service Worker will alert you even if the app is closed.",
+      description: subscription
+        ? "Push notification will work even after the website is closed."
+        : "Browser permission is needed for closed-website push alerts.",
     });
   };
 

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { vapidDetails } from "@/lib/push";
+import { NextResponse } from "next/server";
+import { hasVapidKeys, vapidDetails } from "@/lib/push";
 
 export const runtime = "nodejs";
 
@@ -7,5 +7,6 @@ export const runtime = "nodejs";
 export async function GET() {
   return NextResponse.json({
     publicKey: vapidDetails.publicKey,
+    configured: hasVapidKeys,
   });
 }

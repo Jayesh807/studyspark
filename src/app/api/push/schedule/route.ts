@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth";
 import { sendNotificationToSubscription } from "@/lib/push";
 import {
   savePushReminder,
   cancelPushReminder,
   getDueReminders,
   markReminderFired,
+  toWebPushSubscription,
 } from "@/lib/push-store";
 
 export const runtime = "nodejs";
@@ -23,10 +25,53 @@ const scheduleSchema = z.object({
   subscription: z.any().optional(),
 });
 
-// Timers cache to trigger Web Push right on time even if app is closed
-const activeServerTimers = new Map<string, NodeJS.Timeout>();
+async function dispatchDueReminders() {
+  const due = await getDueReminders();
+  let sent = 0;
+  let failed = 0;
+
+  for (const reminder of due) {
+    const result = await sendNotificationToSubscription(
+      toWebPushSubscription(reminder.subscription),
+      {
+        title: `Reminder: ${reminder.title}`,
+        body: reminder.note || "Time for your scheduled study task!",
+        url: "/",
+      }
+    );
+
+    if (result.success) {
+      sent += 1;
+      await markReminderFired(reminder.id);
+    } else {
+      failed += 1;
+    }
+  }
+
+  return { due: due.length, sent, failed };
+}
+
+function isCronRequest(req: NextRequest) {
+  const secret = process.env.PUSH_CRON_SECRET;
+  if (!secret) return process.env.NODE_ENV !== "production";
+  return req.headers.get("authorization") === `Bearer ${secret}`;
+}
+
+export async function GET(req: NextRequest) {
+  if (!isCronRequest(req)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const result = await dispatchDueReminders();
+  return NextResponse.json({ success: true, ...result });
+}
 
 export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const parsed = scheduleSchema.safeParse(body);
@@ -57,52 +102,24 @@ export async function POST(req: NextRequest) {
 
     // Cancel an existing scheduled push
     if (action === "CANCEL" && reminder?.id) {
-      cancelPushReminder(reminder.id);
-      if (activeServerTimers.has(reminder.id)) {
-        clearTimeout(activeServerTimers.get(reminder.id)!);
-        activeServerTimers.delete(reminder.id);
-      }
+      await cancelPushReminder(reminder.id, user.id);
       return NextResponse.json({ success: true, message: "Cancelled" });
     }
 
     // Schedule a background Web Push
     if (action === "SCHEDULE" && reminder && subscription) {
-      const remindTime = new Date(reminder.remindAt).getTime();
-      const delay = remindTime - Date.now();
-
-      savePushReminder({
+      await savePushReminder({
         id: reminder.id,
+        userId: user.id,
         title: reminder.title,
         note: reminder.note,
         remindAt: reminder.remindAt,
         subscription,
-        fired: false,
-        createdAt: new Date().toISOString(),
       });
-
-      if (delay > 0) {
-        if (activeServerTimers.has(reminder.id)) {
-          clearTimeout(activeServerTimers.get(reminder.id)!);
-        }
-
-        // Set server timer for the exact notification moment
-        const timer = setTimeout(async () => {
-          await sendNotificationToSubscription(subscription, {
-            title: `Reminder: ${reminder.title}`,
-            body: reminder.note || "Time for your scheduled study task!",
-            url: "/",
-          });
-          markReminderFired(reminder.id);
-          activeServerTimers.delete(reminder.id);
-        }, delay);
-
-        activeServerTimers.set(reminder.id, timer);
-      }
 
       return NextResponse.json({
         success: true,
-        message: "Background Web Push scheduled",
-        scheduledInMs: Math.max(0, delay),
+        message: "Background Web Push saved",
       });
     }
 
