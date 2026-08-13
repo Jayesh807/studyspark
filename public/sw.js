@@ -129,8 +129,7 @@ self.addEventListener("notificationclick", (event) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Background Reminder Scheduler in Service Worker Thread
-// Allows notifications to trigger even when app/tab is closed
+// In-session reminder timers. Closed-browser delivery comes from server Web Push.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const activeReminderTimers = new Map();

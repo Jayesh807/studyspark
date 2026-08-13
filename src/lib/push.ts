@@ -1,30 +1,28 @@
 import webpush from "web-push";
 
-// Default VAPID keys for immediate out-of-the-box functionality if env vars are missing
-const DEFAULT_VAPID_PUBLIC_KEY =
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
-  "BEl62iUYgUivxIkv69yViEuiBIa1L3u213_5k5K84pM2xY1Z46Sg8Z033p_3Z87214-436152-7";
-const DEFAULT_VAPID_PRIVATE_KEY =
-  process.env.VAPID_PRIVATE_KEY ||
-  "e4Y53112-9214-4361-5270-362228514112";
-
 const vapidDetails = {
   subject: process.env.VAPID_SUBJECT || "mailto:support@studysparks.cloud",
-  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || DEFAULT_VAPID_PUBLIC_KEY,
-  privateKey: process.env.VAPID_PRIVATE_KEY || DEFAULT_VAPID_PRIVATE_KEY,
+  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+  privateKey: process.env.VAPID_PRIVATE_KEY || "",
 };
 
-try {
-  webpush.setVapidDetails(
-    vapidDetails.subject,
-    vapidDetails.publicKey,
-    vapidDetails.privateKey
-  );
-} catch (err) {
-  console.warn("[WebPush]: VAPID initialization warning:", err);
+const hasVapidKeys = Boolean(vapidDetails.publicKey && vapidDetails.privateKey);
+
+if (hasVapidKeys) {
+  try {
+    webpush.setVapidDetails(
+      vapidDetails.subject,
+      vapidDetails.publicKey,
+      vapidDetails.privateKey
+    );
+  } catch (err) {
+    console.warn("[WebPush]: VAPID initialization warning:", err);
+  }
+} else {
+  console.warn("[WebPush]: VAPID keys are not configured.");
 }
 
-export { webpush, vapidDetails };
+export { webpush, vapidDetails, hasVapidKeys };
 
 export async function sendNotificationToSubscription(
   subscription: webpush.PushSubscription,
@@ -37,6 +35,10 @@ export async function sendNotificationToSubscription(
     actions?: Array<{ action: string; title: string }>;
   }
 ) {
+  if (!hasVapidKeys) {
+    return { success: false, error: "VAPID keys are not configured" };
+  }
+
   try {
     const result = await webpush.sendNotification(
       subscription,
