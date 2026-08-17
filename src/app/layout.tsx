@@ -37,11 +37,11 @@ export const metadata: Metadata = {
   ...createDefaultMetadata(),
   metadataBase: new URL("https://studysparks.cloud"),
   title: {
-    default: "Study Sparks - Student Productivity Platform",
+    default: "StudySparks – AI Study Tools & PDF Quiz Generator for Exam Prep",
     template: "%s | Study Sparks",
   },
   description:
-    "StudySpark helps students plan revision, focus with timers, organize study tasks, and review progress with practical educational tools.",
+    "StudySparks offers AI study tools to turn PDFs, lecture notes, and study materials into quizzes, practice tests, questions, and study guides. Create AI-generated quizzes with different question types and difficulty levels to prepare smarter for exams.",
   applicationName: "Study Sparks",
   keywords: [
     "StudySpark",

@@ -100,15 +100,13 @@ export function Navbar() {
         initial={{ y: -24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-3 sm:pt-4"
+        className={cn(
+          "fixed inset-x-0 top-0 z-50 border-b border-violet-500/10 bg-background/90 px-4 backdrop-blur-xl transition-shadow duration-300",
+          scrolled && "shadow-lg shadow-violet-500/10"
+        )}
       >
         <nav
-          className={cn(
-            "flex w-full max-w-6xl items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 transition-all duration-300 sm:px-4",
-            scrolled
-              ? "glass-strong shadow-lg shadow-violet-500/10 border-white/10"
-              : "glass border-white/10"
-          )}
+          className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between gap-3"
           aria-label="Primary"
         >
           <Logo onClick={goHome} />
@@ -222,9 +220,9 @@ export function Navbar() {
                     window.document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
                   }
                 }}
-                className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-extrabold text-amber-300 bg-amber-400/10 border border-amber-400/30 hover:bg-amber-400/20 transition-all shadow-[0_0_12px_rgba(245,158,11,0.2)] hover:scale-105"
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-bold text-amber-600 shadow-sm transition-all hover:border-amber-300 hover:bg-amber-100 hover:text-amber-700"
               >
-                <Crown className="h-3.5 w-3.5 fill-amber-300 text-amber-300 animate-pulse" />
+                <Crown className="h-4 w-4 fill-amber-500 text-amber-500" />
                 <span>Premium</span>
               </Link>
             </li>
@@ -238,21 +236,21 @@ export function Navbar() {
               variant="outline"
               size="sm"
               asChild
-              className="h-8 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 px-3 text-xs font-bold text-slate-200 shadow-sm transition-all"
+              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-900 shadow-sm transition-all hover:border-violet-200 hover:bg-violet-50 hover:text-violet-700"
             >
               <Link href="/login" onClick={() => openAuth("login")}>
-                <User className="h-3.5 w-3.5 mr-1 text-slate-300" />
+                <User className="mr-1.5 h-4 w-4 text-slate-500" />
                 Login
               </Link>
             </Button>
             <Button
               size="sm"
               asChild
-              className="h-8 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 px-3.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:shadow-[0_0_25px_rgba(217,70,239,0.6)] hover:scale-105 transition-all"
+              className="h-10 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 px-4 text-sm font-bold text-white shadow-lg shadow-violet-500/25 transition-all hover:shadow-xl hover:shadow-violet-500/35 hover:brightness-110"
             >
               <Link href="/signup" onClick={() => openAuth("signup")}>
                 Get Started
-                <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                <ArrowRight className="ml-1.5 h-4 w-4" />
               </Link>
             </Button>
           </div>
@@ -260,127 +258,127 @@ export function Navbar() {
           {/* Mobile Menu Trigger & Content */}
           {mounted && (
             <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="md:hidden"
-                  aria-label="Open menu"
-                >
-                  <Menu className="size-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="right"
-                className="w-80 border-violet-500/10 bg-background/95 backdrop-blur-xl flex flex-col justify-between"
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                aria-label="Open menu"
               >
-                <div>
-                  <SheetTitle className="px-2 pt-2">
-                    <Logo onClick={goHome} />
-                  </SheetTitle>
-                  <div className="flex flex-col gap-1 px-2 pt-6">
-                    <Link
-                      href="/features"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
-                    >
-                      Features
-                      <ArrowRight className="size-4 text-muted-foreground" />
-                    </Link>
+                <Menu className="size-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              className="w-80 border-violet-500/10 bg-background/95 backdrop-blur-xl flex flex-col justify-between"
+            >
+              <div>
+                <SheetTitle className="px-2 pt-2">
+                  <Logo onClick={goHome} />
+                </SheetTitle>
+                <div className="flex flex-col gap-1 px-2 pt-6">
+                  <Link
+                    href="/features"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
+                  >
+                    Features
+                    <ArrowRight className="size-4 text-muted-foreground" />
+                  </Link>
 
-                    <Link
-                      href="/#pricing"
-                      onClick={(e) => {
-                        setOpen(false);
-                        if (pathname === "/") {
-                          e.preventDefault();
-                          window.document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
-                        }
-                      }}
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-extrabold text-amber-300 bg-amber-400/10 border border-amber-400/30 transition-colors hover:bg-amber-400/20"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Crown className="h-4 w-4 fill-amber-300 text-amber-300 animate-pulse" />
-                        <span>Premium</span>
-                      </span>
-                      <ArrowRight className="size-4 text-amber-400" />
-                    </Link>
+                  <Link
+                    href="/#pricing"
+                    onClick={(e) => {
+                      setOpen(false);
+                      if (pathname === "/") {
+                        e.preventDefault();
+                        window.document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+                      }
+                    }}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-extrabold text-amber-300 bg-amber-400/10 border border-amber-400/30 transition-colors hover:bg-amber-400/20"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 fill-amber-300 text-amber-300 animate-pulse" />
+                      <span>Premium</span>
+                    </span>
+                    <ArrowRight className="size-4 text-amber-400" />
+                  </Link>
 
-                    <Link
-                      href="/guides"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
-                    >
-                      Study Guides
-                      <ArrowRight className="size-4 text-muted-foreground" />
-                    </Link>
+                  <Link
+                    href="/guides"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
+                  >
+                    Study Guides
+                    <ArrowRight className="size-4 text-muted-foreground" />
+                  </Link>
 
-                    <Link
-                      href="/about"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
-                    >
-                      About
-                      <ArrowRight className="size-4 text-muted-foreground" />
-                    </Link>
+                  <Link
+                    href="/about"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
+                  >
+                    About
+                    <ArrowRight className="size-4 text-muted-foreground" />
+                  </Link>
 
-                    <Link
-                      href="/contact"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
-                    >
-                      Contact
-                      <ArrowRight className="size-4 text-muted-foreground" />
-                    </Link>
+                  <Link
+                    href="/contact"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-violet-500/10"
+                  >
+                    Contact
+                    <ArrowRight className="size-4 text-muted-foreground" />
+                  </Link>
 
-                    {/* Mobile Tools Subsection */}
-                    <div className="my-2 border-y border-violet-500/10 py-2">
-                      <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
-                        Free Student Tools
-                      </p>
-                      {TOOLS.map((t) => (
-                        <Link
-                          key={t.href}
-                          href={t.href}
-                          onClick={() => setOpen(false)}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hover:bg-violet-500/10"
-                        >
-                          <span className="flex items-center gap-2">
-                            <t.icon className="size-3.5 text-violet-500" />
-                            {t.name}
-                          </span>
-                          <ArrowRight className="size-3 text-muted-foreground" />
-                        </Link>
-                      ))}
-                    </div>
+                  {/* Mobile Tools Subsection */}
+                  <div className="my-2 border-y border-violet-500/10 py-2">
+                    <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+                      Free Student Tools
+                    </p>
+                    {TOOLS.map((t) => (
+                      <Link
+                        key={t.href}
+                        href={t.href}
+                        onClick={() => setOpen(false)}
+                        className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hover:bg-violet-500/10"
+                      >
+                        <span className="flex items-center gap-2">
+                          <t.icon className="size-3.5 text-violet-500" />
+                          {t.name}
+                        </span>
+                        <ArrowRight className="size-3 text-muted-foreground" />
+                      </Link>
+                    ))}
                   </div>
                 </div>
+              </div>
 
-                <div className="flex flex-col gap-2 border-t border-violet-500/10 p-4">
-                  <SheetClose asChild>
-                    <Button
-                      variant="outline"
-                      asChild
-                      className="w-full rounded-xl"
-                    >
-                      <Link href="/login" onClick={() => openAuth("login")}>
-                        Login
-                      </Link>
-                    </Button>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Button
-                      asChild
-                      className="w-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:brightness-110 rounded-xl"
-                    >
-                      <Link href="/signup" onClick={() => openAuth("signup")}>
-                        Get Started
-                        <ArrowRight className="size-4 ml-1" />
-                      </Link>
-                    </Button>
-                  </SheetClose>
-                </div>
-              </SheetContent>
+              <div className="flex flex-col gap-2 border-t border-violet-500/10 p-4">
+                <SheetClose asChild>
+                  <Button
+                    variant="outline"
+                    asChild
+                    className="w-full rounded-xl"
+                  >
+                    <Link href="/login" onClick={() => openAuth("login")}>
+                      Login
+                    </Link>
+                  </Button>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Button
+                    asChild
+                    className="w-full bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/25 hover:brightness-110 rounded-xl"
+                  >
+                    <Link href="/signup" onClick={() => openAuth("signup")}>
+                      Get Started
+                      <ArrowRight className="size-4 ml-1" />
+                    </Link>
+                  </Button>
+                </SheetClose>
+              </div>
+            </SheetContent>
             </Sheet>
           )}
         </nav>
