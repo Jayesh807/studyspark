@@ -895,13 +895,6 @@ export function ExamsPage() {
     [subjects, userId]
   );
 
-  useEffect(() => {
-    // Request desktop notification permission on mount
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      void Notification.requestPermission();
-    }
-  }, []);
-
   const { upcoming, past } = useMemo(() => {
     const now = new Date();
     const sorted = [...exams].sort(

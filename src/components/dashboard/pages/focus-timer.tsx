@@ -20,8 +20,8 @@ import {
   X,
   Volume2,
   VolumeX,
-  Bell,
-  BellRing,
+  Maximize2,
+  Minimize2,
   Plus,
   Eye,
 } from "lucide-react";
@@ -229,6 +229,7 @@ export function FocusTimerPage() {
   const durations = useAppStore((s) => s.focusTimerDurations);
   const remaining = useAppStore((s) => s.focusTimerRemaining);
   const isRunning = useAppStore((s) => s.focusTimerRunning);
+  const focusTimerEndsAt = useAppStore((s) => s.focusTimerEndsAt);
   const subject = useAppStore((s) => s.focusTimerSubject);
   const autoBreak = useAppStore((s) => s.focusTimerAutoBreak);
   const completedFocusCount = useAppStore((s) => s.focusTimerCompletedCount);
@@ -252,6 +253,7 @@ export function FocusTimerPage() {
 
   // === Timer state ===
   const [saving, setSaving] = useState(false);
+  const [timerOnlyOpen, setTimerOnlyOpen] = useState(false);
   const [stretchDismissed, setStretchDismissed] = useState(false);
   const [hydrateDismissed, setHydrateDismissed] = useState(false);
 
@@ -317,9 +319,15 @@ export function FocusTimerPage() {
     () => initialCache?.sessions ?? []
   );
   const [loading, setLoading] = useState(() => !initialCache);
+  const [smoothNow, setSmoothNow] = useState(() => Date.now());
 
   const totalSeconds = durations[mode] * 60;
-  const progress = totalSeconds === 0 ? 0 : (totalSeconds - remaining) / totalSeconds;
+  const smoothRemaining = isRunning && focusTimerEndsAt
+    ? Math.max(0, (focusTimerEndsAt - smoothNow) / 1000)
+    : remaining;
+  const progress = totalSeconds === 0
+    ? 0
+    : Math.min(1, Math.max(0, (totalSeconds - smoothRemaining) / totalSeconds));
   const ringOffset = CIRCUMFERENCE * (1 - progress);
 
   // Ref to track if a session has already been logged for the current cycle
@@ -361,6 +369,21 @@ export function FocusTimerPage() {
   useEffect(() => {
     syncFocusTimer();
   }, [syncFocusTimer]);
+
+  useEffect(() => {
+    if (!isRunning || !focusTimerEndsAt) {
+      return;
+    }
+
+    let frameId = 0;
+    const tick = () => {
+      setSmoothNow(Date.now());
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frameId);
+  }, [focusTimerEndsAt, isRunning]);
 
   // === Tick interval ===
   useEffect(() => {
@@ -533,8 +556,267 @@ export function FocusTimerPage() {
 
   const modeCfg = MODE_CONFIG[mode];
 
+  useEffect(() => {
+    if (!timerOnlyOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setTimerOnlyOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [timerOnlyOpen]);
+
+  const renderTimerDial = (variant: "card" | "fullscreen" = "card") => {
+    const isFullscreen = variant === "fullscreen";
+    const gradientId = isFullscreen ? `grad-${mode}-fullscreen` : `grad-${mode}`;
+    const glowId = isFullscreen ? "ring-glow-fullscreen" : "ring-glow";
+
+    return (
+      <>
+        <div
+          className={cn(
+            "flex flex-col items-center justify-center",
+            isFullscreen ? "py-4 sm:py-6" : "py-2"
+          )}
+        >
+          <div
+            className={cn(
+              "relative",
+              isFullscreen
+                ? "h-[min(74vw,58dvh,520px)] w-[min(74vw,58dvh,520px)] min-h-[260px] min-w-[260px]"
+                : "h-[300px] w-[300px]"
+            )}
+          >
+            <svg viewBox="0 0 300 300" className="h-full w-full rotate-[-90deg]">
+              <defs>
+                <linearGradient
+                  id={gradientId}
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="100%"
+                >
+                  <stop offset="0%" stopColor={modeCfg.ringFrom} />
+                  <stop offset="100%" stopColor={modeCfg.ringTo} />
+                </linearGradient>
+                <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation={isFullscreen ? "4" : "3"} result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <circle
+                cx={150}
+                cy={150}
+                r={RADIUS}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={STROKE}
+                className={isFullscreen ? "text-white/10" : "text-muted/40"}
+              />
+              <motion.circle
+                cx={150}
+                cy={150}
+                r={RADIUS}
+                fill="none"
+                stroke={`url(#${gradientId})`}
+                strokeWidth={STROKE}
+                strokeLinecap="round"
+                strokeDasharray={CIRCUMFERENCE}
+                initial={{ strokeDashoffset: CIRCUMFERENCE }}
+                animate={{ strokeDashoffset: ringOffset }}
+                transition={{
+                  duration: 0,
+                  ease: "linear",
+                }}
+                filter={`url(#${glowId})`}
+              />
+            </svg>
+
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span
+                className={cn(
+                  "mb-1 text-xs uppercase tracking-widest",
+                  isFullscreen ? "text-slate-300" : "text-muted-foreground"
+                )}
+              >
+                {modeCfg.label}
+              </span>
+              <AnimatePresence mode="popLayout">
+                <motion.div
+                  key={formatTime(remaining)}
+                  initial={reduceMotion ? false : { opacity: 0.6, y: -2 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className={cn(
+                    "font-mono font-bold tabular-nums tracking-tight",
+                    isFullscreen
+                      ? "text-[clamp(4rem,14vw,9rem)] leading-none text-white"
+                      : "text-5xl sm:text-6xl"
+                  )}
+                >
+                  {formatTime(remaining)}
+                </motion.div>
+              </AnimatePresence>
+              <span
+                className={cn(
+                  "mt-2 text-xs",
+                  isFullscreen ? "text-slate-300" : "text-muted-foreground"
+                )}
+              >
+                Session {completedFocusCount + 1}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            "flex items-center justify-center gap-3",
+            isFullscreen ? "mt-4 sm:mt-6" : "mt-6"
+          )}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleReset}
+            className={cn(
+              "h-12 w-12 rounded-lg",
+              isFullscreen
+                ? "text-slate-200 hover:bg-white/10 hover:text-rose-300"
+                : "hover:bg-rose-500/10 hover:text-rose-500"
+            )}
+            aria-label="Reset timer"
+          >
+            <RotateCcw className="h-5 w-5" />
+          </Button>
+
+          {!isRunning ? (
+            <motion.button
+              onClick={handleStart}
+              disabled={saving}
+              className={cn(
+                "flex items-center justify-center rounded-lg text-white shadow-xl disabled:opacity-70",
+                isFullscreen ? "h-20 w-20" : "h-16 w-16"
+              )}
+              style={{
+                background: `linear-gradient(135deg, ${modeCfg.ringFrom}, ${modeCfg.ringTo})`,
+                boxShadow: `0 12px 30px -8px ${modeCfg.accent}80`,
+              }}
+              aria-label="Start timer"
+            >
+              <Play className={cn("ml-1 fill-white", isFullscreen ? "h-9 w-9" : "h-7 w-7")} />
+            </motion.button>
+          ) : (
+            <motion.button
+              onClick={handlePause}
+              className={cn(
+                "flex items-center justify-center rounded-lg text-white shadow-xl",
+                isFullscreen ? "h-20 w-20" : "h-16 w-16"
+              )}
+              style={{
+                background: `linear-gradient(135deg, ${modeCfg.ringFrom}, ${modeCfg.ringTo})`,
+                boxShadow: `0 12px 30px -8px ${modeCfg.accent}80`,
+              }}
+              aria-label="Pause timer"
+            >
+              <Pause className={isFullscreen ? "h-9 w-9" : "h-7 w-7"} />
+            </motion.button>
+          )}
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleSkip}
+            className={cn(
+              "h-12 w-12 rounded-lg",
+              isFullscreen
+                ? "text-slate-200 hover:bg-white/10 hover:text-violet-300"
+                : "hover:bg-violet-500/10 hover:text-violet-500"
+            )}
+            aria-label="Skip to next"
+          >
+            <SkipForward className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <p
+          className={cn(
+            "mt-3 text-center text-xs",
+            isFullscreen ? "text-slate-300" : "text-muted-foreground"
+          )}
+        >
+          {isRunning
+            ? `Running - ${subject || "No subject"}`
+            : remaining === totalSeconds
+              ? "Ready to start"
+              : "Paused"}
+        </p>
+      </>
+    );
+  };
+
   return (
     <PageTransition className="space-y-4">
+      <AnimatePresence>
+        {timerOnlyOpen && (
+          <motion.div
+            className="fixed inset-0 z-[300] flex min-h-dvh flex-col overflow-hidden bg-[#050711] px-4 py-4 text-slate-100 sm:px-8 sm:py-6"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={reduceMotion ? undefined : { opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Fullscreen focus timer"
+          >
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: `radial-gradient(circle at 50% 38%, ${modeCfg.accent}30 0%, transparent 46%), linear-gradient(180deg, rgba(15,23,42,0.35), rgba(2,6,23,0.95))`,
+              }}
+              aria-hidden="true"
+            />
+
+            <div className="relative z-10 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-400">
+                  Focus timer
+                </p>
+                <p className="mt-1 truncate text-sm text-slate-300">
+                  {subject || "No subject selected"}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTimerOnlyOpen(false)}
+                aria-label="Exit fullscreen focus timer"
+                title="Exit fullscreen"
+                className="h-10 w-10 shrink-0 rounded-lg border border-white/10 bg-white/5 text-slate-100 shadow-sm hover:bg-white/10"
+              >
+                <Minimize2 className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="relative z-10 flex flex-1 flex-col items-center justify-center">
+              {renderTimerDial("fullscreen")}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* === Header === */}
       <div className="dashboard-surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
         <div className="space-y-1">
@@ -582,6 +864,17 @@ export function FocusTimerPage() {
         {/* === Main timer card === */}
         <div className="space-y-4 lg:col-span-2">
           <div className="dashboard-surface relative overflow-hidden p-5 sm:p-6">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTimerOnlyOpen(true)}
+                aria-label="Open fullscreen focus timer"
+                title="Open fullscreen focus timer"
+                className="absolute right-4 top-4 z-10 h-9 w-9 rounded-lg border border-border/70 bg-background/85 shadow-sm hover:bg-muted/60 dark:border-border/60 dark:bg-background/60"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+
               {/* Ambient glow for break modes (cyan for short, rose for long) */}
               {mode !== "focus" && (
                 <div
@@ -696,8 +989,8 @@ export function FocusTimerPage() {
                       initial={{ strokeDashoffset: CIRCUMFERENCE }}
                       animate={{ strokeDashoffset: ringOffset }}
                       transition={{
-                        duration: reduceMotion ? 0 : 0.5,
-                        ease: "easeOut",
+                        duration: 0,
+                        ease: "linear",
                       }}
                       filter="url(#ring-glow)"
                     />

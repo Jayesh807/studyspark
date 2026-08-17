@@ -2,6 +2,16 @@
 
 const LAST_PUSH_ENDPOINT_KEY = "studyspark:lastPushEndpoint";
 
+interface PushSubscriptionOptions {
+  promptForPermission?: boolean;
+  createIfMissing?: boolean;
+}
+
+const DEFAULT_PUSH_SUBSCRIPTION_OPTIONS: Required<PushSubscriptionOptions> = {
+  promptForPermission: true,
+  createIfMissing: true,
+};
+
 export function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -41,6 +51,17 @@ async function getReadyServiceWorkerRegistration() {
 }
 
 export async function getOrRegisterPushSubscription(): Promise<PushSubscription | null> {
+  return getPushSubscription();
+}
+
+export async function getPushSubscription(
+  options: PushSubscriptionOptions = {}
+): Promise<PushSubscription | null> {
+  const { promptForPermission, createIfMissing } = {
+    ...DEFAULT_PUSH_SUBSCRIPTION_OPTIONS,
+    ...options,
+  };
+
   if (
     typeof window === "undefined" ||
     !("Notification" in window) ||
@@ -52,6 +73,7 @@ export async function getOrRegisterPushSubscription(): Promise<PushSubscription 
 
   let permission = Notification.permission;
   if (permission === "default") {
+    if (!promptForPermission) return null;
     permission = await Notification.requestPermission();
   }
   if (permission !== "granted") return null;
@@ -63,6 +85,8 @@ export async function getOrRegisterPushSubscription(): Promise<PushSubscription 
     let subscription = await registration.pushManager.getSubscription();
 
     if (!subscription) {
+      if (!createIfMissing) return null;
+
       const keyRes = await fetch("/api/push/subscribe").catch(() => null);
       if (!keyRes || !keyRes.ok) return null;
       const { configured, publicKey } = await keyRes.json();
@@ -81,8 +105,8 @@ export async function getOrRegisterPushSubscription(): Promise<PushSubscription 
   }
 }
 
-export async function saveBrowserPushSubscription() {
-  const subscription = await getOrRegisterPushSubscription();
+export async function saveBrowserPushSubscription(options: PushSubscriptionOptions = {}) {
+  const subscription = await getPushSubscription(options);
   if (!subscription) return null;
 
   const previousEndpoint = readLastPushEndpoint();

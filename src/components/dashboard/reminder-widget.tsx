@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
-import { getOrRegisterPushSubscription } from "@/lib/push-client";
+import { getPushSubscription, saveBrowserPushSubscription } from "@/lib/push-client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,7 +89,8 @@ function writeReminders(storageKey: string, reminders: Reminder[]) {
 async function syncReminderWithServiceWorker(
   reminder: Reminder,
   action: "SCHEDULE_REMINDER" | "CANCEL_REMINDER",
-  existingSubscription?: PushSubscription | null
+  existingSubscription?: PushSubscription | null,
+  options: { promptForPermission?: boolean; createIfMissing?: boolean } = {}
 ) {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
     return false;
@@ -119,8 +120,8 @@ async function syncReminderWithServiceWorker(
   // 2. Persist with Server Web Push API for background notifications when app is closed
   try {
     const subscription =
-      existingSubscription ?? (await getOrRegisterPushSubscription());
-    if (!subscription) {
+      existingSubscription ?? (await getPushSubscription(options));
+    if (action === "SCHEDULE_REMINDER" && !subscription) {
       return false;
     }
 
@@ -186,12 +187,54 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
     const loadTimer = window.setTimeout(() => setReminders(loaded), 0);
     loaded.forEach((r) => {
       if (!r.fired && new Date(r.remindAt).getTime() > Date.now()) {
-        void syncReminderWithServiceWorker(r, "SCHEDULE_REMINDER");
+        void syncReminderWithServiceWorker(r, "SCHEDULE_REMINDER", null, {
+          promptForPermission: false,
+          createIfMissing: false,
+        });
       }
     });
 
     return () => window.clearTimeout(loadTimer);
   }, [storageKey]);
+
+  const sendTestNotification = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      toast.error("Your browser does not support notifications.");
+      return;
+    }
+
+    const subscription = await saveBrowserPushSubscription();
+    if (!subscription) {
+      toast.error("Push subscription was not created.", {
+        description: "Allow notifications from the phone app/browser, then try again.",
+      });
+      return;
+    }
+
+    const response = await fetch("/api/push/schedule", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "TEST_PUSH",
+        subscription,
+      }),
+    });
+
+    const result = (await response.json().catch(() => ({}))) as {
+      success?: boolean;
+      error?: string;
+    };
+
+    if (!response.ok || !result.success) {
+      toast.error(result.error || "Server push test failed.");
+      return;
+    }
+
+    toast.success("Server push test sent", {
+      description: "If the phone is supported and allowed, it should show a system notification.",
+    });
+  };
 
   const fireReminder = useCallback((reminder: Reminder) => {
     for (let i = 0; i < REMINDER_SOUND_REPEATS; i += 1) {
@@ -282,7 +325,7 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
       fired: false,
     };
 
-    const subscription = await getOrRegisterPushSubscription();
+    const subscription = await saveBrowserPushSubscription();
     persist([reminder, ...reminders]);
     const serverSaved = await syncReminderWithServiceWorker(
       reminder,
@@ -482,7 +525,17 @@ export function ReminderWidget({ open, onOpenChange, userId }: ReminderWidgetPro
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 border-t border-border/40 bg-background/95 px-4 py-3 sm:px-7 sm:py-4 sm:!flex-row sm:items-center sm:justify-end">
+        <DialogFooter className="shrink-0 border-t border-border/40 bg-background/95 px-4 py-3 sm:px-7 sm:py-4 sm:!flex-row sm:items-center sm:justify-between">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={sendTestNotification}
+            className="h-11 w-full justify-center gap-2 rounded-[5px] px-3 font-medium sm:w-auto sm:px-4"
+          >
+            <BellRing className="h-4 w-4 text-violet-500" />
+            <span className="truncate">Test Notification</span>
+          </Button>
+
           <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:items-center">
             <Button
               type="button"

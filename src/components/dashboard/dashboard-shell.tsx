@@ -223,7 +223,10 @@ export function DashboardShell({ children }: { children?: React.ReactNode }) {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    void saveBrowserPushSubscription();
+    void saveBrowserPushSubscription({
+      promptForPermission: false,
+      createIfMissing: false,
+    });
   }, [isAuthenticated]);
 
   const openPalette = useCallback(() => {
@@ -296,11 +299,6 @@ export function DashboardShell({ children }: { children?: React.ReactNode }) {
         // ignore fetch errors
       }
     };
-
-    // Request notification permission when dashboard shell mounts
-    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      void Notification.requestPermission();
-    }
 
     // Initial fetch
     void fetchExams();
