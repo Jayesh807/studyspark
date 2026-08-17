@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { KeyboardEvent, ReactNode, TextareaHTMLAttributes } from "react";
 import { motion } from "framer-motion";
 import {
   Award,
@@ -9,6 +9,8 @@ import {
   Clock,
   Gauge,
   Keyboard,
+  Maximize2,
+  Minimize2,
   RefreshCw,
   RotateCcw,
   Sparkles,
@@ -328,9 +330,11 @@ function LeaderboardRow({
 function PromptText({
   target,
   input,
+  className,
 }: {
   target: string;
   input: string;
+  className?: string;
 }) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const currentCharRef = useRef<HTMLSpanElement | null>(null);
@@ -353,7 +357,10 @@ function PromptText({
   return (
     <div
       ref={panelRef}
-      className="h-[300px] overflow-y-auto rounded-lg border border-slate-800/80 bg-[#05070d] p-3 font-mono text-[26px] font-medium leading-[58px] tracking-[0.16em] text-zinc-500 shadow-sm sm:h-[380px] sm:p-4 sm:text-[34px] sm:leading-[72px] sm:tracking-[0.2em]"
+      className={cn(
+        "h-[300px] overflow-y-auto rounded-lg border border-slate-800/80 bg-[#05070d] p-3 font-mono text-[26px] font-medium leading-[58px] tracking-[0.16em] text-zinc-500 shadow-sm sm:h-[380px] sm:p-4 sm:text-[34px] sm:leading-[72px] sm:tracking-[0.2em]",
+        className
+      )}
       aria-label="Typing prompt"
     >
       {words.map((word, wordIndex) => {
@@ -415,7 +422,9 @@ export function TypingChallengePage() {
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [savedRunKey, setSavedRunKey] = useState<string | null>(null);
   const [completionCelebration, setCompletionCelebration] = useState<CompletionCelebration | null>(null);
+  const [typingFullscreenOpen, setTypingFullscreenOpen] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const fullscreenInputRef = useRef<HTMLTextAreaElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const celebrationKeyRef = useRef<string | null>(null);
 
@@ -506,6 +515,26 @@ export function TypingChallengePage() {
 
     celebrateBurst();
   }, [completionCelebration]);
+
+  useEffect(() => {
+    if (!typingFullscreenOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.setTimeout(() => fullscreenInputRef.current?.focus(), 0);
+
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setTypingFullscreenOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [typingFullscreenOpen]);
 
   const playTypingSound = (kind: "key" | "wrong" | "backspace" | "button" = "key") => {
     if (!soundEnabled || typeof window === "undefined") return;
@@ -755,6 +784,13 @@ export function TypingChallengePage() {
     action();
   };
 
+  const focusActiveInput = () => {
+    window.setTimeout(() => {
+      const activeInput = typingFullscreenOpen ? fullscreenInputRef.current : inputRef.current;
+      activeInput?.focus();
+    }, 0);
+  };
+
   const reset = () => {
     setInput("");
     setStatus("ready");
@@ -763,7 +799,7 @@ export function TypingChallengePage() {
     setNewBest(false);
     setSavedRunKey(null);
     setCompletionCelebration(null);
-    window.setTimeout(() => inputRef.current?.focus(), 0);
+    focusActiveInput();
   };
 
   const nextPrompt = () => {
@@ -775,7 +811,7 @@ export function TypingChallengePage() {
     setNewBest(false);
     setSavedRunKey(null);
     setCompletionCelebration(null);
-    window.setTimeout(() => inputRef.current?.focus(), 0);
+    focusActiveInput();
   };
 
   const changeDifficulty = (value: Difficulty) => {
@@ -788,6 +824,54 @@ export function TypingChallengePage() {
     setNewBest(false);
     setSavedRunKey(null);
     setCompletionCelebration(null);
+  };
+
+  const renderTypingArea = (
+    mode: "normal" | "fullscreen",
+    textareaProps: Pick<TextareaHTMLAttributes<HTMLTextAreaElement>, "aria-label">
+  ) => {
+    const fullscreen = mode === "fullscreen";
+    const activeInputRef = fullscreen ? fullscreenInputRef : inputRef;
+
+    return (
+      <>
+        <div
+          className={cn(
+            "relative cursor-text rounded-lg focus-within:ring-4 focus-within:ring-violet-500/20",
+            fullscreen && "focus-within:ring-cyan-400/20"
+          )}
+          onClick={() => activeInputRef.current?.focus()}
+        >
+          <PromptText
+            target={prompt.text}
+            input={input}
+            className={
+              fullscreen
+                ? "h-[min(58vh,560px)] min-h-[340px] border-violet-500/35 bg-[#040611] p-4 text-[30px] leading-[64px] shadow-2xl shadow-violet-950/30 sm:h-[min(62vh,640px)] sm:p-6 sm:text-[42px] sm:leading-[82px] lg:text-[50px] lg:leading-[96px]"
+                : undefined
+            }
+          />
+          <textarea
+            ref={activeInputRef}
+            value={input}
+            disabled={status === "finished"}
+            onChange={(event) => handleInput(event.target.value)}
+            spellCheck={false}
+            aria-label={textareaProps["aria-label"]}
+            onKeyDown={handleTypingKeyDown}
+            className="absolute inset-0 z-10 h-full w-full resize-none border-0 bg-transparent p-0 text-transparent opacity-0 caret-transparent outline-none"
+          />
+        </div>
+
+        <div className={cn("mt-5 space-y-3", fullscreen && "mt-4")}>
+          <div className="flex items-center justify-between gap-3 text-xs font-semibold text-muted-foreground">
+            <span>{input.length}/{prompt.text.length} characters</span>
+            <span>{progress}% complete</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+      </>
+    );
   };
 
   return (
@@ -880,35 +964,23 @@ export function TypingChallengePage() {
                 {status === "finished" ? "Challenge complete" : "Start typing below"}
               </h2>
             </div>
-            <div className="rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-white shadow-md shadow-emerald-500/20">
-              Target {targetWpm} WPM
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => clickWithSound(() => setTypingFullscreenOpen(true))}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-background/80 text-muted-foreground shadow-sm transition-colors hover:bg-muted/60 hover:text-foreground"
+                aria-label="Open fullscreen typing mode"
+                title="Fullscreen"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </button>
+              <div className="rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-white shadow-md shadow-emerald-500/20">
+                Target {targetWpm} WPM
+              </div>
             </div>
           </div>
 
-          <div
-            className="relative cursor-text rounded-lg focus-within:ring-4 focus-within:ring-violet-500/20"
-            onClick={() => inputRef.current?.focus()}
-          >
-            <PromptText target={prompt.text} input={input} />
-            <textarea
-              ref={inputRef}
-              value={input}
-              disabled={status === "finished"}
-              onChange={(event) => handleInput(event.target.value)}
-              spellCheck={false}
-              aria-label="Typing challenge input"
-              onKeyDown={handleTypingKeyDown}
-              className="absolute inset-0 z-10 h-full w-full resize-none border-0 bg-transparent p-0 text-transparent opacity-0 caret-transparent outline-none"
-            />
-          </div>
-
-          <div className="mt-5 space-y-3">
-            <div className="flex items-center justify-between gap-3 text-xs font-semibold text-muted-foreground">
-              <span>{input.length}/{prompt.text.length} characters</span>
-              <span>{progress}% complete</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
+          {renderTypingArea("normal", { "aria-label": "Typing challenge input" })}
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <Button
@@ -1104,8 +1176,90 @@ export function TypingChallengePage() {
             </div>
           </div>
         </aside>
-      </div>
+        </div>
       </PageTransition>
+
+      {typingFullscreenOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#05070d] text-white">
+          <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.20),_transparent_36%),linear-gradient(180deg,_#080714_0%,_#05070d_100%)] px-4 py-4 sm:px-6 sm:py-6">
+            <div className="mx-auto flex min-h-[calc(100vh-32px)] max-w-7xl flex-col gap-4 sm:min-h-[calc(100vh-48px)]">
+              <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-zinc-300">
+                    <Sparkles className="h-3.5 w-3.5 text-violet-300" />
+                    {prompt.title}
+                  </div>
+                  <h2 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+                    {status === "finished" ? "Challenge complete" : "Start typing below"}
+                  </h2>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-emerald-500 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20">
+                    Target {targetWpm} WPM
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => clickWithSound(() => setTypingFullscreenOpen(false))}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
+                    aria-label="Exit fullscreen typing mode"
+                    title="Exit fullscreen"
+                  >
+                    <Minimize2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </header>
+
+              <section className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+                  <p className="text-xs font-semibold text-zinc-400">WPM</p>
+                  <p className="mt-1 text-2xl font-bold">{wpm}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+                  <p className="text-xs font-semibold text-zinc-400">Accuracy</p>
+                  <p className="mt-1 text-2xl font-bold">{accuracy}%</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+                  <p className="text-xs font-semibold text-zinc-400">Mistakes</p>
+                  <p className="mt-1 text-2xl font-bold">{mistakes}</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+                  <p className="text-xs font-semibold text-zinc-400">Time</p>
+                  <p className="mt-1 text-2xl font-bold">{elapsedSeconds.toFixed(1)}s</p>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+                  <p className="text-xs font-semibold text-zinc-400">Score</p>
+                  <p className="mt-1 text-2xl font-bold">{score}</p>
+                </div>
+              </section>
+
+              <main className="flex-1">
+                {renderTypingArea("fullscreen", {
+                  "aria-label": "Fullscreen typing challenge input",
+                })}
+
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <Button
+                    onClick={() => clickWithSound(reset)}
+                    variant="outline"
+                    className="rounded-lg border-white/10 bg-white/5 text-white shadow-sm hover:bg-white/10 hover:text-white"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Retry
+                  </Button>
+                  <Button
+                    onClick={() => clickWithSound(nextPrompt)}
+                    className="rounded-lg accent-gradient text-white shadow-md shadow-violet-500/20"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    New Challenge
+                  </Button>
+                </div>
+              </main>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Dialog
         open={Boolean(completionCelebration)}
