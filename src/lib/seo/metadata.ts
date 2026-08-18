@@ -74,9 +74,8 @@ export function createPageMetadata({
 
 export function createDefaultMetadata(): Metadata {
   return createPageMetadata({
-    title: `${SITE_DISPLAY_NAME} - Student Productivity Platform`,
+    title: "StudySparks – AI Study Tools & PDF Quiz Generator for Exam Prep",
     description: SITE_DESCRIPTION,
     path: "/",
   });
 }
-
