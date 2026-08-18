@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion, LazyMotion, domAnimation } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
@@ -95,20 +94,16 @@ export function Navbar() {
   };
 
   return (
-    <LazyMotion features={domAnimation}>
-      <motion.header
-        initial={{ y: -24, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-        className={cn(
-          "fixed inset-x-0 top-0 z-50 border-b border-violet-500/10 bg-background/90 px-4 backdrop-blur-xl transition-shadow duration-300",
-          scrolled && "shadow-lg shadow-violet-500/10"
-        )}
+    <header
+      className={cn(
+        "fixed inset-x-0 top-0 z-50 border-b border-violet-500/10 bg-background/90 px-4 backdrop-blur-xl transition-all duration-300",
+        scrolled && "shadow-lg shadow-violet-500/10"
+      )}
+    >
+      <nav
+        className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between gap-3"
+        aria-label="Primary"
       >
-        <nav
-          className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between gap-3"
-          aria-label="Primary"
-        >
           <Logo onClick={goHome} />
 
           {/* Desktop Navigation Links */}
@@ -382,7 +377,6 @@ export function Navbar() {
             </Sheet>
           )}
         </nav>
-      </motion.header>
-    </LazyMotion>
+    </header>
   );
 }

@@ -1,5 +1,4 @@
 import dynamic from "next/dynamic";
-import { LazyMotion, domAnimation } from "framer-motion";
 import { Hero } from "./hero";
 import { Navbar } from "./navbar";
 
@@ -31,26 +30,24 @@ const Footer = dynamic(() => import("./footer").then((m) => m.Footer));
 
 export function LandingPage() {
   return (
-    <LazyMotion features={domAnimation}>
-      <div className="min-h-screen">
-        <Navbar />
-        <main>
-          <Hero />
-          <WhyStudySpark />
-          <ProblemsSection />
-          <SolutionsSection />
-          <DashboardOverview />
-          <Features />
-          <FeatureDeepDives />
-          <Benefits />
-          <Pricing />
-          <HowItWorks />
-          <ProductivityTips />
-          <FaqSection />
-          <FinalCta />
-        </main>
-        <Footer />
-      </div>
-    </LazyMotion>
+    <div className="min-h-screen">
+      <Navbar />
+      <main>
+        <Hero />
+        <WhyStudySpark />
+        <ProblemsSection />
+        <SolutionsSection />
+        <DashboardOverview />
+        <Features />
+        <FeatureDeepDives />
+        <Benefits />
+        <Pricing />
+        <HowItWorks />
+        <ProductivityTips />
+        <FaqSection />
+        <FinalCta />
+      </main>
+      <Footer />
+    </div>
   );
 }
