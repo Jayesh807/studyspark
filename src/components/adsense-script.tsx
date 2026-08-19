@@ -20,15 +20,19 @@ export function AdSenseScript() {
 
   useEffect(() => {
     if (!canLoadScript) return;
-    const existing = document.querySelector(`script[src*="adsbygoogle.js"]`);
-    if (!existing) {
+    const timer = window.setTimeout(() => {
+      const existing = document.querySelector(`script[src*="adsbygoogle.js"]`);
+      if (existing) return;
+
       const script = document.createElement("script");
       script.src =
         "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7098669863322522";
       script.async = true;
       script.crossOrigin = "anonymous";
       document.head.appendChild(script);
-    }
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
   }, [canLoadScript]);
 
   return null;

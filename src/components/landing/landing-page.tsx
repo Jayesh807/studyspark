@@ -36,20 +36,46 @@ export function LandingPage() {
         <Navbar />
         <main>
           <Hero />
-          <WhyStudySpark />
-          <ProblemsSection />
-          <SolutionsSection />
-          <DashboardOverview />
-          <Features />
-          <FeatureDeepDives />
-          <Benefits />
-          <Pricing />
-          <HowItWorks />
-          <ProductivityTips />
-          <FaqSection />
-          <FinalCta />
+          <div className="landing-deferred-section">
+            <WhyStudySpark />
+          </div>
+          <div className="landing-deferred-section">
+            <ProblemsSection />
+          </div>
+          <div className="landing-deferred-section">
+            <SolutionsSection />
+          </div>
+          <div className="landing-deferred-section">
+            <DashboardOverview />
+          </div>
+          <div className="landing-deferred-section">
+            <Features />
+          </div>
+          <div className="landing-deferred-section">
+            <FeatureDeepDives />
+          </div>
+          <div className="landing-deferred-section">
+            <Benefits />
+          </div>
+          <div className="landing-deferred-section">
+            <Pricing />
+          </div>
+          <div className="landing-deferred-section">
+            <HowItWorks />
+          </div>
+          <div className="landing-deferred-section">
+            <ProductivityTips />
+          </div>
+          <div className="landing-deferred-section">
+            <FaqSection />
+          </div>
+          <div className="landing-deferred-section">
+            <FinalCta />
+          </div>
         </main>
-        <Footer />
+        <div className="landing-deferred-section">
+          <Footer />
+        </div>
       </div>
     </LazyMotion>
   );

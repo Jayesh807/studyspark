@@ -183,6 +183,11 @@
   }
 }
 
+.landing-deferred-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 900px;
+}
+
 @layer utilities {
 
   /* Glassmorphism — premium frosted glass with noise texture */
