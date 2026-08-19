@@ -17,7 +17,7 @@ import { organizationSchema, websiteSchema } from "@/lib/seo/schema";
 const GOOGLE_ANALYTICS_ID = "G-G3PFDZL17W";
 
 const poppins = Poppins({
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "700"],
   subsets: ["latin"],
   variable: "--font-poppins",
   display: "swap",
@@ -96,11 +96,11 @@ export default function RootLayout({
         <Script
           async
           src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`}
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
         />
         <Script
           id="google-analytics"
-          strategy="beforeInteractive"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               window.dataLayer = window.dataLayer || [];
