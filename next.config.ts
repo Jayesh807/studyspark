@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
     "puppeteer-core",
     "unpdf",
   ],
+  // Allow Expo mobile app to connect via local IP
+  // @ts-ignore - Some Next versions don't have this fully typed yet
+  allowedDevOrigins: ["192.168.1.5", "192.168.1.5:3000", "localhost", "10.0.2.2"],
   typescript: {
     ignoreBuildErrors: true,
   },

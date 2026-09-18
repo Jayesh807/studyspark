@@ -45,7 +45,7 @@ export function buildCompleteHtmlDocument(bodyContentHtml: string, options: Html
     code: { label: "Code or Technical", primary: "#0f172a", secondary: "#1e293b", accent: "#38bdf8", soft: "#f0f9ff" },
   } as const;
   const theme = formatThemes[options.formatTag || "english"];
-  const subtitle = options.subtitle ? escapeHtml(options.subtitle) : theme.label;
+  const subtitle = options.subtitle ? escapeHtml(options.subtitle) : "";
 
   const fontFaceStyle = fontData.regularFontBase64
     ? `

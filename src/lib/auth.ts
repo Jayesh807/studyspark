@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { db } from "./db";
 
 const JWT_SECRET =
@@ -76,6 +76,16 @@ export function verifyToken(token: string): { userId: string } | null {
 }
 
 export async function getToken(): Promise<string | undefined> {
+  try {
+    const headersList = await headers();
+    const authHeader = headersList.get("authorization");
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      return authHeader.substring(7);
+    }
+  } catch (e) {
+    // Ignore error if headers() is called outside of request context
+  }
+
   const cookieStore = await cookies();
   return cookieStore.get(TOKEN_NAME)?.value;
 }
