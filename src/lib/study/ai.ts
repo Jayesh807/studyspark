@@ -93,7 +93,7 @@ async function postOllama<T>(path: string, body: unknown): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function generateText(
+export async function generateText(
   prompt: string,
   maxTokens: number = 2048,
   options: GenerateTextOptions = {}
@@ -101,7 +101,7 @@ async function generateText(
   // 1. Try Groq Cloud API if GROQ_API_KEY is configured
   if (process.env.GROQ_API_KEY) {
     const groqModels = process.env.GROQ_MODEL
-      ? [process.env.GROQ_MODEL]
+      ? [process.env.GROQ_MODEL, "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
       : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768"];
 
     // Cap max_tokens to 4096 for Groq API compatibility
@@ -136,17 +136,15 @@ async function generateText(
         }
       } catch (err) {
         if (isAbortError(err)) {
-          throw new StudyQuizGenerationError(
-            "AI_TIMEOUT",
-            "Sparks AI timed out while generating quiz questions. Please try again with 5 questions."
-          );
+          console.warn("[Groq Timeout]: Trying next model or fallback provider...");
         }
         lastError = err instanceof Error ? err.message : String(err);
         console.error(`[Groq API Exception - ${model}]:`, err);
       }
     }
 
-    if (lastError) {
+    // If Groq fails and Gemini is NOT configured, throw the error; otherwise proceed to Gemini fallback
+    if (lastError && !process.env.GEMINI_API_KEY) {
       throw new StudyQuizGenerationError("AI_PROVIDER_ERROR", `Sparks AI Error: ${lastError}`);
     }
   }

@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+    const rawSecret = process.env.RAZORPAY_KEY_SECRET || "";
+    const secret = rawSecret.trim();
     if (!secret) {
       return NextResponse.json(
         { error: "RAZORPAY_KEY_SECRET missing on server" },

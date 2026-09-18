@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 const textToPdfSchema = z.object({
   text: z.string().trim().min(10).max(15000),
   formatTag: z.enum(["english", "hindi", "maths", "summary", "code"]).optional().default("english"),
+  returnType: z.enum(["pdf", "html"]).optional().default("pdf"),
 });
 
 function formatInlineMarkdown(text: string): string {
@@ -275,6 +276,19 @@ export async function POST(req: NextRequest) {
       lang: formatTag === "hindi" ? "hi" : "en",
       formatTag,
     });
+
+    const returnType = parsed.data.returnType;
+
+    // If client requested HTML directly (for instant mobile WebView preview), return HTML directly
+    if (returnType === "html") {
+      return new Response(html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      });
+    }
 
     // Generate PDF via Puppeteer (local) or HTML auto-print fallback (Netlify)
     const { buffer, isHtml } = await generatePdfWithPuppeteer(html);

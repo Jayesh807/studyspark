@@ -1955,15 +1955,6 @@ function TextToPdfPanel({
   onDownload: () => void;
 }) {
   const [text, setText] = useState("");
-  const [selectedTag, setSelectedTag] = useState<"english" | "hindi" | "maths" | "summary" | "code">("english");
-
-  const FORMAT_TAGS = [
-    { id: "english", label: "English Text", icon: FileText },
-    { id: "hindi", label: "Hindi Text", icon: Sparkles },
-    { id: "maths", label: "Science or Maths", icon: BrainCircuit },
-    { id: "summary", label: "Summary & Revision", icon: Lightbulb },
-    { id: "code", label: "Code or Technical", icon: FileCode },
-  ] as const;
 
   const trimmedTextLength = text.trim().length;
   const textLength = text.length;
@@ -1973,12 +1964,12 @@ function TextToPdfPanel({
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!canGenerate) return;
-    void onGenerate(text.trim(), selectedTag);
+    void onGenerate(text.trim(), "english");
   };
 
   return (
     <div className="flex flex-col items-center justify-between w-full flex-1 h-full py-2 sm:py-4 px-2 sm:px-4 overflow-y-auto min-h-full">
-      {/* Upper Content: Title, Subtitle, Tags & Actions */}
+      {/* Upper Content: Title, Subtitle & Actions */}
       <div className="my-auto flex flex-col items-center justify-center py-2 sm:py-6 text-center w-full max-w-2xl sm:max-w-3xl md:max-w-4xl mx-auto space-y-4 sm:space-y-6 animate-in fade-in zoom-in-95 duration-300">
         <div className="space-y-2 sm:space-y-3 w-full">
           <h3
@@ -1989,32 +1980,8 @@ function TextToPdfPanel({
             <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-400 shrink-0" />
           </h3>
           <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed px-2">
-            Select a format mode below and paste your content to generate a beautifully styled PDF.
+            Paste your rough notes or study material below to generate beautifully styled, print-ready PDF notes.
           </p>
-
-          {/* Interactive Content Format Tag Pills */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 pt-1 sm:pt-2 w-full max-w-3xl mx-auto">
-            {FORMAT_TAGS.map((tagItem) => {
-              const isSelected = selectedTag === tagItem.id;
-              const Icon = tagItem.icon;
-              return (
-                <button
-                  key={tagItem.id}
-                  type="button"
-                  onClick={() => setSelectedTag(tagItem.id)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1.5 text-xs font-bold transition-all border whitespace-nowrap shrink-0",
-                    isSelected
-                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 ring-1 ring-emerald-500/40 shadow-md shadow-emerald-500/10 scale-105"
-                      : "bg-slate-800/80 text-slate-400 border-slate-700/80 hover:bg-slate-800 hover:text-slate-200"
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span>{tagItem.label}</span>
-                </button>
-              );
-            })}
-          </div>
 
           {pdfReady && (
             <div className="pt-2 flex flex-wrap items-center justify-center gap-3">

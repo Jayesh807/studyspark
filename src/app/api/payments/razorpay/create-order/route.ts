@@ -23,8 +23,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const rawKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || "";
+    const rawKeySecret = process.env.RAZORPAY_KEY_SECRET || "";
+    const keyId = rawKeyId.trim();
+    const keySecret = rawKeySecret.trim();
 
     if (!keyId || !keySecret) {
       return NextResponse.json(
@@ -72,6 +74,10 @@ export async function POST(req: NextRequest) {
       currency: order.currency,
       keyId,
       planId,
+      prefill: {
+        name: user.username,
+        email: user.email || "",
+      },
     });
   } catch (error) {
     console.error("razorpay create-order error:", error);
