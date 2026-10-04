@@ -57,3 +57,6 @@ server.log
 # Local SQLite database (do not commit — use PostgreSQL in production)
 /db/*.db
 /db/*.db-journal
+
+# Separate mobile app repo (not part of the web deploy)
+/studyspark-mobile-expo/

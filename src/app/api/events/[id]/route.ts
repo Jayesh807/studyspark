@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import {
-  cancelEventPushNotifications,
-  syncEventPushNotifications,
-} from "@/lib/notification-schedules";
 
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -52,8 +48,6 @@ export async function PUT(
       },
     });
 
-    await syncEventPushNotifications(event);
-
     return NextResponse.json({ event });
   } catch (error) {
     console.error("Event update error:", error);
@@ -83,7 +77,6 @@ export async function DELETE(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await cancelEventPushNotifications(user.id, id);
     await db.event.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

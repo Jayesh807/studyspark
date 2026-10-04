@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import {
-  cancelTaskPushNotifications,
-  syncTaskPushNotifications,
-} from "@/lib/notification-schedules";
 
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -57,8 +53,6 @@ export async function PUT(
       },
     });
 
-    await syncTaskPushNotifications(todo);
-
     return NextResponse.json({ todo });
   } catch (error) {
     console.error("Todo update error:", error);
@@ -88,7 +82,6 @@ export async function DELETE(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await cancelTaskPushNotifications(user.id, id);
     await db.todo.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
