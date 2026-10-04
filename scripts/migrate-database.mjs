@@ -32,9 +32,6 @@ const MODEL_TRANSFER_ORDER = [
   { name: 'StudyChunk', model: 'studyChunk' },
   { name: 'StudyQuiz', model: 'studyQuiz' },
   { name: 'Payment', model: 'payment' },
-  { name: 'PushSubscription', model: 'pushSubscription' },
-  { name: 'PushReminder', model: 'pushReminder' },
-  { name: 'FestivalHoliday', model: 'festivalHoliday' },
 ];
 
 const BATCH_SIZE = 100;

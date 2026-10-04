@@ -14,7 +14,6 @@ import {
   AlertTriangle,
   BookOpen,
   Target,
-  AlarmClock,
   Calculator as CalculatorIcon,
   Music,
   Trash2,
@@ -41,7 +40,6 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { CalculatorWidget } from "./calculator";
 import { LofiPlayer } from "./lofi-player";
-import { ReminderWidget } from "./reminder-widget";
 import { PWA_INSTALL_REQUEST_EVENT } from "@/components/pwa-install-prompt";
 
 /* -------------------------------------------------------------------------- */
@@ -471,7 +469,6 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
   const { currentView, setMobileSidebarOpen, user } = useAppStore();
   const { theme, setTheme } = useTheme();
   const [calcOpen, setCalcOpen] = useState(false);
-  const [reminderOpen, setReminderOpen] = useState(false);
   const [desktopRadioOpen, setDesktopRadioOpen] = useState(false);
   const [mobileRadioOpen, setMobileRadioOpen] = useState(false);
   const [isRadioPlaying, setIsRadioPlaying] = useState(false);
@@ -571,27 +568,6 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
           <TooltipContent className="max-w-[220px] text-center text-xs">
             You can add your favorite music from YouTube here! Just paste the URL and play.
           </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-
-      {/* Reminder toggle */}
-      <TooltipProvider delayDuration={0}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setReminderOpen(true)}
-              className={cn(
-                "relative hidden h-9 w-9 rounded-lg md:inline-flex",
-                reminderOpen && "bg-violet-500/10 text-violet-500"
-              )}
-              aria-label="Open reminders"
-            >
-              <AlarmClock className="h-[18px] w-[18px]" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Reminders</TooltipContent>
         </Tooltip>
       </TooltipProvider>
 
@@ -734,20 +710,6 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
               variant="ghost"
               size="sm"
               onClick={() => {
-                setReminderOpen(true);
-                setMobileActionsOpen(false);
-              }}
-              className="h-11 justify-start gap-3 rounded-lg px-3"
-              aria-label="Open reminders"
-            >
-              <AlarmClock className="h-[18px] w-[18px]" />
-              <span>Reminders</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
                 setCalcOpen(true);
                 setMobileActionsOpen(false);
               }}
@@ -810,11 +772,6 @@ export function Topbar({ onOpenPalette }: { onOpenPalette?: () => void }) {
       </div>
 
       <CalculatorWidget open={calcOpen} onOpenChange={setCalcOpen} />
-      <ReminderWidget
-        open={reminderOpen}
-        onOpenChange={setReminderOpen}
-        userId={user?.id}
-      />
     </header>
   );
 }

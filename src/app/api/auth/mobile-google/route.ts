@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // -- New Google user — needs to pick a username -------------------------
+    // -- New Google user â€” needs to pick a username -------------------------
     const pendingToken = signGooglePending(googleProfile);
     return NextResponse.json({ requiresUsername: true, pendingToken });
   } catch (error) {

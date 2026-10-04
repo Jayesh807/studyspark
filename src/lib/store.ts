@@ -50,10 +50,8 @@ interface AppState {
 
   // Settings
   accentColor: AccentColor;
-  notifications: boolean;
   reduceMotion: boolean;
   soundEnabled: boolean;
-  notifEnabled: boolean;
 
   // Focus timer
   focusTimerMode: FocusTimerMode;
@@ -74,10 +72,8 @@ interface AppState {
   setSidebarOpen: (open: boolean) => void;
   setMobileSidebarOpen: (open: boolean) => void;
   setAccentColor: (color: AccentColor) => void;
-  setNotifications: (on: boolean) => void;
   setReduceMotion: (on: boolean) => void;
   setSoundEnabled: (on: boolean) => void;
-  setNotifEnabled: (on: boolean) => void;
   syncFocusTimer: () => void;
   startFocusTimer: () => void;
   pauseFocusTimer: () => void;
@@ -104,10 +100,8 @@ export const useAppStore = create<AppState>()(
       mobileSidebarOpen: false,
 
       accentColor: "277",
-      notifications: true,
       reduceMotion: true,
       soundEnabled: true,
-      notifEnabled: false,
 
       focusTimerMode: "focus",
       focusTimerDurations: DEFAULT_FOCUS_DURATIONS,
@@ -131,10 +125,8 @@ export const useAppStore = create<AppState>()(
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
       setAccentColor: (color) => set({ accentColor: color }),
-      setNotifications: (on) => set({ notifications: on }),
       setReduceMotion: (on) => set({ reduceMotion: on }),
       setSoundEnabled: (on) => set({ soundEnabled: on }),
-      setNotifEnabled: (on) => set({ notifEnabled: on }),
       syncFocusTimer: () =>
         set((state) => {
           if (!state.focusTimerRunning || !state.focusTimerEndsAt) return {};
@@ -249,9 +241,7 @@ export const useAppStore = create<AppState>()(
       name: "studyspark-storage",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        notifications: state.notifications,
         soundEnabled: state.soundEnabled,
-        notifEnabled: state.notifEnabled,
         sidebarOpen: state.sidebarOpen,
         focusTimerMode: state.focusTimerMode,
         focusTimerDurations: state.focusTimerDurations,

@@ -715,8 +715,6 @@ export function SettingsPage() {
   const {
     user,
     accentColor,
-    notifications,
-    setNotifications,
     reduceMotion,
     setReduceMotion,
     sidebarOpen,
@@ -880,20 +878,9 @@ export function SettingsPage() {
           <SettingsSection
             icon={Bell}
             title="Preferences"
-            description="Fine-tune notifications, motion, and layout behavior."
+            description="Fine-tune motion and layout behavior."
             delay={0.05}
           >
-            <SwitchRow
-              title="Notifications"
-              description="Get reminded about tasks, exams, and focus sessions."
-              icon={Bell}
-              checked={notifications}
-              onCheckedChange={(v) => {
-                setNotifications(v);
-                toast.success(`Notifications ${v ? "enabled" : "disabled"}`);
-              }}
-            />
-            <Separator />
             <SwitchRow
               title="Reduce Motion"
               description="Disable animations and transitions app-wide."

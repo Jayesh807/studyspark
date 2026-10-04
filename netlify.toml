@@ -18,9 +18,6 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[functions."dispatch-push-reminders"]
-  schedule = "* * * * *"
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Environment variables
 # Set these in the Netlify dashboard (Site settings → Environment variables)

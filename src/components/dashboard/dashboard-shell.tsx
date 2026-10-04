@@ -22,7 +22,6 @@ import { parseISO } from "date-fns";
 import { playBell } from "./pages/focus-timer";
 import { toast } from "sonner";
 import type { Exam } from "@/lib/types";
-import { saveBrowserPushSubscription } from "@/lib/push-client";
 
 function NotFoundPage() {
   const setView = useAppStore((s) => s.setView);
@@ -220,14 +219,6 @@ export function DashboardShell({ children }: { children?: React.ReactNode }) {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    void saveBrowserPushSubscription({
-      promptForPermission: false,
-      createIfMissing: false,
-    });
-  }, [isAuthenticated]);
 
   const openPalette = useCallback(() => {
     setPaletteSession((s) => s + 1);

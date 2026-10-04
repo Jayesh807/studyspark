@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { db } from "@/lib/db";
-import { getRazorpayEntitlements, isRazorpayPlanId } from "@/lib/payments/razorpay-plans";
+import { getRazorpayEntitlements, isRazorpayPlanId, RAZORPAY_PLANS } from "@/lib/payments/razorpay-plans";
 import { validatePaymentVerification } from "razorpay/dist/utils/razorpay-utils";
 
 export const runtime = "nodejs";
@@ -9,8 +9,10 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
 
-  const planId = searchParams.get("planId") || "";
-  const userId = searchParams.get("userId") || "";
+  // planId/userId in the query string are NOT trusted: the Razorpay signature does not cover them.
+  // They are read from the server-side payment link notes below.
+  let planId = "";
+  let userId = "";
   const razorpayPaymentId = searchParams.get("razorpay_payment_id") || "";
   const razorpayPaymentLinkId = searchParams.get("razorpay_payment_link_id") || "";
   const razorpayPaymentLinkRefId = searchParams.get("razorpay_payment_link_reference_id") || "";
@@ -42,17 +44,31 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 2. Direct API Fallback check with Razorpay server if signature verification had any discrepancy
-  if (!isVerified && keyId && keySecret && razorpayPaymentLinkId) {
+  // 2. Fetch the payment link from Razorpay and take userId/planId from its notes,
+  //    confirming it is fully paid for the plan's price. Only runs after the signature checks out.
+  if (isVerified) {
+    isVerified = false;
     try {
       const RazorpayClass = (typeof Razorpay === "function" ? Razorpay : (Razorpay as any).default) || Razorpay;
       const rzp = new RazorpayClass({ key_id: keyId, key_secret: keySecret });
       const linkData = await rzp.paymentLink.fetch(razorpayPaymentLinkId);
-      if (linkData && (linkData.status === "paid" || Number(linkData.amount_paid) > 0)) {
+      const notesPlanId = String(linkData?.notes?.planId || "");
+      const notesUserId = String(linkData?.notes?.userId || "");
+
+      if (
+        linkData?.status === "paid" &&
+        notesUserId &&
+        isRazorpayPlanId(notesPlanId) &&
+        Number(linkData.amount_paid) >= RAZORPAY_PLANS[notesPlanId].amountPaise
+      ) {
+        planId = notesPlanId;
+        userId = notesUserId;
         isVerified = true;
+      } else {
+        console.warn(`[Razorpay Callback] Payment link ${razorpayPaymentLinkId} failed server-side checks`);
       }
     } catch (apiErr) {
-      console.warn("[Razorpay Callback] Direct API fallback check error:", apiErr);
+      console.warn("[Razorpay Callback] Payment link fetch error:", apiErr);
     }
   }
 
