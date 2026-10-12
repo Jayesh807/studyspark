@@ -102,6 +102,15 @@ export async function POST(req: NextRequest) {
       if ((createError as { code?: string })?.code === "P2002") {
         const raced = await respondWithExistingGoogleUser();
         if (raced) return raced;
+
+        // Work out which unique field collided so the client shows the right message
+        const emailTaken = await db.user.findUnique({ where: { email: pendingProfile.email } });
+        if (emailTaken) {
+          return NextResponse.json(
+            { error: "That email already has an account. Log in instead." },
+            { status: 409 }
+          );
+        }
         return NextResponse.json({ error: "Username already taken" }, { status: 409 });
       }
       throw createError;

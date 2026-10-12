@@ -5,6 +5,14 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo";
 const GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
 
+/** Thrown when a Google token can't be verified; the message is safe to show to the client. */
+export class GoogleAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GoogleAuthError";
+  }
+}
+
 export interface GoogleProfile {
   googleId: string;
   email: string;
@@ -196,14 +204,20 @@ export async function verifyGoogleAccessToken(
   };
 
   if (!tokenInfoResponse.ok || tokenInfo.error) {
-    throw new Error(
+    throw new GoogleAuthError(
       tokenInfo.error_description || tokenInfo.error || "Could not verify Google account."
     );
   }
 
   const issuedTo = [tokenInfo.aud, tokenInfo.azp].filter(Boolean) as string[];
   if (!issuedTo.some((id) => allowedClientIds.has(id))) {
-    throw new Error("Google account verification failed.");
+    console.error(
+      `[Google Auth] Access token was issued to client(s) [${issuedTo.join(", ")}], which are not in ` +
+        "GOOGLE_CLIENT_ID / GOOGLE_ALLOWED_CLIENT_IDS. If this is your mobile app's OAuth client, add its ID to GOOGLE_ALLOWED_CLIENT_IDS."
+    );
+    throw new GoogleAuthError(
+      "Google sign-in isn't enabled for this app yet. Please contact support."
+    );
   }
 
   const userInfoResponse = await fetch(GOOGLE_USERINFO_URL, {
@@ -212,17 +226,17 @@ export async function verifyGoogleAccessToken(
   const info = (await userInfoResponse.json().catch(() => ({}))) as GoogleUserInfo;
 
   if (!userInfoResponse.ok || info.error) {
-    throw new Error(
+    throw new GoogleAuthError(
       info.error_description || info.error || "Could not verify Google account."
     );
   }
 
   if (!info.sub || !info.email) {
-    throw new Error("Google account verification failed.");
+    throw new GoogleAuthError("Google account verification failed.");
   }
 
   if (info.email_verified !== true) {
-    throw new Error("Google email is not verified.");
+    throw new GoogleAuthError("Google email is not verified.");
   }
 
   return {

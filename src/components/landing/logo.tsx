@@ -29,7 +29,7 @@ export function Logo({ className, showWordmark = true, onClick }: LogoProps) {
         className="relative flex size-9 items-center justify-center rounded-xl shadow-lg shadow-violet-500/30"
       >
         <Image 
-          src="/logo.png" 
+          src="/icon-192.png" 
           alt="StudySpark Logo" 
           width={36} 
           height={36} 

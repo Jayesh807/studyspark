@@ -93,6 +93,7 @@ async function migrate() {
 
       if (!sourceDb[model] || !targetDb[model]) {
         console.log(`⚠️ Model "${model}" not found on client. Skipping.`);
+        summary.push({ model: name, sourceCount: '?', targetCount: '?', status: 'SKIPPED' });
         continue;
       }
 
@@ -105,6 +106,7 @@ async function migrate() {
       }
 
       let copied = 0;
+      let verified = 0;
       let cursor = undefined;
 
       // Transfer in batches
@@ -134,13 +136,23 @@ async function migrate() {
           }
         }
 
+        // Confirm every record of this batch really exists in the target (by id), rather than
+        // trusting an overall row count that a pre-populated target could satisfy on its own.
+        if ('id' in records[0]) {
+          verified += await targetDb[model].count({
+            where: { id: { in: records.map((r) => r.id) } },
+          });
+        } else {
+          verified += records.length;
+        }
+
         copied += records.length;
         cursor = records[records.length - 1]?.id;
       }
 
       // Verify target count
       const targetCount = await targetDb[model].count();
-      const isMatch = targetCount >= totalCount;
+      const isMatch = copied === totalCount && verified === totalCount && targetCount >= totalCount;
 
       console.log(`✅ Transferred ${copied}/${totalCount} records (Target has ${targetCount}).`);
       summary.push({
@@ -156,7 +168,7 @@ async function migrate() {
     console.log('=====================================================');
     console.table(summary);
 
-    const hasMismatches = summary.some((s) => s.status === 'MISMATCH');
+    const hasMismatches = summary.some((s) => s.status === 'MISMATCH' || s.status === 'SKIPPED');
     if (!hasMismatches) {
       console.log('\n🎉 ALL DATA MIGRATED & VERIFIED WITH ZERO DATA LOSS!');
       console.log('\nNext steps:');

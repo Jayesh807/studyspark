@@ -33,7 +33,12 @@ const SUBJECT_QUESTION_QUALITY_RULES = [
 
 interface GenerateTextOptions {
   jsonMode?: boolean;
+  /** Message used when the provider times out (defaults to the quiz-generation wording). */
+  timeoutMessage?: string;
 }
+
+const DEFAULT_TIMEOUT_MESSAGE =
+  "Sparks AI timed out while generating quiz questions. Please try again with 5 questions.";
 
 export type StudyQuizErrorCode =
   | "UNREADABLE_CONTEXT"
@@ -156,7 +161,7 @@ export async function generateText(
     if (groqTimedOut && !process.env.GEMINI_API_KEY) {
       throw new StudyQuizGenerationError(
         "AI_TIMEOUT",
-        "Sparks AI timed out while generating quiz questions. Please try again with 5 questions."
+        options.timeoutMessage ?? DEFAULT_TIMEOUT_MESSAGE
       );
     }
     if (lastError && !process.env.GEMINI_API_KEY) {
@@ -215,7 +220,7 @@ export async function generateText(
           if (isAbortError(err)) {
             throw new StudyQuizGenerationError(
               "AI_TIMEOUT",
-              "Sparks AI timed out while generating quiz questions. Please try again with 5 questions."
+              options.timeoutMessage ?? DEFAULT_TIMEOUT_MESSAGE
             );
           }
           lastError = err instanceof Error ? err.message : String(err);

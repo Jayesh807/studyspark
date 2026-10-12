@@ -1950,7 +1950,7 @@ function TextToPdfPanel({
 }: {
   busy: boolean;
   pdfReady: boolean;
-  onGenerate: (text: string, tag: "english" | "hindi" | "maths" | "summary" | "code") => Promise<void>;
+  onGenerate: (text: string, tag?: "english" | "hindi" | "maths" | "summary" | "code") => Promise<void>;
   onSaveAsPdf: () => void;
   onDownload: () => void;
 }) {
@@ -1964,7 +1964,7 @@ function TextToPdfPanel({
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!canGenerate) return;
-    void onGenerate(text.trim(), "english");
+    void onGenerate(text.trim());
   };
 
   return (
@@ -3292,7 +3292,7 @@ export function StudySearchPage() {
 
   const generatePdf = async (
     text: string,
-    formatTag: "english" | "hindi" | "maths" | "summary" | "code" = "english"
+    formatTag?: "english" | "hindi" | "maths" | "summary" | "code"
   ) => {
     setGeneratingPdf(true);
     if (pdfBlobUrl) {
@@ -3303,7 +3303,8 @@ export function StudySearchPage() {
       const response = await fetch("/api/study-search/text-to-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, formatTag }),
+        // Without an explicit tag the server detects Hindi / maths / code content itself
+        body: JSON.stringify({ text, ...(formatTag ? { formatTag } : {}) }),
       });
 
       if (!response.ok) {

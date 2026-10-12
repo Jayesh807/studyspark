@@ -9,9 +9,30 @@ export const runtime = "nodejs";
 
 const textToPdfSchema = z.object({
   text: z.string().trim().min(10).max(15000),
-  formatTag: z.enum(["english", "hindi", "maths", "summary", "code"]).optional().default("english"),
+  formatTag: z.enum(["english", "hindi", "maths", "summary", "code"]).optional(),
   returnType: z.enum(["pdf", "html"]).optional().default("pdf"),
 });
+
+type FormatTag = "english" | "hindi" | "maths" | "summary" | "code";
+
+// Picks a document theme/language when the client doesn't choose one explicitly.
+function detectFormatTag(text: string): FormatTag {
+  const letters = text.match(/\p{L}/gu)?.length ?? 0;
+  const devanagari = text.match(/[ऀ-ॿ]/g)?.length ?? 0;
+  if (letters > 0 && devanagari / letters > 0.2) return "hindi";
+
+  if (text.includes("```")) return "code";
+  const codeLines = text
+    .split(/\r?\n/)
+    .filter((line) => /[{};]\s*$|^\s*(def|class|function|import|const|let|var|public|#include)\b/.test(line)).length;
+  if (codeLines >= 3) return "code";
+
+  const looksLikeMath =
+    /\$[^$\s][^$]*\$|[\\](?:frac|sqrt|sum|int|alpha|beta|theta|pi)\b|[=^]\s*[\w(]/.test(text);
+  if (looksLikeMath && /\d/.test(text)) return "maths";
+
+  return "english";
+}
 
 function formatInlineMarkdown(text: string): string {
   if (!text) return "";
@@ -247,7 +268,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rawInputText = parsed.data.text;
-    const formatTag = parsed.data.formatTag;
+    const formatTag: FormatTag = parsed.data.formatTag ?? detectFormatTag(rawInputText);
 
     // AI formatting step with formatTag mode
     const formattedMarkdown = await formatStudyTextForPdf(rawInputText, formatTag);

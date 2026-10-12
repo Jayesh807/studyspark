@@ -20,6 +20,8 @@ declare global {
   }
 }
 
+const CHECKOUT_TOKEN_KEY = "studyspark_checkout_token";
+
 type PlanId = "combo" | "resume" | "exam_10q";
 
 interface PlanDetails {
@@ -93,21 +95,34 @@ function CheckoutComponent() {
   const searchParams = useSearchParams();
   const initialPlanParam = searchParams.get("planId") as PlanId | null;
   // The session token is handed over by the mobile app. Prefer the URL fragment (#token=...), which
-  // browsers never send to servers or in Referer headers, and scrub it from the address bar/history
-  // as soon as it has been read. The legacy ?token= query param is still accepted but also scrubbed.
+  // browsers never send to servers or in Referer headers. Once read it is scrubbed from the address
+  // bar/history and kept in sessionStorage (tab-scoped) so a reload or a return from a UPI app
+  // doesn't lose it. The legacy ?token= query param is still accepted but also scrubbed.
   const tokenRef = useRef<string | null>(null);
-  const [, setTokenReady] = useState(false);
   useEffect(() => {
     const url = new URL(window.location.href);
     const hashToken = new URLSearchParams(url.hash.replace(/^#/, "")).get("token");
     const queryToken = url.searchParams.get("token");
-    tokenRef.current = hashToken || queryToken;
-    if (hashToken || queryToken) {
+    const urlToken = hashToken || queryToken;
+
+    if (urlToken) {
+      tokenRef.current = urlToken;
+      try {
+        window.sessionStorage.setItem(CHECKOUT_TOKEN_KEY, urlToken);
+      } catch {
+        // storage unavailable (private mode etc.) - keep the in-memory token only
+      }
       url.hash = "";
       url.searchParams.delete("token");
       window.history.replaceState(null, "", url.pathname + url.search);
+      return;
     }
-    setTokenReady(true);
+
+    try {
+      tokenRef.current = window.sessionStorage.getItem(CHECKOUT_TOKEN_KEY);
+    } catch {
+      tokenRef.current = null;
+    }
   }, []);
 
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(
