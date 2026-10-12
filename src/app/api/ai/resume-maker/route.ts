@@ -109,12 +109,7 @@ export async function POST(req: NextRequest) {
         },
       }).catch(() => null);
 
-      const isDevOrAdmin =
-        process.env.NODE_ENV === "development" ||
-        user.email === "jayeshmalviya051@gmail.com" ||
-        user.email === "studysparks001@gmail.com";
-
-      if (!isDevOrAdmin && !profile?.hasUnlockedResume && (profile?.resumeGenerationsUsed ?? 0) >= 2) {
+      if (!profile?.hasUnlockedResume && (profile?.resumeGenerationsUsed ?? 0) >= 2) {
         return NextResponse.json(
           {
             error:

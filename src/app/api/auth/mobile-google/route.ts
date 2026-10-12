@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { signToken, signGooglePending } from "@/lib/auth";
-import { verifyGoogleAccessToken } from "@/lib/google-auth";
+import { GoogleAuthError, verifyGoogleAccessToken } from "@/lib/google-auth";
 
 /**
  * Mobile-specific Google Sign-In endpoint.
@@ -72,6 +72,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ requiresUsername: true, pendingToken });
   } catch (error) {
     console.error("Mobile Google sign-in error:", error);
+    if (error instanceof GoogleAuthError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Google sign-in failed. Please try again." },
       { status: 500 }

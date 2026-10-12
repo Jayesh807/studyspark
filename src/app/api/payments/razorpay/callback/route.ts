@@ -76,6 +76,24 @@ export async function GET(req: NextRequest) {
   if (isVerified && userId && isRazorpayPlanId(planId)) {
     const { unlockTenQuestions, unlockResume } = getRazorpayEntitlements(planId);
 
+    // Record the payment first so /sync-status can re-apply the unlock if the profile write fails
+    await (db as any).payment
+      ?.upsert({
+        where: { razorpayOrderId: `plink_${razorpayPaymentLinkId}` },
+        create: {
+          userId,
+          razorpayOrderId: `plink_${razorpayPaymentLinkId}`,
+          razorpayPaymentId: razorpayPaymentId,
+          planId,
+          amount: RAZORPAY_PLANS[planId].amountPaise,
+          currency: "INR",
+          status: "paid",
+        },
+        update: {},
+      })
+      .catch((e: unknown) => console.warn("[Razorpay Callback] Payment record warning:", e));
+
+    let unlockFailed = false;
     try {
       await db.profile.upsert({
         where: { userId },
@@ -92,6 +110,24 @@ export async function GET(req: NextRequest) {
       console.log(`[Razorpay Callback] Successfully unlocked ${planId} for user ${userId}`);
     } catch (dbErr) {
       console.error("[Razorpay Callback] Database profile unlock error:", dbErr);
+      unlockFailed = true;
+    }
+
+    if (unlockFailed) {
+      return new NextResponse(
+        buildStatusHtml({
+          heading: "Payment Received",
+          message:
+            "Your payment went through, but we couldn't unlock your account just yet. Open StudySpark and pull to refresh, or try again in a minute. If it still isn't unlocked, contact support with your payment ID: " +
+            razorpayPaymentId.replace(/[^a-zA-Z0-9_]/g, "") +
+            ".",
+          deepLink: "studyspark://checkout?status=pending",
+          buttonLabel: "Back to StudySpark",
+          icon: "!",
+          redirect: false,
+        }),
+        { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 202 }
+      );
     }
 
     const appDeepLink = `studyspark://checkout?status=success&planId=${encodeURIComponent(planId)}`;
@@ -195,8 +231,29 @@ export async function GET(req: NextRequest) {
   }
 
   // Payment failed, cancelled or unverified
-  const cancelDeepLink = `studyspark://checkout?status=cancel`;
-  const failHtml = `<!DOCTYPE html>
+  return new NextResponse(
+    buildStatusHtml({
+      heading: "Payment Incomplete",
+      message:
+        "The payment was cancelled or could not be completed. No amount was charged to your account.",
+      deepLink: "studyspark://checkout?status=cancel",
+      buttonLabel: "Back to StudySpark",
+      icon: "✕",
+      redirect: true,
+    }),
+    { headers: { "Content-Type": "text/html; charset=utf-8" } }
+  );
+}
+
+function buildStatusHtml(opts: {
+  heading: string;
+  message: string;
+  deepLink: string;
+  buttonLabel: string;
+  icon: string;
+  redirect: boolean;
+}) {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -257,24 +314,24 @@ export async function GET(req: NextRequest) {
       padding: 14px 20px;
       border-radius: 12px;
     }
-  </style>
+  </style>${
+    opts.redirect
+      ? `
   <script>
     setTimeout(function() {
-      window.location.href = "${cancelDeepLink}";
+      window.location.href = "${opts.deepLink}";
     }, 2000);
-  </script>
+  </script>`
+      : ""
+  }
 </head>
 <body>
   <div class="card">
-    <div class="icon-wrap">✕</div>
-    <h1>Payment Incomplete</h1>
-    <p>The payment was cancelled or could not be completed. No amount was charged to your account.</p>
-    <a href="${cancelDeepLink}" class="btn">Back to StudySpark</a>
+    <div class="icon-wrap">${opts.icon}</div>
+    <h1>${opts.heading}</h1>
+    <p>${opts.message}</p>
+    <a href="${opts.deepLink}" class="btn">${opts.buttonLabel}</a>
   </div>
 </body>
 </html>`;
-
-  return new NextResponse(failHtml, {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
 }

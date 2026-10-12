@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
@@ -19,6 +19,8 @@ declare global {
     };
   }
 }
+
+const CHECKOUT_TOKEN_KEY = "studyspark_checkout_token";
 
 type PlanId = "combo" | "resume" | "exam_10q";
 
@@ -92,7 +94,36 @@ function loadRazorpayScript(): Promise<boolean> {
 function CheckoutComponent() {
   const searchParams = useSearchParams();
   const initialPlanParam = searchParams.get("planId") as PlanId | null;
-  const tokenParam = searchParams.get("token");
+  // The session token is handed over by the mobile app. Prefer the URL fragment (#token=...), which
+  // browsers never send to servers or in Referer headers. Once read it is scrubbed from the address
+  // bar/history and kept in sessionStorage (tab-scoped) so a reload or a return from a UPI app
+  // doesn't lose it. The legacy ?token= query param is still accepted but also scrubbed.
+  const tokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const hashToken = new URLSearchParams(url.hash.replace(/^#/, "")).get("token");
+    const queryToken = url.searchParams.get("token");
+    const urlToken = hashToken || queryToken;
+
+    if (urlToken) {
+      tokenRef.current = urlToken;
+      try {
+        window.sessionStorage.setItem(CHECKOUT_TOKEN_KEY, urlToken);
+      } catch {
+        // storage unavailable (private mode etc.) - keep the in-memory token only
+      }
+      url.hash = "";
+      url.searchParams.delete("token");
+      window.history.replaceState(null, "", url.pathname + url.search);
+      return;
+    }
+
+    try {
+      tokenRef.current = window.sessionStorage.getItem(CHECKOUT_TOKEN_KEY);
+    } catch {
+      tokenRef.current = null;
+    }
+  }, []);
 
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(
     initialPlanParam && PLANS[initialPlanParam] ? initialPlanParam : "combo"
@@ -123,8 +154,8 @@ function CheckoutComponent() {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-      if (tokenParam) {
-        headers["Authorization"] = `Bearer ${tokenParam}`;
+      if (tokenRef.current) {
+        headers["Authorization"] = `Bearer ${tokenRef.current}`;
       }
 
       // 1. Create Order

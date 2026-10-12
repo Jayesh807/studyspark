@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { setAuthCookie, setGooglePendingCookie } from "@/lib/auth";
-import { verifyGoogleAccessToken } from "@/lib/google-auth";
+import { GoogleAuthError, verifyGoogleAccessToken } from "@/lib/google-auth";
 
 const accessTokenSchema = z.object({
   accessToken: z.string().min(1, "Google access token is required"),
@@ -64,6 +64,9 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Google access token error:", error);
+    if (error instanceof GoogleAuthError) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Google sign-in failed. Please try again." },
       { status: 500 }

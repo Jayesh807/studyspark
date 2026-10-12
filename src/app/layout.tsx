@@ -17,7 +17,7 @@ import { organizationSchema, websiteSchema } from "@/lib/seo/schema";
 const GOOGLE_ANALYTICS_ID = "G-G3PFDZL17W";
 
 const poppins = Poppins({
-  weight: ["400", "500", "700"],
+  weight: ["300", "400", "500", "600", "700"],
   subsets: ["latin"],
   variable: "--font-poppins",
   display: "swap",

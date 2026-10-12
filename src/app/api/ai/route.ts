@@ -1,15 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { generateText } from "@/lib/study/ai";
+import { generateText, StudyQuizGenerationError } from "@/lib/study/ai";
 
 export const runtime = "nodejs";
 
+const MAX_TOTAL_CHARS = 16000;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 15;
+
+// Best-effort per-instance throttle (serverless instances don't share memory) to stop a single
+// signed-in user from burning the shared AI quota in a tight loop.
+const recentRequests = new Map<string, number[]>();
+
+function isRateLimited(userId: string) {
+  const now = Date.now();
+  const hits = (recentRequests.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (hits.length >= RATE_LIMIT_MAX_REQUESTS) {
+    recentRequests.set(userId, hits);
+    return true;
+  }
+  hits.push(now);
+  recentRequests.set(userId, hits);
+  if (recentRequests.size > 5000) {
+    for (const [id, times] of recentRequests) {
+      if (times.every((t) => now - t >= RATE_LIMIT_WINDOW_MS)) recentRequests.delete(id);
+    }
+  }
+  return false;
+}
+
+// Clients may only send user/assistant turns; the system prompt is controlled by the server.
 const chatSchema = z.object({
   messages: z
     .array(
       z.object({
-        role: z.enum(["user", "assistant", "system"]),
+        role: z.enum(["user", "assistant"]),
         content: z.string().trim().min(1).max(8000),
       })
     )
@@ -36,6 +62,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (isRateLimited(user.id)) {
+      return NextResponse.json(
+        { error: "You're sending messages too quickly. Please wait a moment and try again." },
+        { status: 429 }
+      );
+    }
+
     const body = await req.json();
     const parsed = chatSchema.safeParse(body);
     if (!parsed.success) {
@@ -46,6 +79,14 @@ export async function POST(req: NextRequest) {
     }
 
     const messages = parsed.data.messages;
+    const totalChars = messages.reduce((sum, msg) => sum + msg.content.length, 0);
+    if (totalChars > MAX_TOTAL_CHARS) {
+      return NextResponse.json(
+        { error: "This conversation is too long. Please start a new chat." },
+        { status: 400 }
+      );
+    }
+
     const historyText = messages
       .map((msg) => `${msg.role === "user" ? "Student" : "Sparks AI"}: ${msg.content}`)
       .join("\n\n");
@@ -59,12 +100,20 @@ export async function POST(req: NextRequest) {
       "Sparks AI:",
     ].join("\n");
 
-    const reply = await generateText(prompt, 1024);
+    const reply = await generateText(prompt, 1024, {
+      timeoutMessage: "Sparks AI took too long to reply. Please try again.",
+    });
 
     return NextResponse.json({ reply: reply.trim() });
   } catch (error) {
     console.error("[AI Chat Route Error]:", error);
-    const message = error instanceof Error ? error.message : "Failed to generate AI response.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Don't echo provider error bodies back to the client
+    if (error instanceof StudyQuizGenerationError && error.code === "AI_TIMEOUT") {
+      return NextResponse.json({ error: error.message }, { status: 504 });
+    }
+    return NextResponse.json(
+      { error: "Sparks AI couldn't respond right now. Please try again." },
+      { status: 500 }
+    );
   }
 }

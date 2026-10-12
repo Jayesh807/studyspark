@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getRazorpayEntitlements, isRazorpayPlanId } from "@/lib/payments/razorpay-plans";
+import {
+  getRazorpayEntitlements,
+  isRazorpayPlanId,
+  RAZORPAY_PLANS,
+  type RazorpayPlanId,
+} from "@/lib/payments/razorpay-plans";
 
 export const runtime = "nodejs";
 
@@ -25,48 +30,73 @@ export async function POST(req: NextRequest) {
     const RazorpayClass = (typeof Razorpay === "function" ? Razorpay : (Razorpay as any).default) || Razorpay;
     const razorpay = new RazorpayClass({ key_id: keyId, key_secret: keySecret });
 
-    // Fetch recent payments from Razorpay to auto-detect any captured transaction for this user
-    const paymentList = await razorpay.payments.all({ count: 25 });
-    const userPaidItems = paymentList.items.filter(
-      (p: any) =>
-        p.status === "captured" &&
-        (p.notes?.userId === user.id || (user.email && p.email === user.email))
-    );
-
     let newlyUnlocked = false;
     let unlockedPlan = "";
 
-    for (const p of userPaidItems) {
-      const planId = p.notes?.planId;
-      if (planId && isRazorpayPlanId(planId)) {
-        unlockedPlan = planId;
-        const { unlockTenQuestions, unlockResume } = getRazorpayEntitlements(planId);
+    const applyEntitlements = async (planId: RazorpayPlanId) => {
+      const { unlockTenQuestions, unlockResume } = getRazorpayEntitlements(planId);
+      await db.profile.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          hasUnlockedTenQuestions: unlockTenQuestions,
+          hasUnlockedResume: unlockResume,
+        },
+        update: {
+          ...(unlockTenQuestions ? { hasUnlockedTenQuestions: true } : {}),
+          ...(unlockResume ? { hasUnlockedResume: true } : {}),
+        },
+      });
+      unlockedPlan = planId;
+      newlyUnlocked = true;
+    };
 
-        await db.profile.upsert({
-          where: { userId: user.id },
-          create: {
-            userId: user.id,
-            hasUnlockedTenQuestions: unlockTenQuestions,
-            hasUnlockedResume: unlockResume,
-          },
-          update: {
-            ...(unlockTenQuestions ? { hasUnlockedTenQuestions: true } : {}),
-            ...(unlockResume ? { hasUnlockedResume: true } : {}),
-          },
-        });
+    // Recover from this user's own payment records only (never other customers' payments or the
+    // payer-typed email). "paid" rows whose unlock write failed are re-applied; "created" rows are
+    // checked against Razorpay for a captured payment that covers the plan price.
+    const paymentModel = (db as any).payment;
+    const userPayments: any[] = paymentModel
+      ? await paymentModel
+          .findMany({
+            where: { userId: user.id, status: { in: ["created", "paid"] } },
+            orderBy: { createdAt: "desc" },
+            take: 20,
+          })
+          .catch(() => [])
+      : [];
 
-        if ((db as any).payment && p.order_id) {
-          await (db as any).payment.updateMany({
-            where: { razorpayOrderId: p.order_id, userId: user.id },
-            data: {
-              status: "paid",
-              razorpayPaymentId: p.id,
-            },
-          }).catch(() => null);
-        }
+    for (const record of userPayments) {
+      if (!isRazorpayPlanId(record.planId)) continue;
+      const planId: RazorpayPlanId = record.planId;
 
-        newlyUnlocked = true;
+      if (record.status === "paid") {
+        await applyEntitlements(planId);
+        continue;
       }
+
+      // Only real Razorpay orders (not payment-link placeholders) can be looked up
+      if (typeof record.razorpayOrderId !== "string" || !record.razorpayOrderId.startsWith("order_")) {
+        continue;
+      }
+
+      const orderPayments = await razorpay.orders
+        .fetchPayments(record.razorpayOrderId)
+        .catch(() => null);
+      const captured = orderPayments?.items?.find(
+        (p: any) =>
+          p.status === "captured" &&
+          p.order_id === record.razorpayOrderId &&
+          Number(p.amount) >= RAZORPAY_PLANS[planId].amountPaise
+      );
+      if (!captured) continue;
+
+      await applyEntitlements(planId);
+      await paymentModel
+        .updateMany({
+          where: { razorpayOrderId: record.razorpayOrderId, userId: user.id },
+          data: { status: "paid", razorpayPaymentId: captured.id },
+        })
+        .catch(() => null);
     }
 
     // Return the fresh profile status
