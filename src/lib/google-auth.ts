@@ -167,11 +167,43 @@ export async function verifyGoogleIdToken(
   };
 }
 
+function getAllowedGoogleClientIds() {
+  const ids = [
+    process.env.GOOGLE_CLIENT_ID,
+    ...(process.env.GOOGLE_ALLOWED_CLIENT_IDS || "").split(","),
+  ]
+    .map((id) => id?.trim())
+    .filter((id): id is string => Boolean(id));
+
+  return new Set(ids);
+}
+
 export async function verifyGoogleAccessToken(
   accessToken: string
 ): Promise<GoogleProfile> {
-  if (!process.env.GOOGLE_CLIENT_ID) {
+  const allowedClientIds = getAllowedGoogleClientIds();
+  if (allowedClientIds.size === 0) {
     throw new Error("Google OAuth environment variables are not configured.");
+  }
+
+  // Make sure the token was issued to one of our own OAuth clients, otherwise a
+  // token minted for any other app could be used to sign in here.
+  const tokenInfoResponse = await fetch(
+    `${GOOGLE_TOKEN_INFO_URL}?access_token=${encodeURIComponent(accessToken)}`
+  );
+  const tokenInfo = (await tokenInfoResponse.json().catch(() => ({}))) as GoogleTokenInfo & {
+    azp?: string;
+  };
+
+  if (!tokenInfoResponse.ok || tokenInfo.error) {
+    throw new Error(
+      tokenInfo.error_description || tokenInfo.error || "Could not verify Google account."
+    );
+  }
+
+  const issuedTo = [tokenInfo.aud, tokenInfo.azp].filter(Boolean) as string[];
+  if (!issuedTo.some((id) => allowedClientIds.has(id))) {
+    throw new Error("Google account verification failed.");
   }
 
   const userInfoResponse = await fetch(GOOGLE_USERINFO_URL, {

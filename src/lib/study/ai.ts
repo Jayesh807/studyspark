@@ -100,13 +100,19 @@ export async function generateText(
 ): Promise<string> {
   // 1. Try Groq Cloud API if GROQ_API_KEY is configured
   if (process.env.GROQ_API_KEY) {
-    const groqModels = process.env.GROQ_MODEL
-      ? [process.env.GROQ_MODEL, "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
-      : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768"];
+    // De-duplicated and capped at 2 models so slow responses can't stack up past serverless limits
+    const groqModels = Array.from(
+      new Set([
+        ...(process.env.GROQ_MODEL ? [process.env.GROQ_MODEL.trim()] : []),
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+      ])
+    ).slice(0, 2);
 
     // Cap max_tokens to 4096 for Groq API compatibility
     const groqMaxTokens = Math.min(maxTokens, 4096);
     let lastError = "";
+    let groqTimedOut = false;
 
     for (const model of groqModels) {
       try {
@@ -135,15 +141,24 @@ export async function generateText(
           console.error(`[Groq API ${res.status} - ${model}]:`, errText);
         }
       } catch (err) {
-        if (isAbortError(err)) {
-          console.warn("[Groq Timeout]: Trying next model or fallback provider...");
-        }
         lastError = err instanceof Error ? err.message : String(err);
         console.error(`[Groq API Exception - ${model}]:`, err);
+        if (isAbortError(err)) {
+          // A timeout means Groq is slow; don't burn another full timeout on the next model.
+          console.warn("[Groq Timeout]: Skipping remaining Groq models...");
+          groqTimedOut = true;
+          break;
+        }
       }
     }
 
     // If Groq fails and Gemini is NOT configured, throw the error; otherwise proceed to Gemini fallback
+    if (groqTimedOut && !process.env.GEMINI_API_KEY) {
+      throw new StudyQuizGenerationError(
+        "AI_TIMEOUT",
+        "Sparks AI timed out while generating quiz questions. Please try again with 5 questions."
+      );
+    }
     if (lastError && !process.env.GEMINI_API_KEY) {
       throw new StudyQuizGenerationError("AI_PROVIDER_ERROR", `Sparks AI Error: ${lastError}`);
     }

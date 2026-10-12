@@ -40,6 +40,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const respondWithExistingGoogleUser = async () => {
+      const existing = await db.user.findUnique({
+        where: { googleId: pendingProfile.googleId },
+      });
+      if (!existing) return null;
+      const existingProfile = await db.profile.findUnique({ where: { userId: existing.id } });
+      return NextResponse.json({
+        token: signToken(existing.id),
+        user: { id: existing.id, username: existing.username, email: existing.email },
+        profile: existingProfile,
+      });
+    };
+
+    // If this Google account already finished sign-up (retry / race), just log them in
+    const alreadyCreated = await respondWithExistingGoogleUser();
+    if (alreadyCreated) return alreadyCreated;
+
     // Check username uniqueness
     const existingUsername = await db.user.findUnique({ where: { username } });
     if (existingUsername) {
@@ -55,43 +72,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // If googleId already exists (race condition), just return existing
-    const existingGoogleUser = await db.user.findUnique({
-      where: { googleId: pendingProfile.googleId },
-    });
-    if (existingGoogleUser) {
-      const profile = await db.profile.findUnique({ where: { userId: existingGoogleUser.id } });
-      const token = signToken(existingGoogleUser.id);
-      return NextResponse.json({
-        token,
-        user: { id: existingGoogleUser.id, username: existingGoogleUser.username, email: existingGoogleUser.email },
-        profile,
-      });
-    }
-
     // Create new user
-    const user = await db.user.create({
-      data: {
-        username,
-        email: pendingProfile.email,
-        password: null,
-        authProvider: "google",
-        googleId: pendingProfile.googleId,
-        usernameCompleted: true,
-        profile: {
-          create: {
-            bio: "",
-            goal: "Master my studies and ace every exam",
-            targetHours: 6,
-            college: "",
-            course: "",
-            semester: 1,
-            avatar: pendingProfile.avatar || "",
+    let user: { id: string; username: string; email: string | null };
+    try {
+      user = await db.user.create({
+        data: {
+          username,
+          email: pendingProfile.email,
+          password: null,
+          authProvider: "google",
+          googleId: pendingProfile.googleId,
+          usernameCompleted: true,
+          profile: {
+            create: {
+              bio: "",
+              goal: "Master my studies and ace every exam",
+              targetHours: 6,
+              college: "",
+              course: "",
+              semester: 1,
+              avatar: pendingProfile.avatar || "",
+            },
           },
         },
-      },
-      select: { id: true, username: true, email: true },
-    });
+        select: { id: true, username: true, email: true },
+      });
+    } catch (createError) {
+      // Unique constraint race: a concurrent request may have created this account already
+      if ((createError as { code?: string })?.code === "P2002") {
+        const raced = await respondWithExistingGoogleUser();
+        if (raced) return raced;
+        return NextResponse.json({ error: "Username already taken" }, { status: 409 });
+      }
+      throw createError;
+    }
 
     const profile = await db.profile.findUnique({ where: { userId: user.id } });
     const token = signToken(user.id);

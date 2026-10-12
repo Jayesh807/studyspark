@@ -44,11 +44,29 @@ export async function POST(req: NextRequest) {
     const cleanUsername = user.username.replace(/[^a-zA-Z0-9]/g, "") || "student";
     const customerEmail = user.email && user.email.includes("@") ? user.email : `${cleanUsername}@studysparks.cloud`;
 
-    // Determine the exact callback URL so user returns to the right environment
-    let callbackBaseUrl = typeof origin === "string" && origin.startsWith("http") ? origin.trim() : "";
-    if (!callbackBaseUrl) {
-      const envAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-      callbackBaseUrl = envAppUrl || req.nextUrl.origin;
+    // Determine the callback URL so the user returns to the right environment. The client-supplied
+    // origin is only honoured if it matches a trusted origin, otherwise a payment redirect (with its
+    // signature) could be sent to an attacker-controlled site.
+    const trustedOrigins = new Set<string>([req.nextUrl.origin]);
+    const envAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+    if (envAppUrl) {
+      try {
+        trustedOrigins.add(new URL(envAppUrl).origin);
+      } catch {
+        // ignore malformed env value
+      }
+    }
+
+    let callbackBaseUrl = req.nextUrl.origin;
+    if (typeof origin === "string" && origin.startsWith("http")) {
+      try {
+        const requested = new URL(origin.trim()).origin;
+        if (trustedOrigins.has(requested)) callbackBaseUrl = requested;
+      } catch {
+        // fall through to default
+      }
+    } else if (envAppUrl) {
+      callbackBaseUrl = envAppUrl;
     }
     callbackBaseUrl = callbackBaseUrl.replace(/\/+$/, "");
 

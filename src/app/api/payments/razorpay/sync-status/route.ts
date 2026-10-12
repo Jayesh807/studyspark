@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getRazorpayEntitlements, isRazorpayPlanId } from "@/lib/payments/razorpay-plans";
+import {
+  getRazorpayEntitlements,
+  isRazorpayPlanId,
+  RAZORPAY_PLANS,
+  type RazorpayPlanId,
+} from "@/lib/payments/razorpay-plans";
 
 export const runtime = "nodejs";
 
@@ -25,12 +30,17 @@ export async function POST(req: NextRequest) {
     const RazorpayClass = (typeof Razorpay === "function" ? Razorpay : (Razorpay as any).default) || Razorpay;
     const razorpay = new RazorpayClass({ key_id: keyId, key_secret: keySecret });
 
-    // Fetch recent payments from Razorpay to auto-detect any captured transaction for this user
-    const paymentList = await razorpay.payments.all({ count: 25 });
+    // Fetch recent payments from Razorpay to auto-detect any captured transaction for this user.
+    // Only match on the server-written notes.userId (never the payer-typed email, which anyone
+    // can spoof) and require the captured amount to cover the plan price.
+    const paymentList = await razorpay.payments.all({ count: 100 });
     const userPaidItems = paymentList.items.filter(
       (p: any) =>
         p.status === "captured" &&
-        (p.notes?.userId === user.id || (user.email && p.email === user.email))
+        p.notes?.userId === user.id &&
+        typeof p.notes?.planId === "string" &&
+        isRazorpayPlanId(p.notes.planId) &&
+        Number(p.amount) >= RAZORPAY_PLANS[p.notes.planId as RazorpayPlanId].amountPaise
     );
 
     let newlyUnlocked = false;

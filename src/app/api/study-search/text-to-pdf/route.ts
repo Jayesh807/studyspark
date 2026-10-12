@@ -41,17 +41,14 @@ function formatInlineMarkdown(text: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  // Restore dollar math blocks (un-escape any HTML entities inside them)
+  // Restore math blocks. They are HTML-escaped too: the browser decodes the entities back to the raw
+  // TeX text before the math renderer reads it, so rendering is unchanged but no markup can be injected.
   formatted = formatted.replace(/%%DOLLARMATH_(\d+)%%/g, (_match, idx) => {
-    return dollarBlocks[Number(idx)]
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&amp;/g, "&");
+    return escapeHtml(dollarBlocks[Number(idx)] ?? "");
   });
 
-  // Restore backslash math blocks
   formatted = formatted.replace(/%%MATHBLOCK_(\d+)%%/g, (_match, idx) => {
-    return mathBlocks[Number(idx)];
+    return escapeHtml(mathBlocks[Number(idx)] ?? "");
   });
 
   formatted = formatted.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');

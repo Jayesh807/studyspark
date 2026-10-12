@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
@@ -92,7 +92,23 @@ function loadRazorpayScript(): Promise<boolean> {
 function CheckoutComponent() {
   const searchParams = useSearchParams();
   const initialPlanParam = searchParams.get("planId") as PlanId | null;
-  const tokenParam = searchParams.get("token");
+  // The session token is handed over by the mobile app. Prefer the URL fragment (#token=...), which
+  // browsers never send to servers or in Referer headers, and scrub it from the address bar/history
+  // as soon as it has been read. The legacy ?token= query param is still accepted but also scrubbed.
+  const tokenRef = useRef<string | null>(null);
+  const [, setTokenReady] = useState(false);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const hashToken = new URLSearchParams(url.hash.replace(/^#/, "")).get("token");
+    const queryToken = url.searchParams.get("token");
+    tokenRef.current = hashToken || queryToken;
+    if (hashToken || queryToken) {
+      url.hash = "";
+      url.searchParams.delete("token");
+      window.history.replaceState(null, "", url.pathname + url.search);
+    }
+    setTokenReady(true);
+  }, []);
 
   const [selectedPlan, setSelectedPlan] = useState<PlanId>(
     initialPlanParam && PLANS[initialPlanParam] ? initialPlanParam : "combo"
@@ -123,8 +139,8 @@ function CheckoutComponent() {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-      if (tokenParam) {
-        headers["Authorization"] = `Bearer ${tokenParam}`;
+      if (tokenRef.current) {
+        headers["Authorization"] = `Bearer ${tokenRef.current}`;
       }
 
       // 1. Create Order
