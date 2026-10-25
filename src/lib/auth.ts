@@ -66,6 +66,83 @@ export function verifyGooglePending(token: string): GooglePendingProfile | null 
   }
 }
 
+// ---- Mobile Google sign-in (browser redirect + PKCE-style hand-off) -----------------
+// NOTE: these payloads deliberately avoid a `userId` field, because verifyToken() would
+// otherwise accept them as session tokens.
+
+export const MOBILE_GOOGLE_STATE_PREFIX = "m.";
+const MOBILE_REDIRECT_PATTERN = /^(studyspark|exp|exps):\/\//;
+const MOBILE_CHALLENGE_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+
+export function isValidMobileGoogleChallenge(value: string | null): value is string {
+  return !!value && MOBILE_CHALLENGE_PATTERN.test(value);
+}
+
+export function isValidMobileRedirect(value: string | null): value is string {
+  return !!value && value.length <= 500 && MOBILE_REDIRECT_PATTERN.test(value);
+}
+
+export function signMobileGoogleState(challenge: string, redirect: string): string {
+  const token = jwt.sign({ kind: "mobile-google-state", challenge, redirect }, JWT_SECRET, {
+    expiresIn: "10m",
+  });
+  return MOBILE_GOOGLE_STATE_PREFIX + token;
+}
+
+export function verifyMobileGoogleState(
+  state: string
+): { challenge: string; redirect: string } | null {
+  if (!state.startsWith(MOBILE_GOOGLE_STATE_PREFIX)) return null;
+  try {
+    const payload = jwt.verify(state.slice(MOBILE_GOOGLE_STATE_PREFIX.length), JWT_SECRET) as {
+      kind?: string;
+      challenge?: string;
+      redirect?: string;
+    };
+    if (
+      payload.kind !== "mobile-google-state" ||
+      !isValidMobileGoogleChallenge(payload.challenge ?? null) ||
+      !isValidMobileRedirect(payload.redirect ?? null)
+    ) {
+      return null;
+    }
+    return { challenge: payload.challenge!, redirect: payload.redirect! };
+  } catch {
+    return null;
+  }
+}
+
+export type MobileGoogleOutcome =
+  | { uid: string }
+  | { pending: GooglePendingProfile };
+
+export function signMobileGoogleTicket(challenge: string, outcome: MobileGoogleOutcome): string {
+  return jwt.sign({ kind: "mobile-google-ticket", challenge, ...outcome }, JWT_SECRET, {
+    expiresIn: "5m",
+  });
+}
+
+export function verifyMobileGoogleTicket(
+  ticket: string
+): ({ challenge: string } & MobileGoogleOutcome) | null {
+  try {
+    const payload = jwt.verify(ticket, JWT_SECRET) as {
+      kind?: string;
+      challenge?: string;
+      uid?: string;
+      pending?: GooglePendingProfile;
+    };
+    if (payload.kind !== "mobile-google-ticket" || !payload.challenge) return null;
+    if (payload.uid) return { challenge: payload.challenge, uid: payload.uid };
+    if (payload.pending?.googleId && payload.pending.email) {
+      return { challenge: payload.challenge, pending: payload.pending };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function verifyToken(token: string): { userId: string } | null {
   try {
     const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
