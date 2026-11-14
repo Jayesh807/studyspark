@@ -7,7 +7,17 @@ import {
   type ResumeMakerInput,
 } from "./schema";
 
-const AI_REQUEST_TIMEOUT_MS = 25_000;
+/** Max time for a single provider/model attempt. */
+const AI_REQUEST_TIMEOUT_MS = 22_000;
+/**
+ * Total time budget for all attempts combined. Kept below Netlify's
+ * synchronous function limit so we can return a clear error instead of
+ * having the platform kill the request.
+ */
+const AI_TOTAL_BUDGET_MS = 50_000;
+/** Don't start a new attempt with less time than this left. */
+const MIN_ATTEMPT_MS = 4_000;
+const TIMEOUT_MESSAGE = "Resume AI timed out. Please try again with shorter details.";
 
 export class ResumeGenerationError extends Error {
   constructor(message: string) {
@@ -16,24 +26,38 @@ export class ResumeGenerationError extends Error {
   }
 }
 
-function timeoutSignal() {
-  return AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS);
+type Deadline = { endsAt: number; timedOut: boolean };
+
+function createDeadline(): Deadline {
+  return { endsAt: Date.now() + AI_TOTAL_BUDGET_MS, timedOut: false };
+}
+
+/** Returns an abort signal for the next attempt, or null if the budget is spent. */
+function attemptSignal(deadline: Deadline) {
+  const remaining = deadline.endsAt - Date.now();
+  if (remaining < MIN_ATTEMPT_MS) return null;
+  return AbortSignal.timeout(Math.min(AI_REQUEST_TIMEOUT_MS, remaining));
 }
 
 function isTimeoutError(error: unknown) {
-  return error instanceof DOMException && error.name === "TimeoutError";
+  return (
+    error instanceof Error &&
+    (error.name === "TimeoutError" || error.name === "AbortError")
+  );
 }
 
-async function generateWithGroq(prompt: string) {
+async function generateWithGroq(prompt: string, deadline: Deadline) {
   if (!process.env.GROQ_API_KEY) return null;
 
   const models = process.env.GROQ_MODEL
     ? [process.env.GROQ_MODEL]
-    : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"];
+    : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
 
   let lastError = "";
 
   for (const model of models) {
+    const signal = attemptSignal(deadline);
+    if (!signal) break;
     try {
       const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -48,7 +72,7 @@ async function generateWithGroq(prompt: string) {
           max_tokens: 3000,
           response_format: { type: "json_object" },
         }),
-        signal: timeoutSignal(),
+        signal,
       });
 
       if (response.ok) {
@@ -62,7 +86,10 @@ async function generateWithGroq(prompt: string) {
       lastError = await response.text().catch(() => `HTTP ${response.status}`);
     } catch (error) {
       if (isTimeoutError(error)) {
-        throw new ResumeGenerationError("Resume AI timed out. Please try again with shorter details.");
+        // Try the next (faster) model or provider with the remaining budget.
+        deadline.timedOut = true;
+        lastError = `${model} timed out`;
+        continue;
       }
       lastError = error instanceof Error ? error.message : String(error);
     }
@@ -75,7 +102,18 @@ async function generateWithGroq(prompt: string) {
   return null;
 }
 
-async function generateWithGemini(prompt: string) {
+function geminiGenerationConfig(model: string) {
+  return {
+    temperature: 0.2,
+    maxOutputTokens: 3000,
+    responseMimeType: "application/json",
+    // Gemini 3 models "think" by default, which can take longer than the
+    // request budget. Resume writing doesn't need deep reasoning.
+    ...(/gemini-3/i.test(model) ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
+  };
+}
+
+async function generateWithGemini(prompt: string, deadline: Deadline) {
   if (!process.env.GEMINI_API_KEY) return null;
 
   const key = process.env.GEMINI_API_KEY.trim();
@@ -84,6 +122,8 @@ async function generateWithGemini(prompt: string) {
   let lastError = "";
 
   for (const model of models) {
+    const signal = attemptSignal(deadline);
+    if (!signal) break;
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
@@ -92,13 +132,9 @@ async function generateWithGemini(prompt: string) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.2,
-              maxOutputTokens: 3000,
-              responseMimeType: "application/json",
-            },
+            generationConfig: geminiGenerationConfig(model),
           }),
-          signal: timeoutSignal(),
+          signal,
         }
       );
 
@@ -122,10 +158,16 @@ async function generateWithGemini(prompt: string) {
           : `HTTP ${response.status}`;
     } catch (error) {
       if (isTimeoutError(error)) {
-        throw new ResumeGenerationError("Resume AI timed out. Please try again with shorter details.");
+        deadline.timedOut = true;
+        lastError = `${model} timed out`;
+        continue;
       }
       lastError = error instanceof Error ? error.message : String(error);
     }
+  }
+
+  if (deadline.timedOut) {
+    throw new ResumeGenerationError(TIMEOUT_MESSAGE);
   }
 
   if (lastError) {
@@ -168,8 +210,14 @@ function normalizeResume(input: ResumeMakerInput, value: GeneratedResume): Gener
 
 export async function generateResume(input: ResumeMakerInput): Promise<GeneratedResume> {
   const prompt = buildResumePrompt(input);
+  const deadline = createDeadline();
   const responseText =
-    (await generateWithGroq(prompt)) ?? (await generateWithGemini(prompt));
+    (await generateWithGroq(prompt, deadline)) ??
+    (await generateWithGemini(prompt, deadline));
+
+  if (!responseText && deadline.timedOut) {
+    throw new ResumeGenerationError(TIMEOUT_MESSAGE);
+  }
 
   if (!responseText) {
     throw new ResumeGenerationError(
