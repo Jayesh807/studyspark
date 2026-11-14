@@ -43,7 +43,7 @@ describe("extractPdfPagesWithDiagnostics", () => {
 
   test("uses Gemini OCR when normal PDF text extraction is not useful", async () => {
     process.env.GEMINI_API_KEY = "test-key";
-    process.env.GEMINI_MODEL = "gemini-2.0-flash";
+    process.env.GEMINI_MODEL = "gemini-3.8-flash";
 
     globalThis.fetch = (async () =>
       new Response(
@@ -82,7 +82,7 @@ describe("extractPdfPagesWithDiagnostics", () => {
 
   test("returns a controlled OCR error when Gemini output is not useful", async () => {
     process.env.GEMINI_API_KEY = "test-key";
-    process.env.GEMINI_MODEL = "gemini-2.0-flash";
+    process.env.GEMINI_MODEL = "gemini-3.8-flash";
 
     globalThis.fetch = (async () =>
       new Response(

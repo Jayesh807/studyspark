@@ -1,3 +1,4 @@
+import { resolveGeminiModels } from "../ai/gemini-models";
 import {
   countUsefulPageTextChars,
   getPagesStudyTextQuality,
@@ -122,11 +123,7 @@ function pagesFromOcrResponse(text: string): PageText[] {
 }
 
 function geminiOcrModels() {
-  return process.env.GEMINI_OCR_MODEL
-    ? [process.env.GEMINI_OCR_MODEL]
-    : process.env.GEMINI_MODEL
-      ? [process.env.GEMINI_MODEL]
-      : ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"];
+  return resolveGeminiModels(process.env.GEMINI_OCR_MODEL, process.env.GEMINI_MODEL);
 }
 
 async function extractPdfPagesWithGeminiOcr(buffer: Buffer): Promise<PageText[]> {

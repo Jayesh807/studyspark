@@ -1,3 +1,4 @@
+import { resolveGeminiModels } from "../ai/gemini-models";
 
 import { buildResumePrompt, extractJsonObject } from "./prompt";
 import {
@@ -78,9 +79,7 @@ async function generateWithGemini(prompt: string) {
   if (!process.env.GEMINI_API_KEY) return null;
 
   const key = process.env.GEMINI_API_KEY.trim();
-  const models = process.env.GEMINI_MODEL
-    ? [process.env.GEMINI_MODEL]
-    : ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"];
+  const models = resolveGeminiModels(process.env.GEMINI_MODEL);
 
   let lastError = "";
 
