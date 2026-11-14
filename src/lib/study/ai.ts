@@ -1,3 +1,4 @@
+import { resolveGeminiModels } from "../ai/gemini-models";
 import { z } from "zod";
 import type { StudyQuizItem, StudySource } from "./types";
 import { getStudyTextQuality } from "./chunking";
@@ -172,9 +173,7 @@ export async function generateText(
   // 2. Try Gemini Cloud API if GEMINI_API_KEY is configured
   if (process.env.GEMINI_API_KEY) {
     const key = process.env.GEMINI_API_KEY.trim();
-    const modelsToTry = process.env.GEMINI_MODEL
-      ? [process.env.GEMINI_MODEL]
-      : ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"];
+    const modelsToTry = resolveGeminiModels(process.env.GEMINI_MODEL);
 
     let lastError = "";
     let isRateLimit = false;
